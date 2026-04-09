@@ -87,6 +87,18 @@ struct Sleep {
 
 extern Sleep sleep_cfg;
 
+// Message history (persists across screen switches)
+struct StoredMessage {
+    char sender[32];
+    char text[160];
+    uint8_t hour, minute;
+    bool is_self;
+};
+
+#define MAX_STORED_MESSAGES 50
+extern StoredMessage messages[MAX_STORED_MESSAGES];
+extern int message_count;
+
 void touch_activity();  // call on any user interaction
 bool should_sleep();    // check if timeout expired
 

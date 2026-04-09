@@ -182,6 +182,10 @@ void update_clock() {
     clock.second = utc_s;
 }
 
+// Message history
+StoredMessage messages[MAX_STORED_MESSAGES] = {};
+int message_count = 0;
+
 // Sleep
 static const uint32_t timeout_presets[] = {0, 60000, 120000, 300000, 900000, 1800000};
 Sleep sleep_cfg = {};

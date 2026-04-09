@@ -24,6 +24,17 @@ public:
         mi.timestamp = 0;
         mesh::bridge::push_message(mi);
 
+        // Store in model for persistent display
+        if (model::message_count < MAX_STORED_MESSAGES) {
+            auto& msg = model::messages[model::message_count];
+            if (from_name) strncpy(msg.sender, from_name, sizeof(msg.sender) - 1);
+            if (text) strncpy(msg.text, text, sizeof(msg.text) - 1);
+            msg.hour = model::clock.hour;
+            msg.minute = model::clock.minute;
+            msg.is_self = false;
+            model::message_count++;
+        }
+
         // Track for lock screen
         model::sleep_cfg.unread_messages++;
         if (from_name) strncpy(model::sleep_cfg.last_sender, from_name, sizeof(model::sleep_cfg.last_sender) - 1);

@@ -42,6 +42,9 @@
    FEATURE CONFIG
  *====================*/
 
+/** Disable scroll animations for e-paper */
+#define LV_ANIM_DEF_TIME 0
+
 #define LV_USE_ASSERT_NULL          1
 #define LV_USE_ASSERT_MALLOC        1
 #define LV_USE_ASSERT_OBJ           0

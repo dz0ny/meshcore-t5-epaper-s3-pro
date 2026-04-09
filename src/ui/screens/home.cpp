@@ -15,6 +15,7 @@ static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
 static lv_obj_t* lbl_clock = NULL;
 static lv_obj_t* lbl_date = NULL;
+static lv_obj_t* lbl_msg_badge = NULL;
 
 // ---------- Event handlers ----------
 
@@ -95,7 +96,7 @@ static void create(lv_obj_t* parent) {
 
     ui::nav::menu_item(menu, NULL, "Discovery", on_discovery_click, NULL);
     ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
-    ui::nav::menu_item(menu, NULL, "Messages", on_chat_click, NULL);
+    lbl_msg_badge = ui::nav::toggle_item(menu, "Messages", "", on_chat_click, NULL);
     ui::nav::menu_item(menu, NULL, "Status", on_status_click, NULL);
     ui::nav::menu_item(menu, NULL, "Settings", on_settings_click, NULL);
     ui::nav::menu_item(menu, NULL, "Power Off", on_power_off, NULL);
@@ -113,6 +114,14 @@ void update() {
     if (lbl_node_name && model::mesh.node_name) {
         lv_label_set_text(lbl_node_name, model::mesh.node_name);
     }
+    if (lbl_msg_badge) {
+        int unread = model::sleep_cfg.unread_messages;
+        if (unread > 0) {
+            lv_label_set_text_fmt(lbl_msg_badge, "(%d)", unread);
+        } else {
+            lv_label_set_text(lbl_msg_badge, "");
+        }
+    }
 }
 
 static void entry() {
@@ -125,6 +134,7 @@ static void destroy() {
     scr = NULL;
     lbl_node_name = NULL;
     lbl_clock = NULL;
+    lbl_msg_badge = NULL;
     lbl_date = NULL;
 }
 
