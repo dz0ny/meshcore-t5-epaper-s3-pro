@@ -11,7 +11,14 @@
 #include <helpers/AutoDiscoverRTCClock.h>
 #include <helpers/SensorManager.h>
 
-extern ESP32Board mc_board;
+// Custom board that reads battery from BQ27220 fuel gauge
+class T5ePaperBoard : public ESP32Board {
+public:
+    uint16_t getBattMilliVolts() override;
+    const char* getManufacturerName() const override { return "LilyGo T5-ePaper"; }
+};
+
+extern T5ePaperBoard mc_board;
 extern WRAPPER_CLASS radio_driver;
 extern AutoDiscoverRTCClock rtc_clock;
 extern SensorManager sensors;

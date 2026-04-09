@@ -1,7 +1,12 @@
 #include <Arduino.h>
 #include "target.h"
+#include "../../board.h"
 
-ESP32Board mc_board;
+T5ePaperBoard mc_board;
+
+uint16_t T5ePaperBoard::getBattMilliVolts() {
+    return board::battery_voltage_mv();
+}
 
 // Use the global SPI bus — already initialized by board::init()
 // Do NOT create a separate SPIClass, it conflicts with SD card on shared bus.
