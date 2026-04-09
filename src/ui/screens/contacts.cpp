@@ -37,32 +37,7 @@ static void rebuild_list() {
     lv_obj_clean(contact_list);
 
     for (int i = 0; i < display_count; i++) {
-        lv_obj_t* row = lv_obj_create(contact_list);
-        lv_obj_set_size(row, lv_pct(100), 50);
-        lv_obj_set_style_bg_color(row, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-        lv_obj_set_style_border_width(row, 1, LV_PART_MAIN);
-        lv_obj_set_style_border_color(row, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-        lv_obj_set_style_border_side(row, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(row, 8, LV_PART_MAIN);
-        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_event_cb(row, on_contact_click, LV_EVENT_CLICKED, NULL);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-        // Name
-        lv_obj_t* lbl = lv_label_create(row);
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_label_set_text(lbl, displayed[i].name);
-
-        // Path indicator
-        lv_obj_t* path_lbl = lv_label_create(row);
-        lv_obj_set_flex_grow(path_lbl, 1);
-        lv_obj_set_style_text_align(path_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-        lv_obj_set_style_text_color(path_lbl,
-            lv_color_hex(displayed[i].has_path ? EPD_COLOR_TEXT : EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_label_set_text(path_lbl, displayed[i].has_path ? LV_SYMBOL_OK : "...");
+        ui::nav::menu_item(contact_list, NULL, displayed[i].name, on_contact_click, NULL);
     }
 }
 

@@ -1,8 +1,13 @@
+#include <Arduino.h>
+#include <esp_sleep.h>
+#include <epdiy.h>
 #include "home.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
+#include "../ui_port.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
+#include "../../board.h"
 
 namespace ui::screen::home {
 
@@ -31,6 +36,23 @@ static void on_status_click(lv_event_t* e) {
 
 static void on_discovery_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_DISCOVERY, true);
+}
+
+static void on_power_off(lv_event_t* e) {
+    // Deep sleep — same as factory ui_sleep()
+    board::touch.sleep();
+    digitalWrite(BOARD_TOUCH_RST, LOW);
+    digitalWrite(BOARD_LORA_RST, LOW);
+    gpio_hold_en((gpio_num_t)BOARD_TOUCH_RST);
+    gpio_hold_en((gpio_num_t)BOARD_LORA_RST);
+    gpio_deep_sleep_hold_en();
+    io_extend_lora_gps_power_on(false);
+    ui::port::set_backlight(0);
+    epd_poweroff();
+
+    // Wake on BOOT button (GPIO 0, active low)
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)BOARD_BOOT_BTN, 0);
+    esp_deep_sleep_start();
 }
 
 // ---------- Lifecycle ----------
@@ -76,6 +98,7 @@ static void create(lv_obj_t* parent) {
     ui::nav::menu_item(menu, NULL, "Messages", on_chat_click, NULL);
     ui::nav::menu_item(menu, NULL, "Status", on_status_click, NULL);
     ui::nav::menu_item(menu, NULL, "Settings", on_settings_click, NULL);
+    ui::nav::menu_item(menu, NULL, "Power Off", on_power_off, NULL);
 }
 
 // Called by model update cycle (every 2s) via lv_timer — just update labels

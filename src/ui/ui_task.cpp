@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_sleep.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "lvgl.h"
@@ -27,6 +28,7 @@
 namespace ui::task {
 
 static unsigned long next_model_update = 0;
+static unsigned long next_lock_update = 0;
 static unsigned long backlight_off_at = 0;
 
 static void ui_task_fn(void* param) {
@@ -63,6 +65,17 @@ static void ui_task_fn(void* param) {
             next_model_update = millis() + 2000;
         }
 
+        // Lock screen: update every 60 seconds
+        if (ui::screen_mgr::top_id() == SCREEN_LOCK && millis() > next_lock_update) {
+            model::update_clock();
+            model::update_battery();
+            model::update_mesh();
+            ui::screen::lock::update();
+            lv_obj_t *scr = lv_screen_active();
+            if (scr) lv_obj_invalidate(scr);
+            next_lock_update = millis() + 60000;
+        }
+
         // Reset activity on any touch + auto backlight at night
         if (board::touch.isPressed()) {
             model::touch_activity();
@@ -84,7 +97,12 @@ static void ui_task_fn(void* param) {
         // Process LVGL timers, input, and flush — AFTER labels are updated
         lv_timer_handler();
 
-        vTaskDelay(pdMS_TO_TICKS(5));
+        // On lock screen: slow loop to save power (CPU stays awake for mesh)
+        if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
+            vTaskDelay(pdMS_TO_TICKS(500));
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(5));
+        }
     }
 }
 
