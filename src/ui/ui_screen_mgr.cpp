@@ -1,6 +1,5 @@
 #include "ui_screen_mgr.h"
 #include "ui_theme.h"
-#include "components/statusbar.h"
 
 // Ported from factory scr_mrg.cpp — kept as C-style linked list, works well.
 
@@ -30,9 +29,9 @@ static card_t* stack_root = NULL;
 static card_t* stack_top = NULL;
 
 // No animations on e-paper — partial redraws cause visual artifacts
-static lv_scr_load_anim_t anim_sw   = LV_SCR_LOAD_ANIM_NONE;
-static lv_scr_load_anim_t anim_push = LV_SCR_LOAD_ANIM_NONE;
-static lv_scr_load_anim_t anim_pop  = LV_SCR_LOAD_ANIM_NONE;
+static lv_screen_load_anim_t anim_sw   = LV_SCR_LOAD_ANIM_NONE;
+static lv_screen_load_anim_t anim_push = LV_SCR_LOAD_ANIM_NONE;
+static lv_screen_load_anim_t anim_pop  = LV_SCR_LOAD_ANIM_NONE;
 static uint32_t anim_time = 0;
 
 // ---------- Internal ----------
@@ -43,9 +42,6 @@ static lv_obj_t* create_default_screen(card_t* card) {
     lv_obj_set_style_bg_color(obj, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_all(obj, 5, LV_PART_MAIN);
-
-    // Statusbar on every screen
-    ui::statusbar::create(obj);
 
     card->life->create(obj);
     return obj;
@@ -92,7 +88,7 @@ static void remove_card(card_t* card) {
 // ---------- Public API ----------
 
 void init() {
-    head = (card_t*)lv_mem_alloc(sizeof(card_t));
+    head = (card_t*)lv_malloc(sizeof(card_t));
     head->id = -1;
     head->obj = NULL;
     head->st = (card_state)-1;
@@ -107,7 +103,7 @@ void init() {
 bool register_screen(int id, screen_lifecycle_t* life) {
     if (find_by_id(id)) return false;
 
-    card_t* c = (card_t*)lv_mem_alloc(sizeof(card_t));
+    card_t* c = (card_t*)lv_malloc(sizeof(card_t));
     c->id = id;
     c->obj = NULL;
     c->st = STATE_IDLE;
@@ -131,18 +127,18 @@ bool switch_to(int id, bool anim) {
         curr_obj = stack_top->obj;
         s = stack_top->prev;
         remove_card(stack_top);
-        lv_mem_free(stack_top);
+        lv_free(stack_top);
         stack_top = s;
     }
     while (stack_top) {
         s = stack_top->prev;
         remove_card(stack_top);
-        lv_mem_free(stack_top);
+        lv_free(stack_top);
         stack_top = s;
     }
 
     // Create new stack entry
-    s = (card_t*)lv_mem_alloc(sizeof(card_t));
+    s = (card_t*)lv_malloc(sizeof(card_t));
     s->id = tgt->id;
     s->obj = create_default_screen(tgt);
     s->st = STATE_CREATED;
@@ -155,10 +151,10 @@ bool switch_to(int id, bool anim) {
     activate(s);
 
     if (anim_sw != LV_SCR_LOAD_ANIM_NONE && anim) {
-        lv_scr_load_anim(s->obj, anim_sw, anim_time, 0, true);
+        lv_screen_load_anim(s->obj, anim_sw, anim_time, 0, true);
     } else {
-        lv_scr_load(s->obj);
-        if (curr_obj) lv_obj_del(curr_obj);
+        lv_screen_load(s->obj);
+        if (curr_obj) lv_obj_delete(curr_obj);
     }
     return true;
 }
@@ -168,7 +164,7 @@ bool push(int id, bool anim) {
     if (!tgt) return false;
     if (stack_top && tgt->id == stack_top->id) return false;
 
-    card_t* s = (card_t*)lv_mem_alloc(sizeof(card_t));
+    card_t* s = (card_t*)lv_malloc(sizeof(card_t));
     s->id = tgt->id;
     s->obj = create_default_screen(tgt);
     s->st = STATE_CREATED;
@@ -190,9 +186,9 @@ bool push(int id, bool anim) {
     activate(s);
 
     if (anim_push != LV_SCR_LOAD_ANIM_NONE && anim) {
-        lv_scr_load_anim(s->obj, anim_push, anim_time, 0, false);
+        lv_screen_load_anim(s->obj, anim_push, anim_time, 0, false);
     } else {
-        lv_scr_load(s->obj);
+        lv_screen_load(s->obj);
     }
     return true;
 }
@@ -203,16 +199,16 @@ bool pop(bool anim) {
     lv_obj_t* cur_obj = stack_top->obj;
     card_t* dst = stack_top->prev;
     remove_card(stack_top);
-    lv_mem_free(stack_top);
+    lv_free(stack_top);
     stack_top = dst;
 
     activate(dst);
 
     if (anim_pop != LV_SCR_LOAD_ANIM_NONE && anim) {
-        lv_scr_load_anim(dst->obj, anim_pop, anim_time, 0, true);
+        lv_screen_load_anim(dst->obj, anim_pop, anim_time, 0, true);
     } else {
-        lv_scr_load(dst->obj);
-        if (cur_obj) lv_obj_del(cur_obj);
+        lv_screen_load(dst->obj);
+        if (cur_obj) lv_obj_delete(cur_obj);
     }
     return true;
 }

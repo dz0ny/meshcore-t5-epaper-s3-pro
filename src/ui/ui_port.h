@@ -24,9 +24,10 @@ void full_clean();
 void touch_enable();
 void touch_disable();
 
-// Backlight: 4 levels (0=Off, 1=Low, 2=Mid, 3=High)
+// Backlight: 0=Auto, 1=Off, 2=Low, 3=Mid, 4=High
 void set_backlight(int level);
 int  get_backlight();
 const char* get_backlight_name();
+bool is_backlight_auto();
 
 } // namespace ui::port

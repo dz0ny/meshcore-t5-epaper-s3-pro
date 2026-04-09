@@ -129,9 +129,8 @@ static void gps_task_nmea(void* param) {
                 if (gps.satellites.isValid()) {
                     gps_vsat = gps.satellites.value();
                 }
-                if (gps.location.isValid()) {
-                    sync_rtc_from_gps();
-                }
+                // Sync RTC as soon as we have valid time — no need to wait for fix
+                sync_rtc_from_gps();
             }
         }
         delay(1);

@@ -78,6 +78,12 @@ void start(int core) {
     the_mesh_ptr = new MyMesh(radio_driver, mc_rng, rtc_clock, mc_tables, *store, &bridge_ui);
     the_mesh_ptr->begin(false); // no display (we handle UI separately)
 
+    // Disable auto-add — contacts are added explicitly from Discovery screen
+    if (the_mesh_ptr->getNodePrefs()->manual_add_contacts == 0) {
+        the_mesh_ptr->getNodePrefs()->manual_add_contacts = 1;
+        the_mesh_ptr->savePrefs();
+    }
+
     // Start BLE serial interface for companion app
     ble_serial.begin(BLE_NAME_PREFIX, the_mesh_ptr->getNodePrefs()->node_name, the_mesh_ptr->getBLEPin());
     the_mesh_ptr->startInterface(ble_serial);
@@ -126,6 +132,14 @@ const char* node_name() {
     return the_mesh_ptr->getNodeName();
 }
 
+double get_node_lat() {
+    return sensors.node_lat;
+}
+
+double get_node_lon() {
+    return sensors.node_lon;
+}
+
 float get_freq() {
     if (!the_mesh_ptr) return LORA_FREQ;
     return the_mesh_ptr->getNodePrefs()->freq;
@@ -158,6 +172,158 @@ uint32_t get_packets_recv() {
 uint32_t get_packets_sent() {
     return radio_driver.getPacketsSent();
 }
+
+// ---------- Param setters (save prefs, need reboot for radio params) ----------
+
+void set_node_name(const char* name) {
+    if (!the_mesh_ptr) return;
+    NodePrefs* p = the_mesh_ptr->getNodePrefs();
+    strncpy(p->node_name, name, sizeof(p->node_name) - 1);
+    the_mesh_ptr->savePrefs();
+}
+
+void set_freq(float freq_mhz) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->freq = freq_mhz;
+    the_mesh_ptr->savePrefs();
+}
+
+void set_bw(float bw_khz) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->bw = bw_khz;
+    the_mesh_ptr->savePrefs();
+}
+
+void set_sf(uint8_t sf) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->sf = sf;
+    the_mesh_ptr->savePrefs();
+}
+
+void set_cr(uint8_t cr) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->cr = cr;
+    the_mesh_ptr->savePrefs();
+}
+
+void set_tx_power(int8_t dbm) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->tx_power_dbm = dbm;
+    the_mesh_ptr->savePrefs();
+}
+
+void set_gps_enabled(bool enabled) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->gps_enabled = enabled ? 1 : 0;
+    the_mesh_ptr->savePrefs();
+}
+
+bool get_gps_enabled() {
+    if (!the_mesh_ptr) return false;
+    return the_mesh_ptr->getNodePrefs()->gps_enabled != 0;
+}
+
+void set_advert_location(bool share) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->advert_loc_policy = share ? 1 : 0;
+    the_mesh_ptr->savePrefs();
+}
+
+bool get_advert_location() {
+    if (!the_mesh_ptr) return false;
+    return the_mesh_ptr->getNodePrefs()->advert_loc_policy != 0;
+}
+
+// ---------- Sleep ----------
+
+void enter_sleep(uint32_t wake_secs) {
+    if (!mesh_mutex) return;
+
+    // Grab the mesh mutex so mesh task stops looping
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(2000))) {
+        // Wait for any active radio transaction to finish
+        int wait = 0;
+        while (radio_driver.isReceiving() && wait < 100) {
+            delay(10);
+            wait++;
+        }
+
+        Serial.println("MESH: entering light sleep");
+        Serial.flush();
+        delay(50);
+
+        // Configure wake on LoRa DIO1 (incoming packet) + touch INT
+        esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+        uint64_t wake_mask = (1ULL << P_LORA_DIO_1) | (1ULL << BOARD_TOUCH_INT);
+        esp_sleep_enable_ext1_wakeup(wake_mask, ESP_EXT1_WAKEUP_ANY_HIGH);
+
+        if (wake_secs > 0) {
+            esp_sleep_enable_timer_wakeup((uint64_t)wake_secs * 1000000ULL);
+        }
+
+        esp_light_sleep_start();
+
+        // Woke up
+        Serial.println("MESH: woke from sleep");
+        xSemaphoreGive(mesh_mutex);
+    }
+}
+
+// ---------- Discovery ----------
+
+int get_discovered(DiscoveredNode* dest, int max_num) {
+    if (!the_mesh_ptr || !mesh_mutex) return 0;
+    int count = 0;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        AdvertPath paths[16];
+        int n = the_mesh_ptr->getRecentlyHeard(paths, max_num < 16 ? max_num : 16);
+        for (int i = 0; i < n; i++) {
+            if (paths[i].recv_timestamp == 0) continue; // empty slot
+            strncpy(dest[count].name, paths[i].name, sizeof(dest[count].name) - 1);
+            dest[count].name[31] = 0;
+            memcpy(dest[count].pubkey_prefix, paths[i].pubkey_prefix, 7);
+            dest[count].path_len = paths[i].path_len;
+            dest[count].recv_timestamp = paths[i].recv_timestamp;
+            count++;
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return count;
+}
+
+bool add_contact_by_prefix(const uint8_t* pubkey_prefix) {
+    if (!the_mesh_ptr || !mesh_mutex || !store) return false;
+    bool ok = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        // Check if already a contact
+        ContactInfo* existing = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+        if (existing) {
+            ok = true;
+        } else {
+            // Try blob store first (raw advert packets saved by MeshCore)
+            uint8_t blob[256];
+            uint8_t len = store->getBlobByKey(pubkey_prefix, 7, blob);
+            if (len > 0) {
+                ok = the_mesh_ptr->importContact(blob, len);
+                if (ok) Serial.printf("MESH: contact added from blob (%d bytes)\n", len);
+            }
+
+            if (!ok) {
+                // Fallback: temporarily enable auto-add so next advert from this node gets added
+                uint8_t old = the_mesh_ptr->getNodePrefs()->manual_add_contacts;
+                the_mesh_ptr->getNodePrefs()->manual_add_contacts = 0; // enable auto-add
+                Serial.println("MESH: auto-add enabled temporarily, waiting for next advert");
+                // It will be re-disabled after the next onDiscoveredContact for this node
+                // For now just mark as pending
+                ok = true; // optimistic
+            }
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return ok;
+}
+
+// ---------- Contact sync ----------
 
 void push_all_contacts() {
     if (!the_mesh_ptr || !mesh_mutex) return;

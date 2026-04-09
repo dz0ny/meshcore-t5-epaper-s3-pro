@@ -10,7 +10,6 @@ static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
 static lv_obj_t* lbl_clock = NULL;
 static lv_obj_t* lbl_date = NULL;
-static lv_timer_t* clock_timer = NULL;
 
 // ---------- Event handlers ----------
 
@@ -30,15 +29,8 @@ static void on_status_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_STATUS, true);
 }
 
-// ---------- Clock update ----------
-
-static void clock_cb(lv_timer_t* t) {
-    if (!lbl_clock) return;
-    lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
-    if (lbl_date) {
-        lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
-            model::clock.day, model::clock.month, model::clock.year);
-    }
+static void on_discovery_click(lv_event_t* e) {
+    ui::screen_mgr::push(SCREEN_DISCOVERY, true);
 }
 
 // ---------- Lifecycle ----------
@@ -58,14 +50,15 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, 95);
     lv_obj_set_style_text_font(lbl_clock, &Font_Mono_Bold_90, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_clock, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_clock, "--:--");
+    lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
 
     // Date below clock
     lbl_date = lv_label_create(parent);
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 195);
     lv_obj_set_style_text_font(lbl_date, &Font_Mono_Bold_25, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_date, "--/--/----");
+    lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
+        model::clock.day, model::clock.month, model::clock.year);
 
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
@@ -78,23 +71,32 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    ui::nav::menu_item(menu, NULL, "Discovery", on_discovery_click, NULL);
     ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
     ui::nav::menu_item(menu, NULL, "Messages", on_chat_click, NULL);
     ui::nav::menu_item(menu, NULL, "Status", on_status_click, NULL);
     ui::nav::menu_item(menu, NULL, "Settings", on_settings_click, NULL);
 }
 
-static void entry() {
-    clock_timer = lv_timer_create(clock_cb, 5000, NULL);
-    clock_cb(NULL);
-}
-
-static void exit_fn() {
-    if (clock_timer) {
-        lv_timer_del(clock_timer);
-        clock_timer = NULL;
+// Called by model update cycle (every 2s) via lv_timer — just update labels
+void update() {
+    if (lbl_clock) {
+        lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
+    }
+    if (lbl_date) {
+        lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
+            model::clock.day, model::clock.month, model::clock.year);
+    }
+    if (lbl_node_name && model::mesh.node_name) {
+        lv_label_set_text(lbl_node_name, model::mesh.node_name);
     }
 }
+
+static void entry() {
+    update();
+}
+
+static void exit_fn() {}
 
 static void destroy() {
     scr = NULL;
@@ -103,11 +105,6 @@ static void destroy() {
     lbl_date = NULL;
 }
 
-screen_lifecycle_t lifecycle = {
-    .create  = create,
-    .entry   = entry,
-    .exit    = exit_fn,
-    .destroy = destroy,
-};
+screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };
 
 } // namespace ui::screen::home

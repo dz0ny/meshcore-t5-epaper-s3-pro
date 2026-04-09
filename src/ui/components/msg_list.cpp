@@ -38,7 +38,7 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     // Sender name — bold, compact
     if (sender && sender[0]) {
         lv_obj_t* lbl_name = lv_label_create(bubble);
-        lv_obj_set_style_text_font(lbl_name, &Font_Mono_Bold_20, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_18, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl_name,
             lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(lbl_name, sender);
@@ -48,7 +48,7 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     lv_obj_t* lbl_text = lv_label_create(bubble);
     lv_obj_set_width(lbl_text, lv_pct(100));
     lv_label_set_long_mode(lbl_text, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(lbl_text, &Font_Mono_Bold_25, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_text, &lv_font_montserrat_22, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_text,
         lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_text, text);

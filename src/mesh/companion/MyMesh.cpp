@@ -441,18 +441,8 @@ void MyMesh::onContactsFull() {
 }
 
 void MyMesh::onDiscoveredContact(ContactInfo &contact, bool is_new, uint8_t path_len, const uint8_t* path) {
-  // Push to UI bridge
-  {
-    mesh::bridge::ContactUpdate cu = {};
-    strncpy(cu.name, contact.name, sizeof(cu.name) - 1);
-    memcpy(cu.pub_key, contact.id.pub_key, 32);
-    cu.type = contact.type;
-    cu.gps_lat = contact.gps_lat;
-    cu.gps_lon = contact.gps_lon;
-    cu.path_len = contact.out_path_len;
-    cu.is_new = is_new;
-    mesh::bridge::push_contact(cu);
-  }
+  // Discovery/contacts are handled via getRecentlyHeard() and direct mesh access.
+  // No bridge push needed — UI reads from mesh directly.
 
   if (_serial->isConnected()) {
     if (is_new) {
@@ -463,9 +453,9 @@ void MyMesh::onDiscoveredContact(ContactInfo &contact, bool is_new, uint8_t path
       _serial->writeFrame(out_frame, 1 + PUB_KEY_SIZE);
     }
   } else {
-#ifdef DISPLAY_CLASS
+// DISPLAY_CLASS guard removed for BridgeUITask
     if (_ui) _ui->notify(UIEventType::newContactMessage);
-#endif
+
   }
 
   // add inbound-path to mem cache
@@ -1034,16 +1024,13 @@ void MyMesh::begin(bool has_display) {
 
 #ifdef BLE_PIN_CODE // 123456 by default
   if (_prefs.ble_pin == 0) {
-#ifdef DISPLAY_CLASS
+// DISPLAY_CLASS guard removed for BridgeUITask
     if (has_display && BLE_PIN_CODE == 123456) {
       StdRNG rng;
       _active_ble_pin = rng.nextInt(100000, 999999); // random pin each session
     } else {
       _active_ble_pin = BLE_PIN_CODE; // otherwise static pin
     }
-#else
-    _active_ble_pin = BLE_PIN_CODE; // otherwise static pin
-#endif
   } else {
     _active_ble_pin = _prefs.ble_pin;
   }
@@ -1590,9 +1577,9 @@ void MyMesh::handleCmdFrame(size_t len) {
     int out_len;
     if ((out_len = getFromOfflineQueue(out_frame)) > 0) {
       _serial->writeFrame(out_frame, out_len);
-#ifdef DISPLAY_CLASS
+// DISPLAY_CLASS guard removed for BridgeUITask
       if (_ui) _ui->msgRead(offline_queue_len);
-#endif
+
     } else {
       out_frame[0] = RESP_CODE_NO_MORE_MESSAGES;
       _serial->writeFrame(out_frame, 1);
@@ -2514,9 +2501,9 @@ void MyMesh::loop() {
     dirty_contacts_expiry = 0;
   }
 
-#ifdef DISPLAY_CLASS
+// DISPLAY_CLASS guard removed for BridgeUITask
   if (_ui) _ui->setHasConnection(_serial->isConnected());
-#endif
+
 }
 
 bool MyMesh::advert() {

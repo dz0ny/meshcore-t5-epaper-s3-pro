@@ -1,10 +1,5 @@
 #pragma once
-
 #include "../ui_screen_mgr.h"
-
-namespace ui::screen::home {
-
+namespace ui::screen::set_display {
 extern screen_lifecycle_t lifecycle;
-void update();
-
-} // namespace ui::screen::home
+}

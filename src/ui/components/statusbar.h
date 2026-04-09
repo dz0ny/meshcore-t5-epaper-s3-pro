@@ -10,5 +10,7 @@ lv_obj_t* create(lv_obj_t* parent);
 
 // Force an immediate update.
 void update_now();
+void show();
+void hide();
 
 } // namespace ui::statusbar

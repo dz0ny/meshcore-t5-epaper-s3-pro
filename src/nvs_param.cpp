@@ -9,6 +9,7 @@ nvs_param nvs_default[NVS_ID_MAX] = {
     {NVS_ID_BACKLIGHT,      NVS_U8,     "blacklight",   .data = {.u8 = 0}},
     {NVS_ID_EPD_VCOM,       NVS_U16,    "eps_vcom",     .data = {.u16 = 1000}},
     {NVS_ID_REFRESH_MODE,   NVS_U8,     "refresh_mode", .data = {.u8 = 0} },
+    {NVS_ID_SLEEP_TIMEOUT,  NVS_U8,     "sleep_idx",    .data = {.u8 = 3} },
 };
 /* clang-format on */
 

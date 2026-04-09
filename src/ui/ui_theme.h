@@ -23,6 +23,11 @@ enum screen_id {
     SCREEN_BATTERY  = 5,
     SCREEN_MESH     = 6,
     SCREEN_STATUS   = 7,
+    SCREEN_SET_DISPLAY = 8,
+    SCREEN_SET_GPS     = 9,
+    SCREEN_SET_MESH    = 10,
+    SCREEN_DISCOVERY   = 11,
+    SCREEN_LOCK        = 12,
 };
 
 // ---------- Font declarations ----------

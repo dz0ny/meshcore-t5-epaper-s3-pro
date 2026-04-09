@@ -8,7 +8,7 @@ SemaphoreHandle_t status_mutex = NULL;
 MeshStatus status = {};
 
 void init() {
-    contact_queue = xQueueCreate(16, sizeof(ContactUpdate));
+    contact_queue = xQueueCreate(128, sizeof(ContactUpdate));
     message_queue = xQueueCreate(32, sizeof(MessageIn));
     status_mutex = xSemaphoreCreateMutex();
 }

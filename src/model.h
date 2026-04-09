@@ -64,8 +64,9 @@ struct Mesh {
 };
 
 struct Clock {
-    uint8_t hour, minute, second;
+    uint8_t hour, minute, second;   // local time (UTC + tz_offset)
     uint8_t year, month, day;
+    int8_t  tz_offset_hours;        // auto-calculated from GPS longitude
 };
 
 // Global state — written by updaters, read by UI
@@ -73,6 +74,21 @@ extern GPS     gps;
 extern Battery battery;
 extern Mesh    mesh;
 extern Clock   clock;
+
+// Sleep config
+struct Sleep {
+    uint8_t timeout_idx;       // index into timeout presets
+    uint32_t timeout_ms;       // 0 = disabled
+    uint32_t last_activity_ms; // last touch/interaction timestamp
+    int unread_messages;
+    char last_message[80];
+    char last_sender[32];
+};
+
+extern Sleep sleep_cfg;
+
+void touch_activity();  // call on any user interaction
+bool should_sleep();    // check if timeout expired
 
 // Call from background tasks to refresh the model
 void update_gps();

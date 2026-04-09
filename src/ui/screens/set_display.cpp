@@ -1,0 +1,69 @@
+#include "set_display.h"
+#include "../ui_theme.h"
+#include "../ui_screen_mgr.h"
+#include "../ui_port.h"
+#include "../components/nav_button.h"
+#include "../../nvs_param.h"
+#include "../../model.h"
+
+namespace ui::screen::set_display {
+
+static lv_obj_t* scr = NULL;
+static lv_obj_t* lbl_refresh_val = NULL;
+static lv_obj_t* lbl_backlight_val = NULL;
+static lv_obj_t* lbl_sleep_val = NULL;
+static const char* mode_names[] = {"Normal", "Fast", "Neat"};
+static const char* sleep_names[] = {"Off", "1 min", "2 min", "5 min", "15 min", "30 min"};
+static const uint32_t sleep_ms[] = {0, 60000, 120000, 300000, 900000, 1800000};
+
+static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
+
+static void on_sleep_cycle(lv_event_t* e) {
+    uint8_t idx = (model::sleep_cfg.timeout_idx + 1) % 6;
+    model::sleep_cfg.timeout_idx = idx;
+    model::sleep_cfg.timeout_ms = sleep_ms[idx];
+    nvs_param_set_u8(NVS_ID_SLEEP_TIMEOUT, idx);
+    model::touch_activity();
+    if (lbl_sleep_val) lv_label_set_text(lbl_sleep_val, sleep_names[idx]);
+}
+
+static void on_refresh_mode(lv_event_t* e) {
+    int mode = ui::port::get_refresh_mode();
+    mode = (mode + 1) % 3;
+    ui::port::set_refresh_mode(mode);
+    nvs_param_set_u8(NVS_ID_REFRESH_MODE, mode);
+    if (lbl_refresh_val) lv_label_set_text(lbl_refresh_val, mode_names[mode]);
+}
+
+static void on_backlight_cycle(lv_event_t* e) {
+    int level = ui::port::get_backlight();
+    level = (level + 1) % 5;
+    ui::port::set_backlight(level);
+    nvs_param_set_u8(NVS_ID_BACKLIGHT, level);
+    if (lbl_backlight_val) lv_label_set_text(lbl_backlight_val, ui::port::get_backlight_name());
+}
+
+static void create(lv_obj_t* parent) {
+    scr = parent;
+    ui::nav::back_button(parent, "Display", on_back);
+
+    lv_obj_t* list = lv_obj_create(parent);
+    lv_obj_set_size(list, lv_pct(95), lv_pct(85));
+    lv_obj_align(list, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
+    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+
+    lbl_refresh_val = ui::nav::toggle_item(list, "Refresh", mode_names[ui::port::get_refresh_mode()], on_refresh_mode, NULL);
+    lbl_backlight_val = ui::nav::toggle_item(list, "Light", ui::port::get_backlight_name(), on_backlight_cycle, NULL);
+    lbl_sleep_val = ui::nav::toggle_item(list, "Sleep", sleep_names[model::sleep_cfg.timeout_idx], on_sleep_cycle, NULL);
+}
+
+static void entry() {}
+static void exit_fn() {}
+static void destroy() { scr = NULL; lbl_refresh_val = NULL; lbl_backlight_val = NULL; lbl_sleep_val = NULL; }
+
+screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };
+
+} // namespace ui::screen::set_display

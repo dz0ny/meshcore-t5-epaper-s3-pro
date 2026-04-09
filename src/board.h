@@ -20,8 +20,8 @@
 #include <SPIFFS.h>
 
 // Software / hardware version
-#define T_PAPER_SW_VERSION    "v0.1.0"
-#define T_PAPER_HW_VERSION    "v1.0-241224"
+#define T_PAPER_SW_VERSION    "v0.2.0"
+#define T_PAPER_HW_VERSION    "T5-ePaper-S3-PRO"
 
 // ---------- Pin definitions (T5S3 4.7" e-paper PRO) ----------
 

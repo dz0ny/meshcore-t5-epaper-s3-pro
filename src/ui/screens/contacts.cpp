@@ -52,7 +52,7 @@ static void rebuild_list() {
 
         // Name
         lv_obj_t* lbl = lv_label_create(row);
-        lv_obj_set_style_text_font(lbl, &Font_Mono_Bold_25, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(lbl, displayed[i].name);
 
@@ -113,7 +113,8 @@ static void create(lv_obj_t* parent) {
 }
 
 static void entry() {
-    // Push all existing contacts from mesh to bridge so we see them immediately
+    // Reset display list and reload all contacts from mesh
+    display_count = 0;
     mesh::task::push_all_contacts();
 
     poll_timer = lv_timer_create(poll_contacts, 2000, NULL);
