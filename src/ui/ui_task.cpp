@@ -97,10 +97,18 @@ static void ui_task_fn(void* param) {
         // Process LVGL timers, input, and flush — AFTER labels are updated
         lv_timer_handler();
 
-        // On lock screen: slow loop to save power (CPU stays awake for mesh)
+        // On lock screen: reduce CPU speed + slow loop to save power
         if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
+            if (getCpuFrequencyMhz() != 80) {
+                setCpuFrequencyMhz(80);
+                Serial.println("CPU: 80 MHz (lock)");
+            }
             vTaskDelay(pdMS_TO_TICKS(500));
         } else {
+            if (getCpuFrequencyMhz() != 240) {
+                setCpuFrequencyMhz(240);
+                Serial.println("CPU: 240 MHz (active)");
+            }
             vTaskDelay(pdMS_TO_TICKS(5));
         }
     }
