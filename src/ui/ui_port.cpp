@@ -6,6 +6,7 @@ namespace ui::port {
 
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
+static uint8_t* prev_frame = NULL;  // previous frame for change detection
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -23,6 +24,29 @@ static inline void checkError(enum EpdDrawError err) {
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     int32_t disp_w = epd_rotated_display_width();
+
+    // Skip e-paper update if the dirty area pixels haven't actually changed
+    if (prev_frame) {
+        bool changed = false;
+        for (int32_t ry = area->y1; ry <= area->y2 && !changed; ry++) {
+            int32_t offset = ry * disp_w + area->x1;
+            int32_t len = area->x2 - area->x1 + 1;
+            if (memcmp(&px_map[offset], &prev_frame[offset], len) != 0) {
+                changed = true;
+            }
+        }
+        if (!changed) {
+            lv_display_flush_ready(disp);
+            return;
+        }
+        // Update prev_frame with new content for the dirty area
+        for (int32_t ry = area->y1; ry <= area->y2; ry++) {
+            int32_t offset = ry * disp_w + area->x1;
+            int32_t len = area->x2 - area->x1 + 1;
+            memcpy(&prev_frame[offset], &px_map[offset], len);
+        }
+    }
+
     uint8_t *fb = epd_hl_get_framebuffer(&board::hl);
     int32_t phys_w = epd_width();
     int32_t phys_h = epd_height();
@@ -106,11 +130,12 @@ void init() {
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
 
     // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
-    // 1 byte/pixel instead of 2 — halves buffer size and eliminates color conversion.
+    // Single buffer — no double buffering needed since e-ink flush is slow anyway.
+    // Saves ~500KB PSRAM.
     size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
-    void *buf2 = ps_calloc(1, buf_size);
-    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
+    prev_frame = (uint8_t *)ps_calloc(1, buf_size);  // for change detection
+    lv_display_set_buffers(disp, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);

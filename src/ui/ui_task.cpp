@@ -92,16 +92,14 @@ static void ui_task_fn(void* param) {
             backlight_off_at = 0;
         }
 
-        // Process LVGL timers, input, and flush — AFTER labels are updated
-        lv_timer_handler();
-
-        // On lock screen: slow loop to save power.
-        // Normal: 20ms matches e-ink refresh period (no point polling faster).
+        // Let LVGL handle its own timing — returns immediately if period hasn't elapsed.
+        // On lock screen: slow poll to save power.
         if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
-            vTaskDelay(pdMS_TO_TICKS(500));
+            lv_timer_handler_run_in_period(500);
         } else {
-            vTaskDelay(pdMS_TO_TICKS(20));
+            lv_timer_handler_run_in_period(20);
         }
+        vTaskDelay(pdMS_TO_TICKS(5));  // yield to other tasks
     }
 }
 
