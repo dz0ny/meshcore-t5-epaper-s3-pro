@@ -2,6 +2,7 @@
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
+#include "../components/text_utils.h"
 #include "../../mesh/mesh_bridge.h"
 #include "../../mesh/mesh_task.h"
 
@@ -60,6 +61,7 @@ static void poll_contacts(lv_timer_t* t) {
         if (!found && display_count < 100) {
             strncpy(displayed[display_count].name, cu.name, 31);
             displayed[display_count].name[31] = 0;
+            ui::text::strip_emoji(displayed[display_count].name);
             displayed[display_count].type = cu.type;
             displayed[display_count].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
             display_count++;

@@ -2,6 +2,7 @@
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
+#include "../components/text_utils.h"
 #include "../../mesh/mesh_task.h"
 
 namespace ui::screen::discovery {
@@ -46,7 +47,11 @@ static void rebuild_list() {
         lv_obj_t* lbl = lv_label_create(row);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_label_set_text(lbl, nodes[i].name);
+        char clean_name[32];
+        strncpy(clean_name, nodes[i].name, sizeof(clean_name) - 1);
+        clean_name[31] = 0;
+        ui::text::strip_emoji(clean_name);
+        lv_label_set_text(lbl, clean_name);
 
         // "Add" hint
         lv_obj_t* hint = lv_label_create(row);

@@ -1,4 +1,5 @@
 #include "msg_list.h"
+#include "text_utils.h"
 #include "../ui_theme.h"
 #include "../../model.h"
 
@@ -17,6 +18,12 @@ lv_obj_t* create(lv_obj_t* parent) {
 }
 
 void append(lv_obj_t* list, const char* sender, const char* text, uint32_t timestamp, bool is_self) {
+    // Strip emoji from sender and text (montserrat doesn't have emoji glyphs)
+    char clean_sender[64] = {};
+    char clean_text[256] = {};
+    if (sender) { strncpy(clean_sender, sender, sizeof(clean_sender) - 1); ui::text::strip_emoji(clean_sender); }
+    if (text) { strncpy(clean_text, text, sizeof(clean_text) - 1); ui::text::strip_emoji(clean_text); }
+
     // Wrapper container for bubble + time label
     lv_obj_t* wrapper = lv_obj_create(list);
     lv_obj_set_width(wrapper, lv_pct(100));
@@ -48,12 +55,12 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     }
 
     // Sender name
-    if (sender && sender[0]) {
+    if (clean_sender[0]) {
         lv_obj_t* lbl_name = lv_label_create(bubble);
         lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_24, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl_name,
             lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_label_set_text(lbl_name, sender);
+        lv_label_set_text(lbl_name, clean_sender);
     }
 
     // Message text — bold for e-ink readability, montserrat for Unicode
@@ -63,7 +70,7 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     lv_obj_set_style_text_font(lbl_text, &lv_font_montserrat_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_text,
         lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_text, text);
+    lv_label_set_text(lbl_text, clean_text);
 
     // Time inside bubble, bottom-right — like WhatsApp
     lv_obj_t* lbl_time = lv_label_create(bubble);
