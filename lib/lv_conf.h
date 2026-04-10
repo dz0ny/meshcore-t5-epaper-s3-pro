@@ -61,6 +61,7 @@
 #define LV_FONT_MONTSERRAT_20 1   /* Menu arrows with symbols */
 #define LV_FONT_MONTSERRAT_22 1   /* Message text + contacts — has full Unicode */
 #define LV_FONT_MONTSERRAT_24 1   /* Statusbar — readable on e-ink */
+#define LV_FONT_MONTSERRAT_28 1   /* Message text — Unicode + readable */
 
 /** Default font */
 #define LV_FONT_DEFAULT &lv_font_montserrat_14

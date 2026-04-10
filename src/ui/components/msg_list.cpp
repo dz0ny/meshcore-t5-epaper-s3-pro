@@ -56,11 +56,11 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
         lv_label_set_text(lbl_name, sender);
     }
 
-    // Message text
+    // Message text — bold for e-ink readability, montserrat for Unicode
     lv_obj_t* lbl_text = lv_label_create(bubble);
     lv_obj_set_width(lbl_text, lv_pct(100));
     lv_label_set_long_mode(lbl_text, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(lbl_text, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_text, &lv_font_montserrat_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_text,
         lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_text, text);

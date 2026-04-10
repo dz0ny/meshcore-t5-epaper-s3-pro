@@ -84,8 +84,8 @@ void start(int core) {
         the_mesh_ptr->savePrefs();
     }
 
-    // Start BLE serial interface for companion app
-    ble_serial.begin(BLE_NAME_PREFIX, the_mesh_ptr->getNodePrefs()->node_name, the_mesh_ptr->getBLEPin());
+    // BLE off by default — user can enable from Settings > Mesh
+    // Just register the interface, don't start BLE yet
     the_mesh_ptr->startInterface(ble_serial);
 
     // Apply radio params from prefs
@@ -233,6 +233,26 @@ bool get_advert_location() {
     if (!the_mesh_ptr) return false;
     return the_mesh_ptr->getNodePrefs()->advert_loc_policy != 0;
 }
+
+// ---------- BLE ----------
+
+static bool ble_active = false;
+
+void ble_enable() {
+    if (ble_active || !the_mesh_ptr) return;
+    ble_serial.begin(BLE_NAME_PREFIX, the_mesh_ptr->getNodePrefs()->node_name, the_mesh_ptr->getBLEPin());
+    ble_active = true;
+    Serial.println("BLE: enabled");
+}
+
+void ble_disable() {
+    if (!ble_active) return;
+    ble_serial.disable();
+    ble_active = false;
+    Serial.println("BLE: disabled");
+}
+
+bool ble_is_enabled() { return ble_active; }
 
 // ---------- Sleep ----------
 

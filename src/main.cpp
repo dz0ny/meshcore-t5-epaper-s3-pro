@@ -1,9 +1,13 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include "board.h"
 #include "mesh/mesh_task.h"
 #include "ui/ui_task.h"
 
 void setup() {
+    // Disable WiFi completely to save power
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
     // Initialize all hardware (serial, SPI, I2C, screen, touch, PMU, GPS, SD)
     board::init();
 

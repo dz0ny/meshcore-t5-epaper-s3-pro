@@ -60,6 +60,11 @@ bool get_advert_location();
 double get_node_lat();
 double get_node_lon();
 
+// BLE companion app control
+void ble_enable();
+void ble_disable();
+bool ble_is_enabled();
+
 // Enter light sleep — waits for radio idle, then sleeps both cores.
 // Wakes on LoRa packet (DIO1) or timer.
 void enter_sleep(uint32_t wake_secs);
