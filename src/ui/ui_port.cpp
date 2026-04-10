@@ -13,28 +13,42 @@ static inline void checkError(enum EpdDrawError err) {
     }
 }
 
-// Convert RGB565 pixel to 8-bit grayscale (0-255)
-static inline uint8_t rgb565_to_gray(uint16_t px) {
-    uint8_t r = ((px >> 11) & 0x1F) << 3;
-    uint8_t g = ((px >> 5) & 0x3F) << 2;
-    uint8_t b = (px & 0x1F) << 3;
-    return (r * 66 + g * 129 + b * 25 + 128) >> 8;
-}
-
 // RENDER_MODE_DIRECT flush: px_map is the persistent full-screen buffer,
 // area identifies only the dirty region. We convert just those pixels
 // and do a partial e-paper update.
+//
+// Rotation is inlined for EPD_ROT_INVERTED_PORTRAIT (the only rotation used):
+//   physical_x = rotated_y
+//   physical_y = epd_height() - 1 - rotated_x
+// This avoids per-pixel function call overhead of epd_draw_pixel().
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     int32_t disp_w = epd_rotated_display_width();
     uint8_t *fb = epd_hl_get_framebuffer(&board::hl);
     uint16_t *src = (uint16_t *)px_map;
+    int32_t phys_w = epd_width();  // physical width (960 for landscape panel)
+    int32_t phys_h = epd_height(); // physical height (540)
 
-    // Convert only the dirty area from RGB565 → epdiy 4-bit grayscale framebuffer
-    for (int32_t y = area->y1; y <= area->y2; y++) {
-        for (int32_t x = area->x1; x <= area->x2; x++) {
-            uint8_t gray = rgb565_to_gray(src[y * disp_w + x]);
-            epd_draw_pixel(x, y, gray, fb);
+    // Convert dirty area: RGB565 → 4-bit grayscale, inline rotation to physical coords
+    for (int32_t ry = area->y1; ry <= area->y2; ry++) {
+        for (int32_t rx = area->x1; rx <= area->x2; rx++) {
+            // RGB565 → grayscale
+            uint16_t px = src[ry * disp_w + rx];
+            uint8_t gray = ((((px >> 11) & 0x1F) << 3) * 66 +
+                            (((px >> 5) & 0x3F) << 2) * 129 +
+                            ((px & 0x1F) << 3) * 25 + 128) >> 8;
+
+            // Inline EPD_ROT_INVERTED_PORTRAIT rotation
+            int32_t px_x = ry;
+            int32_t px_y = phys_h - 1 - rx;
+
+            // Write 4-bit grayscale to framebuffer (2 pixels per byte)
+            uint8_t *buf_ptr = &fb[px_y * phys_w / 2 + px_x / 2];
+            if (px_x & 1) {
+                *buf_ptr = (*buf_ptr & 0x0F) | (gray & 0xF0);
+            } else {
+                *buf_ptr = (*buf_ptr & 0xF0) | (gray >> 4);
+            }
         }
     }
 
