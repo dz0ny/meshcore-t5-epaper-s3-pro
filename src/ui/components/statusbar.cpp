@@ -2,30 +2,36 @@
 #include "statusbar.h"
 #include "../ui_theme.h"
 #include "../../model.h"
+#include "../../mesh/mesh_task.h"
 
 namespace ui::statusbar {
 
 static lv_obj_t* bar_obj = NULL;
 static lv_obj_t* lbl_time = NULL;
 static lv_obj_t* lbl_battery = NULL;
-static lv_obj_t* lbl_mesh = NULL;
 static lv_obj_t* lbl_gps = NULL;
-static lv_obj_t* lbl_rxtx = NULL;
+static lv_obj_t* lbl_ble = NULL;
 
 static void do_update() {
     if (!bar_obj) return;
 
     lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
-    lv_label_set_text_fmt(lbl_mesh, LV_SYMBOL_WIFI " %d", model::mesh.peer_count);
-    lv_label_set_text_fmt(lbl_rxtx, "%lu/%lu",
-        (unsigned long)model::mesh.rx_packets, (unsigned long)model::mesh.tx_packets);
 
-    if (model::gps.satellites > 0) {
-        lv_label_set_text_fmt(lbl_gps, LV_SYMBOL_GPS " %lu", (unsigned long)model::gps.satellites);
+    // GPS: icon only — filled when fix, empty when no fix
+    if (model::gps.has_fix) {
+        lv_label_set_text(lbl_gps, LV_SYMBOL_GPS);
     } else {
-        lv_label_set_text(lbl_gps, LV_SYMBOL_GPS " --");
+        lv_label_set_text(lbl_gps, "  ");  // blank when no GPS
     }
 
+    // BLE: icon when active
+    if (mesh::task::ble_is_enabled()) {
+        lv_label_set_text(lbl_ble, LV_SYMBOL_BLUETOOTH);
+    } else {
+        lv_label_set_text(lbl_ble, "  ");
+    }
+
+    // Battery
     uint16_t pct = model::battery.percent;
     const char* bat_icon = LV_SYMBOL_BATTERY_FULL;
     if (pct < 20) bat_icon = LV_SYMBOL_BATTERY_EMPTY;
@@ -40,8 +46,6 @@ static void do_update() {
 }
 
 lv_obj_t* create(lv_obj_t* parent) {
-    // Create on lv_layer_top() — persists across all screen switches.
-    // Called ONCE from ui::task::start(), never destroyed.
     lv_obj_t* layer = lv_layer_top();
 
     bar_obj = lv_obj_create(layer);
@@ -52,31 +56,31 @@ lv_obj_t* create(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(bar_obj, 5, LV_PART_MAIN);
     lv_obj_clear_flag(bar_obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(bar_obj, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(bar_obj, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(bar_obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(bar_obj, 8, LV_PART_MAIN);
 
     const lv_font_t *sb_font = &lv_font_montserrat_24;
 
+    // Left side: time, BLE, GPS
     lbl_time = lv_label_create(bar_obj);
     lv_obj_set_style_text_font(lbl_time, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_time, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_time, "--:--");
 
-    lbl_mesh = lv_label_create(bar_obj);
-    lv_obj_set_style_text_font(lbl_mesh, sb_font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_mesh, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_mesh, LV_SYMBOL_WIFI " 0");
-
-    lbl_rxtx = lv_label_create(bar_obj);
-    lv_obj_set_style_text_font(lbl_rxtx, sb_font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_rxtx, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_rxtx, "0/0");
+    lbl_ble = lv_label_create(bar_obj);
+    lv_obj_set_style_text_font(lbl_ble, sb_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_ble, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(lbl_ble, "  ");
 
     lbl_gps = lv_label_create(bar_obj);
     lv_obj_set_style_text_font(lbl_gps, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_gps, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_gps, LV_SYMBOL_GPS " --");
+    lv_label_set_text(lbl_gps, "  ");
 
+    // Right side: battery (flex-grow pushes it right)
     lbl_battery = lv_label_create(bar_obj);
+    lv_obj_set_flex_grow(lbl_battery, 1);
+    lv_obj_set_style_text_align(lbl_battery, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_style_text_font(lbl_battery, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_battery, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_battery, LV_SYMBOL_BATTERY_FULL " --%");

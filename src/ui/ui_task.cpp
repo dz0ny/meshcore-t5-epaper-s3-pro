@@ -52,7 +52,9 @@ static void ui_task_fn(void* param) {
             ui::screen_mgr::switch_to(SCREEN_HOME, false);
         }
 
-        // Update model + labels BEFORE lv_timer_handler so flush uses fresh data
+        // Update model + labels BEFORE lv_timer_handler so flush uses fresh data.
+        // No full-screen invalidation — LVGL tracks dirty areas automatically.
+        // Only widgets whose text/state changes get redrawn + partial e-paper update.
         if (millis() > next_model_update) {
             model::update_clock();
             model::update_gps();
@@ -60,8 +62,6 @@ static void ui_task_fn(void* param) {
             model::update_mesh();
             ui::statusbar::update_now();
             ui::screen::home::update();
-            lv_obj_t *scr = lv_screen_active();
-            if (scr) lv_obj_invalidate(scr);
             next_model_update = millis() + 2000;
         }
 
@@ -71,8 +71,6 @@ static void ui_task_fn(void* param) {
             model::update_battery();
             model::update_mesh();
             ui::screen::lock::update();
-            lv_obj_t *scr = lv_screen_active();
-            if (scr) lv_obj_invalidate(scr);
             next_lock_update = millis() + 60000;
         }
 

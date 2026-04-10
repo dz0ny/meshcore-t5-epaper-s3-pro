@@ -56,8 +56,7 @@ void update() {
         lv_label_set_text(lbl_unread, "");
     }
 
-    lv_label_set_text_fmt(lbl_info, "BAT %d%%  Peers %d",
-        model::battery.percent, model::mesh.peer_count);
+    lv_label_set_text_fmt(lbl_info, "BAT %d%%", model::battery.percent);
 }
 
 static void entry() {
@@ -66,7 +65,8 @@ static void entry() {
     update();
 }
 
-static void exit_fn() {}
+static void exit_fn() {
+}
 
 static void destroy() {
     scr = NULL;

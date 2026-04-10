@@ -28,7 +28,7 @@
    HAL SETTINGS
  *====================*/
 
-#define LV_DEF_REFR_PERIOD 33     /**< [ms] — responsive touch */
+#define LV_DEF_REFR_PERIOD 100    /**< [ms] — e-ink doesn't need fast refresh, saves CPU */
 
 /* Tick provided via lv_tick_set_cb() in ui_port.cpp */
 
@@ -70,13 +70,7 @@
    THEME USAGE
  *====================*/
 
-#define LV_USE_THEME_DEFAULT 1
-#if LV_USE_THEME_DEFAULT
-    #define LV_THEME_DEFAULT_DARK 0     /* light mode for e-paper */
-    #define LV_THEME_DEFAULT_GROW 0
-    #define LV_THEME_DEFAULT_TRANSITION_TIME 0  /* no animations on e-paper */
-#endif
-
+#define LV_USE_THEME_DEFAULT 0      /* disabled — simple theme is lighter weight */
 #define LV_USE_THEME_SIMPLE 1
 
 /*====================

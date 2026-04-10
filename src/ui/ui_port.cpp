@@ -6,8 +6,6 @@ namespace ui::port {
 
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
-static volatile bool flush_enabled = true;
-static uint8_t* decodebuffer = NULL;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -15,59 +13,53 @@ static inline void checkError(enum EpdDrawError err) {
     }
 }
 
-// v9 flush: px_map is RGB565 (2 bytes per pixel).
-// We convert to RGB332 (1 byte per pixel) for epdiy — identical to v8 factory approach.
+// Convert RGB565 pixel to 8-bit grayscale (0-255)
+static inline uint8_t rgb565_to_gray(uint16_t px) {
+    uint8_t r = ((px >> 11) & 0x1F) << 3;
+    uint8_t g = ((px >> 5) & 0x3F) << 2;
+    uint8_t b = (px & 0x1F) << 3;
+    return (r * 66 + g * 129 + b * 25 + 128) >> 8;
+}
+
+// RENDER_MODE_DIRECT flush: px_map is the persistent full-screen buffer,
+// area identifies only the dirty region. We convert just those pixels
+// and do a partial e-paper update.
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    if (flush_enabled) {
-        // epdiy uses 4-bit grayscale: 2 pixels per byte (high nibble + low nibble).
-        // decode buffer size = w * h / 2 bytes.
-        // Convert RGB565 → 4-bit grayscale pairs.
-        int32_t w = lv_area_get_width(area);
-        int32_t h = lv_area_get_height(area);
-        uint16_t *src = (uint16_t *)px_map;
+    int32_t disp_w = epd_rotated_display_width();
+    uint8_t *fb = epd_hl_get_framebuffer(&board::hl);
+    uint16_t *src = (uint16_t *)px_map;
 
-        for (int32_t i = 0; i < (w * h); i += 2) {
-            // Pixel 1 → high nibble
-            uint16_t px1 = src[i];
-            uint8_t r1 = ((px1 >> 11) & 0x1F) << 3;
-            uint8_t g1 = ((px1 >> 5) & 0x3F) << 2;
-            uint8_t b1 = (px1 & 0x1F) << 3;
-            uint8_t gray1 = (r1 * 66 + g1 * 129 + b1 * 25 + 128) >> 8;
-
-            // Pixel 2 → low nibble
-            uint16_t px2 = src[i + 1];
-            uint8_t r2 = ((px2 >> 11) & 0x1F) << 3;
-            uint8_t g2 = ((px2 >> 5) & 0x3F) << 2;
-            uint8_t b2 = (px2 & 0x1F) << 3;
-            uint8_t gray2 = (r2 * 66 + g2 * 129 + b2 * 25 + 128) >> 8;
-
-            decodebuffer[i / 2] = (gray1 & 0xF0) | (gray2 >> 4);
+    // Convert only the dirty area from RGB565 → epdiy 4-bit grayscale framebuffer
+    for (int32_t y = area->y1; y <= area->y2; y++) {
+        for (int32_t x = area->x1; x <= area->x2; x++) {
+            uint8_t gray = rgb565_to_gray(src[y * disp_w + x]);
+            epd_draw_pixel(x, y, gray, fb);
         }
     }
 
-    EpdRect rener_area = {
-        .x = 0, .y = 0,
-        .width = epd_rotated_display_width(),
-        .height = epd_rotated_display_height(),
+    // Partial area rect in rotated coordinates — epdiy handles rotation internally
+    EpdRect update_rect = {
+        .x = (int)area->x1,
+        .y = (int)area->y1,
+        .width = (int)lv_area_get_width(area),
+        .height = (int)lv_area_get_height(area),
     };
 
     if (refresh_mode == UI_REFRESH_MODE_FAST) {
-        epd_draw_rotated_image(rener_area, decodebuffer, epd_hl_get_framebuffer(&board::hl));
         epd_poweron();
-        checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), rener_area));
+        checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), update_rect));
         epd_poweroff();
     } else if (refresh_mode == UI_REFRESH_MODE_NORMAL) {
-        epd_draw_rotated_image(rener_area, decodebuffer, epd_hl_get_framebuffer(&board::hl));
         epd_poweron();
-        checkError(epd_hl_update_screen(&board::hl, MODE_GL16, epd_ambient_temperature()));
+        checkError(epd_hl_update_area(&board::hl, MODE_GL16, epd_ambient_temperature(), update_rect));
         epd_poweroff();
     } else if (refresh_mode == UI_REFRESH_MODE_NEAT) {
+        // NEAT: full white clear then full redraw for best quality
         epd_hl_set_all_white(&board::hl);
         epd_poweron();
         checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
         epd_poweroff();
-        epd_draw_rotated_image(rener_area, decodebuffer, epd_hl_get_framebuffer(&board::hl));
         epd_poweron();
         checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
         epd_poweroff();
@@ -105,27 +97,20 @@ void init() {
     lv_display_set_flush_cb(disp, disp_flush_cb);
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
 
-    // Same buffer layout as v8 factory:
-    // LVGL draw buffer: pixel_count * 2 bytes (RGB565)
-    // epdiy decode buffer: pixel_count / 2 bytes (RGB332, same as v8)
+    // DIRECT mode: LVGL keeps a persistent framebuffer and only redraws dirty areas.
+    // Two full-screen buffers in PSRAM for double-buffered DIRECT rendering.
+    // No intermediate decode buffer — we write directly to epdiy's framebuffer.
     size_t buf_size = pixel_count * sizeof(uint16_t);
     void *buf1 = ps_calloc(1, buf_size);
     void *buf2 = ps_calloc(1, buf_size);
-    decodebuffer = (uint8_t *)ps_calloc(1, pixel_count / 2);  // 4-bit grayscale: 2 pixels per byte
-    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_FULL);
+    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(indev, touch_read_cb);
     lv_indev_set_display(indev, disp);
 
-    lv_theme_t *th = lv_theme_default_init(
-        disp,
-        lv_color_hex(0x000000),
-        lv_color_hex(0x888888),
-        false,
-        &lv_font_montserrat_14
-    );
+    lv_theme_t *th = lv_theme_simple_init(disp);
     lv_display_set_theme(disp, th);
 }
 
