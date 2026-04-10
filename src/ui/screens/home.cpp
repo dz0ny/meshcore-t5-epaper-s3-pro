@@ -64,21 +64,21 @@ static void create(lv_obj_t* parent) {
     // Node name (mesh identity)
     lbl_node_name = lv_label_create(parent);
     lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, 55);
-    lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_ext_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "T-Paper");
 
     // Big clock
     lbl_clock = lv_label_create(parent);
     lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, 95);
-    lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_ext_80, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_bold_80, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_clock, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
 
     // Date below clock
     lbl_date = lv_label_create(parent);
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 195);
-    lv_obj_set_style_text_font(lbl_date, &lv_font_montserrat_ext_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_date, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
         model::clock.day, model::clock.month, model::clock.year);

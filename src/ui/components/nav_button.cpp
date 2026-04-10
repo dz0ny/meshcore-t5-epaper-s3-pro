@@ -24,7 +24,7 @@ lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_label_set_text(arrow, LV_SYMBOL_LEFT);
 
     lv_obj_t* label = lv_label_create(row);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_ext_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(label, title);
 
@@ -52,7 +52,7 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
     }
 
     lv_obj_t* lbl = lv_label_create(cont);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_ext_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl, label_text);
 
@@ -82,12 +82,12 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label_text, const char* valu
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* lbl = lv_label_create(cont);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_ext_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl, label_text);
 
     lv_obj_t* val = lv_label_create(cont);
-    lv_obj_set_style_text_font(val, &lv_font_montserrat_ext_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(val, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(val, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(val, value);
 

@@ -59,7 +59,7 @@ lv_obj_t* create(lv_obj_t* parent) {
     lv_obj_set_flex_align(bar_obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(bar_obj, 8, LV_PART_MAIN);
 
-    const lv_font_t *sb_font = &lv_font_montserrat_ext_24;
+    const lv_font_t *sb_font = &lv_font_noto_24;
 
     // Left side: time, BLE, GPS
     lbl_time = lv_label_create(bar_obj);

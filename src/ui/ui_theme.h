@@ -40,8 +40,10 @@ LV_FONT_DECLARE(Font_Mono_Bold_90);
 LV_FONT_DECLARE(Font_Geist_Bold_20);
 LV_FONT_DECLARE(Font_Geist_Light_20);
 
-// Custom montserrat with Latin Extended (č,š,ć,ž,đ) + LVGL symbols
-LV_FONT_DECLARE(lv_font_montserrat_ext_24);
-LV_FONT_DECLARE(lv_font_montserrat_ext_28);
-LV_FONT_DECLARE(lv_font_montserrat_ext_30);
-LV_FONT_DECLARE(lv_font_montserrat_ext_80);
+// Noto Sans — readable body text with Latin Extended (čšćžđ)
+LV_FONT_DECLARE(lv_font_noto_24);       // statusbar, sender names
+LV_FONT_DECLARE(lv_font_noto_28);       // message text, values
+
+// Montserrat Bold — menus, titles, clock
+LV_FONT_DECLARE(lv_font_montserrat_bold_30);  // menus, titles, settings
+LV_FONT_DECLARE(lv_font_montserrat_bold_80);  // big clock
