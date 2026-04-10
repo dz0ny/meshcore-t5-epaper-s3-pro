@@ -70,6 +70,8 @@ double get_node_lon();
 void ble_enable();
 void ble_disable();
 bool ble_is_enabled();
+void set_ble_pin(uint32_t pin);
+uint32_t get_ble_pin();
 
 // Enter light sleep — waits for radio idle, then sleeps both cores.
 // Wakes on LoRa packet (DIO1) or timer.

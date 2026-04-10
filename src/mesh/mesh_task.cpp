@@ -284,6 +284,18 @@ void ble_disable() {
 
 bool ble_is_enabled() { return ble_active; }
 
+void set_ble_pin(uint32_t pin) {
+    if (!the_mesh_ptr) return;
+    the_mesh_ptr->getNodePrefs()->ble_pin = pin;
+    the_mesh_ptr->savePrefs();
+}
+
+uint32_t get_ble_pin() {
+    if (!the_mesh_ptr) return BLE_PIN_CODE;
+    uint32_t pin = the_mesh_ptr->getNodePrefs()->ble_pin;
+    return pin > 0 ? pin : BLE_PIN_CODE;
+}
+
 // ---------- Sleep ----------
 
 void enter_sleep(uint32_t wake_secs) {
