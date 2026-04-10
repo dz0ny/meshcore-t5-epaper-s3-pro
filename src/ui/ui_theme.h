@@ -28,6 +28,7 @@ enum screen_id {
     SCREEN_SET_MESH    = 10,
     SCREEN_DISCOVERY   = 11,
     SCREEN_LOCK        = 12,
+    SCREEN_CONTACT_DETAIL = 13,
 };
 
 // ---------- Font declarations ----------

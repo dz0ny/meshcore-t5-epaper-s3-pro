@@ -1,4 +1,5 @@
 #include "contacts.h"
+#include "contact_detail.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
@@ -17,6 +18,8 @@ struct DisplayContact {
     char name[32];
     uint8_t type;
     bool has_path;
+    int32_t gps_lat;  // scaled by 1e6
+    int32_t gps_lon;
 };
 static DisplayContact displayed[100];
 static int display_count = 0;
@@ -28,7 +31,17 @@ static void on_back(lv_event_t* e) {
 }
 
 static void on_contact_click(lv_event_t* e) {
-    // TODO: open chat with this contact
+    int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    if (idx >= 0 && idx < display_count) {
+        ui::screen::contact_detail::set_contact(
+            displayed[idx].name,
+            displayed[idx].gps_lat,
+            displayed[idx].gps_lon,
+            displayed[idx].type,
+            displayed[idx].has_path
+        );
+        ui::screen_mgr::push(SCREEN_CONTACT_DETAIL, true);
+    }
 }
 
 // ---------- Rebuild the list widget ----------
@@ -38,7 +51,7 @@ static void rebuild_list() {
     lv_obj_clean(contact_list);
 
     for (int i = 0; i < display_count; i++) {
-        ui::nav::menu_item(contact_list, NULL, displayed[i].name, on_contact_click, NULL);
+        ui::nav::menu_item(contact_list, NULL, displayed[i].name, on_contact_click, (void*)(intptr_t)i);
     }
 }
 
@@ -54,6 +67,8 @@ static void poll_contacts(lv_timer_t* t) {
             if (strcmp(displayed[i].name, cu.name) == 0) {
                 displayed[i].type = cu.type;
                 displayed[i].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
+                displayed[i].gps_lat = cu.gps_lat;
+                displayed[i].gps_lon = cu.gps_lon;
                 found = true;
                 break;
             }
@@ -64,6 +79,8 @@ static void poll_contacts(lv_timer_t* t) {
             ui::text::strip_emoji(displayed[display_count].name);
             displayed[display_count].type = cu.type;
             displayed[display_count].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
+            displayed[display_count].gps_lat = cu.gps_lat;
+            displayed[display_count].gps_lon = cu.gps_lon;
             display_count++;
         }
         changed = true;

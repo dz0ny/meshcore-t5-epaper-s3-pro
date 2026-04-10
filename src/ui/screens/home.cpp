@@ -70,14 +70,14 @@ static void create(lv_obj_t* parent) {
 
     // Big clock
     lbl_clock = lv_label_create(parent);
-    lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, 95);
+    lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, 100);
     lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_bold_80, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_clock, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
 
     // Date below clock
     lbl_date = lv_label_create(parent);
-    lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 195);
+    lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 210);
     lv_obj_set_style_text_font(lbl_date, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
@@ -86,7 +86,7 @@ static void create(lv_obj_t* parent) {
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
     lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);
-    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, 240);
+    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, 255);
     lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);

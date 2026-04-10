@@ -24,6 +24,7 @@
 #include "screens/set_mesh.h"
 #include "screens/discovery.h"
 #include "screens/lock.h"
+#include "screens/contact_detail.h"
 
 namespace ui::task {
 
@@ -160,6 +161,7 @@ void start(int core) {
     ui::screen_mgr::register_screen(10, &ui::screen::set_mesh::lifecycle);
     ui::screen_mgr::register_screen(11, &ui::screen::discovery::lifecycle);
     ui::screen_mgr::register_screen(12, &ui::screen::lock::lifecycle);
+    ui::screen_mgr::register_screen(13, &ui::screen::contact_detail::lifecycle);
 
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);
