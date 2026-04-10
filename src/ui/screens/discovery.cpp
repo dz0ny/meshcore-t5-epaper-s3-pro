@@ -1,4 +1,5 @@
 #include "discovery.h"
+#include "contact_detail.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
@@ -19,9 +20,14 @@ static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 static void on_node_click(lv_event_t* e) {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
     if (idx >= 0 && idx < node_count) {
-        mesh::task::add_contact_by_prefix(nodes[idx].pubkey_prefix);
-        // Visual feedback �� switch to contacts
-        ui::screen_mgr::pop(true);
+        char clean_name[32];
+        strncpy(clean_name, nodes[idx].name, sizeof(clean_name) - 1);
+        clean_name[31] = 0;
+        ui::text::strip_emoji(clean_name);
+
+        ui::screen::contact_detail::set_contact(
+            clean_name, 0, 0, 0, false, nodes[idx].pubkey_prefix);
+        ui::screen_mgr::push(SCREEN_CONTACT_DETAIL, true);
     }
 }
 
@@ -30,34 +36,12 @@ static void rebuild_list() {
     lv_obj_clean(node_list);
 
     for (int i = 0; i < node_count; i++) {
-        lv_obj_t* row = lv_obj_create(node_list);
-        lv_obj_set_size(row, lv_pct(100), 60);
-        lv_obj_set_style_bg_color(row, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-        lv_obj_set_style_border_width(row, 1, LV_PART_MAIN);
-        lv_obj_set_style_border_color(row, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-        lv_obj_set_style_border_side(row, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(row, 8, LV_PART_MAIN);
-        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_event_cb(row, on_node_click, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-        // Name
-        lv_obj_t* lbl = lv_label_create(row);
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         char clean_name[32];
         strncpy(clean_name, nodes[i].name, sizeof(clean_name) - 1);
         clean_name[31] = 0;
         ui::text::strip_emoji(clean_name);
-        lv_label_set_text(lbl, clean_name);
 
-        // "Add" hint
-        lv_obj_t* hint = lv_label_create(row);
-        lv_obj_set_style_text_font(hint, &lv_font_montserrat_bold_30, LV_PART_MAIN);
-        lv_obj_set_style_text_color(hint, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_label_set_text(hint, "+Add");
+        ui::nav::toggle_item(node_list, clean_name, "+Add", on_node_click, (void*)(intptr_t)i);
     }
 
     if (node_count == 0) {
@@ -77,13 +61,7 @@ static void create(lv_obj_t* parent) {
     scr = parent;
     ui::nav::back_button(parent, "Discovery", on_back);
 
-    node_list = lv_obj_create(parent);
-    lv_obj_set_size(node_list, lv_pct(95), lv_pct(85));
-    lv_obj_align(node_list, LV_ALIGN_BOTTOM_MID, 0, -10);
-    lv_obj_set_style_bg_opa(node_list, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(node_list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(node_list, 0, LV_PART_MAIN);
-    lv_obj_set_flex_flow(node_list, LV_FLEX_FLOW_COLUMN);
+    node_list = ui::nav::scroll_list(parent);
 }
 
 static void entry() {

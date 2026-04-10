@@ -29,23 +29,17 @@ enum screen_id {
     SCREEN_DISCOVERY   = 11,
     SCREEN_LOCK        = 12,
     SCREEN_CONTACT_DETAIL = 13,
+    SCREEN_MSG_DETAIL     = 14,
 };
 
 // ---------- Font declarations ----------
-// Fonts are compiled from the factory assets in src/fonts/
 
-LV_FONT_DECLARE(Font_Mono_Bold_20);
-LV_FONT_DECLARE(Font_Mono_Bold_25);
-LV_FONT_DECLARE(Font_Mono_Bold_30);
-LV_FONT_DECLARE(Font_Mono_Bold_90);
-LV_FONT_DECLARE(Font_Geist_Bold_20);
-LV_FONT_DECLARE(Font_Geist_Light_20);
-
-// Noto Sans — readable body text with Latin Extended (čšćžđ)
-LV_FONT_DECLARE(lv_font_noto_24);       // statusbar, sender names
-LV_FONT_DECLARE(lv_font_noto_28);       // message text, values
+// Noto Sans Medium — body text with Latin Extended (čšćžđ) + symbols
+LV_FONT_DECLARE(lv_font_noto_24);               // statusbar, sender names
+LV_FONT_DECLARE(lv_font_noto_28);               // message text, values
 
 // Montserrat Bold — menus, titles, clock
-LV_FONT_DECLARE(lv_font_montserrat_bold_30);  // menus, titles, settings
-LV_FONT_DECLARE(lv_font_montserrat_bold_80);   // lock screen clock
+LV_FONT_DECLARE(lv_font_montserrat_bold_30);    // menus, titles, settings
+LV_FONT_DECLARE(lv_font_montserrat_bold_80);    // lock screen clock
+LV_FONT_DECLARE(lv_font_montserrat_bold_120);   // home screen clock
 LV_FONT_DECLARE(lv_font_montserrat_bold_120);  // home screen clock

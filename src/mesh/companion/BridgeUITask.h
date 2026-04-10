@@ -3,6 +3,7 @@
 #include "AbstractUITask.h"
 #include "../mesh_bridge.h"
 #include "../../model.h"
+#include "../../sd_log.h"
 
 // UITask implementation that routes companion radio events to our bridge queues.
 // This replaces the display-based UITask from companion_radio.
@@ -34,6 +35,9 @@ public:
             msg.is_self = false;
             model::message_count++;
         }
+
+        // Mark for SD flush on next silence window
+        sd_log::mark_dirty();
 
         // Track for lock screen
         model::sleep_cfg.unread_messages++;

@@ -1,7 +1,15 @@
 #include "msg_list.h"
 #include "text_utils.h"
 #include "../ui_theme.h"
+#include "../ui_screen_mgr.h"
+#include "../screens/msg_detail.h"
 #include "../../model.h"
+
+static void on_msg_click(lv_event_t* e) {
+    int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    ui::screen::msg_detail::set_message(idx);
+    ui::screen_mgr::push(SCREEN_MSG_DETAIL, true);
+}
 
 namespace ui::msg_list {
 
@@ -14,10 +22,12 @@ lv_obj_t* create(lv_obj_t* parent) {
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(list, 4, LV_PART_MAIN);
+    // Disable elastic bounce and scroll momentum — bad on e-ink
+    lv_obj_clear_flag(list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
     return list;
 }
 
-void append(lv_obj_t* list, const char* sender, const char* text, uint32_t timestamp, bool is_self) {
+void append(lv_obj_t* list, const char* sender, const char* text, uint32_t timestamp, bool is_self, int msg_idx) {
     // Strip emoji from sender and text (montserrat doesn't have emoji glyphs)
     char clean_sender[64] = {};
     char clean_text[256] = {};
@@ -32,6 +42,10 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     lv_obj_set_style_border_width(wrapper, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(wrapper, 0, LV_PART_MAIN);
     lv_obj_clear_flag(wrapper, LV_OBJ_FLAG_SCROLLABLE);
+    if (msg_idx >= 0) {
+        lv_obj_add_flag(wrapper, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(wrapper, on_msg_click, LV_EVENT_CLICKED, (void*)(intptr_t)msg_idx);
+    }
     lv_obj_set_flex_flow(wrapper, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(wrapper, 2, LV_PART_MAIN);
 

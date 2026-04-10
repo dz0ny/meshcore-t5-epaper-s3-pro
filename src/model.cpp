@@ -186,6 +186,14 @@ void update_clock() {
 StoredMessage messages[MAX_STORED_MESSAGES] = {};
 int message_count = 0;
 
+void delete_message(int idx) {
+    if (idx < 0 || idx >= message_count) return;
+    for (int i = idx; i < message_count - 1; i++) {
+        messages[i] = messages[i + 1];
+    }
+    message_count--;
+}
+
 // Sleep
 static const uint32_t timeout_presets[] = {0, 60000, 120000, 300000, 900000, 1800000};
 Sleep sleep_cfg = {};

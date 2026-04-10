@@ -47,13 +47,7 @@ static void create(lv_obj_t* parent) {
     scr = parent;
     ui::nav::back_button(parent, "Display", on_back);
 
-    lv_obj_t* list = lv_obj_create(parent);
-    lv_obj_set_size(list, lv_pct(95), lv_pct(85));
-    lv_obj_align(list, LV_ALIGN_BOTTOM_MID, 0, -10);
-    lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
-    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+    lv_obj_t* list = ui::nav::scroll_list(parent);
 
     lbl_refresh_val = ui::nav::toggle_item(list, "Refresh", mode_names[ui::port::get_refresh_mode()], on_refresh_mode, NULL);
     lbl_backlight_val = ui::nav::toggle_item(list, "Light", ui::port::get_backlight_name(), on_backlight_cycle, NULL);

@@ -14,11 +14,19 @@ static lv_obj_t* lbl_date = NULL;
 static lv_obj_t* lbl_unread = NULL;
 static lv_obj_t* lbl_info = NULL;
 
+static void on_unread_click(lv_event_t* e) {
+    model::touch_activity();
+    model::sleep_cfg.unread_messages = 0;
+    ui::statusbar::show();
+    ui::screen_mgr::switch_to(SCREEN_HOME, false);
+    ui::screen_mgr::push(SCREEN_CHAT, false);
+}
+
 static void create(lv_obj_t* parent) {
     scr = parent;
 
     lbl_time = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_bold_80, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_bold_120, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_time, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_time, LV_ALIGN_TOP_MID, 0, 100);
 
@@ -27,10 +35,14 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 210);
 
+    // Unread messages — tappable, jumps directly to chat
     lbl_unread = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_unread, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_unread, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_unread, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(lbl_unread, 30);
+    lv_obj_add_event_cb(lbl_unread, on_unread_click, LV_EVENT_CLICKED, NULL);
 
     lbl_info = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_info, &lv_font_noto_28, LV_PART_MAIN);

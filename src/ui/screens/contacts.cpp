@@ -16,6 +16,7 @@ static lv_timer_t* poll_timer = NULL;
 // Stored contacts for display
 struct DisplayContact {
     char name[32];
+    uint8_t pub_key[32];
     uint8_t type;
     bool has_path;
     int32_t gps_lat;  // scaled by 1e6
@@ -38,7 +39,8 @@ static void on_contact_click(lv_event_t* e) {
             displayed[idx].gps_lat,
             displayed[idx].gps_lon,
             displayed[idx].type,
-            displayed[idx].has_path
+            displayed[idx].has_path,
+            displayed[idx].pub_key
         );
         ui::screen_mgr::push(SCREEN_CONTACT_DETAIL, true);
     }
@@ -65,6 +67,7 @@ static void poll_contacts(lv_timer_t* t) {
         bool found = false;
         for (int i = 0; i < display_count; i++) {
             if (strcmp(displayed[i].name, cu.name) == 0) {
+                memcpy(displayed[i].pub_key, cu.pub_key, 32);
                 displayed[i].type = cu.type;
                 displayed[i].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
                 displayed[i].gps_lat = cu.gps_lat;
@@ -77,6 +80,7 @@ static void poll_contacts(lv_timer_t* t) {
             strncpy(displayed[display_count].name, cu.name, 31);
             displayed[display_count].name[31] = 0;
             ui::text::strip_emoji(displayed[display_count].name);
+            memcpy(displayed[display_count].pub_key, cu.pub_key, 32);
             displayed[display_count].type = cu.type;
             displayed[display_count].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
             displayed[display_count].gps_lat = cu.gps_lat;
@@ -95,13 +99,7 @@ static void create(lv_obj_t* parent) {
 
     ui::nav::back_button(parent, "Contacts", on_back);
 
-    contact_list = lv_obj_create(parent);
-    lv_obj_set_size(contact_list, lv_pct(95), lv_pct(85));
-    lv_obj_align(contact_list, LV_ALIGN_BOTTOM_MID, 0, -10);
-    lv_obj_set_style_bg_opa(contact_list, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(contact_list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(contact_list, 0, LV_PART_MAIN);
-    lv_obj_set_flex_flow(contact_list, LV_FLEX_FLOW_COLUMN);
+    contact_list = ui::nav::scroll_list(parent);
 
     rebuild_list();
 }

@@ -101,6 +101,7 @@ extern int message_count;
 
 void touch_activity();  // call on any user interaction
 bool should_sleep();    // check if timeout expired
+void delete_message(int idx);  // remove message at index, shift remaining
 
 // Call from background tasks to refresh the model
 void update_gps();

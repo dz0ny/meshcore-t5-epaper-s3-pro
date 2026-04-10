@@ -15,6 +15,7 @@
 #include "companion/NullSerialInterface.h"
 #include "companion/BridgeUITask.h"
 #include "../board.h"
+#include "../sd_log.h"
 
 // ---------- Globals ----------
 
@@ -30,9 +31,18 @@ static DataStore* store = NULL;
 static MyMesh* the_mesh_ptr = NULL;
 static SemaphoreHandle_t mesh_mutex = NULL;
 
+// ---------- SD flush on silence ----------
+
+static uint32_t last_rx_count = 0;
+static uint32_t last_tx_count = 0;
+static uint32_t last_activity_tick = 0;
+static const uint32_t SILENCE_MS = 5000;  // flush after 5s of radio silence
+
 // ---------- FreeRTOS task ----------
 
 static void mesh_task_fn(void* param) {
+    last_activity_tick = millis();
+
     while (1) {
         if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(50))) {
             the_mesh_ptr->loop();
@@ -44,6 +54,18 @@ static void mesh_task_fn(void* param) {
             s.last_snr = radio_driver.getLastSNR();
             s.radio_ok = true;
             mesh::bridge::update_status(s);
+
+            // Detect radio silence and flush messages to SD
+            uint32_t rx = radio_driver.getPacketsRecv();
+            uint32_t tx = radio_driver.getPacketsSent();
+            if (rx != last_rx_count || tx != last_tx_count) {
+                last_rx_count = rx;
+                last_tx_count = tx;
+                last_activity_tick = millis();
+            } else if (sd_log::is_dirty() && (millis() - last_activity_tick) > SILENCE_MS) {
+                sd_log::flush();
+                last_activity_tick = millis();  // avoid re-checking immediately
+            }
 
             rtc_clock.tick();
             xSemaphoreGive(mesh_mutex);
@@ -75,6 +97,11 @@ void start(int core) {
     // Always use SPIFFS for mesh data (reliable, doesn't conflict with SD on shared SPI)
     store = new DataStore(SPIFFS, rtc_clock);
     store->begin();
+
+    // Load saved messages from SD card (if available)
+    if (board::peri_status[E_PERI_SD_CARD]) {
+        sd_log::load();
+    }
 
     // Create mesh
     the_mesh_ptr = new MyMesh(radio_driver, mc_rng, rtc_clock, mc_tables, *store, &bridge_ui);
@@ -340,6 +367,30 @@ bool add_contact_by_prefix(const uint8_t* pubkey_prefix) {
                 // For now just mark as pending
                 ok = true; // optimistic
             }
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return ok;
+}
+
+bool is_contact(const uint8_t* pubkey_prefix) {
+    if (!the_mesh_ptr || !mesh_mutex) return false;
+    bool found = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        found = (the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7) != NULL);
+        xSemaphoreGive(mesh_mutex);
+    }
+    return found;
+}
+
+bool remove_contact_by_prefix(const uint8_t* pubkey_prefix) {
+    if (!the_mesh_ptr || !mesh_mutex) return false;
+    bool ok = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ContactInfo* c = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+        if (c) {
+            ok = the_mesh_ptr->removeContact(*c);
+            if (ok) Serial.println("MESH: contact removed");
         }
         xSemaphoreGive(mesh_mutex);
     }

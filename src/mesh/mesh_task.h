@@ -42,6 +42,12 @@ int get_discovered(DiscoveredNode* dest, int max_num);
 // Add a discovered node as a contact (by pubkey prefix match)
 bool add_contact_by_prefix(const uint8_t* pubkey_prefix);
 
+// Check if a pubkey prefix belongs to an existing contact
+bool is_contact(const uint8_t* pubkey_prefix);
+
+// Remove a contact by pubkey prefix
+bool remove_contact_by_prefix(const uint8_t* pubkey_prefix);
+
 // Set radio params (saves to prefs, requires reboot to apply)
 void set_node_name(const char* name);
 void set_freq(float freq_mhz);

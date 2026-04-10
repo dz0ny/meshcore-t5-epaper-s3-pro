@@ -108,4 +108,17 @@ lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void
     return btn;
 }
 
+lv_obj_t* scroll_list(lv_obj_t* parent) {
+    lv_obj_t* list = lv_obj_create(parent);
+    lv_obj_set_size(list, lv_pct(95), lv_pct(85));
+    lv_obj_align(list, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
+    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+    // Disable elastic bounce and scroll momentum — bad on e-ink
+    lv_obj_clear_flag(list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
+    return list;
+}
+
 } // namespace ui::nav

@@ -25,6 +25,7 @@
 #include "screens/discovery.h"
 #include "screens/lock.h"
 #include "screens/contact_detail.h"
+#include "screens/msg_detail.h"
 
 namespace ui::task {
 
@@ -45,12 +46,11 @@ static void ui_task_fn(void* param) {
             ui::screen::lock::show();
         }
 
-        // Wake from lock screen on any touch
-        if (ui::screen_mgr::top_id() == SCREEN_LOCK && board::touch.isPressed()) {
+        // Track if we're on lock screen before LVGL processes touch events
+        bool was_locked = (ui::screen_mgr::top_id() == SCREEN_LOCK);
+        bool lock_touched = was_locked && board::touch.isPressed();
+        if (lock_touched) {
             model::touch_activity();
-            model::sleep_cfg.unread_messages = 0;
-            ui::statusbar::show();
-            ui::screen_mgr::switch_to(SCREEN_HOME, false);
         }
 
         // Update model + labels BEFORE lv_timer_handler so flush uses fresh data.
@@ -100,6 +100,15 @@ static void ui_task_fn(void* param) {
         } else {
             lv_timer_handler_run_in_period(20);
         }
+
+        // After LVGL processed events: if lock screen was touched but LVGL
+        // didn't navigate away (user tapped outside the unread label), wake to home.
+        if (lock_touched && ui::screen_mgr::top_id() == SCREEN_LOCK) {
+            model::sleep_cfg.unread_messages = 0;
+            ui::statusbar::show();
+            ui::screen_mgr::switch_to(SCREEN_HOME, false);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(5));  // yield to other tasks
     }
 }
@@ -118,9 +127,9 @@ void start(int core) {
         lv_screen_load(splash);
 
         lv_obj_t *title = lv_label_create(splash);
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_font(title, &lv_font_montserrat_bold_80, LV_PART_MAIN);
         lv_obj_set_style_text_color(title, lv_color_hex(0x000000), LV_PART_MAIN);
-        lv_label_set_text(title, "Mesh\nCore");
+        lv_label_set_text(title, "MeshCore");
         lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
 
@@ -162,6 +171,7 @@ void start(int core) {
     ui::screen_mgr::register_screen(11, &ui::screen::discovery::lifecycle);
     ui::screen_mgr::register_screen(12, &ui::screen::lock::lifecycle);
     ui::screen_mgr::register_screen(13, &ui::screen::contact_detail::lifecycle);
+    ui::screen_mgr::register_screen(14, &ui::screen::msg_detail::lifecycle);
 
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);

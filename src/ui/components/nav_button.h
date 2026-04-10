@@ -16,4 +16,7 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label, const char* value, lv
 // Create a simple text button.
 lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void* user_data);
 
+// Create a scrollable list container — no elastic bounce, no momentum (e-ink friendly).
+lv_obj_t* scroll_list(lv_obj_t* parent);
+
 } // namespace ui::nav

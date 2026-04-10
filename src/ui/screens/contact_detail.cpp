@@ -6,6 +6,7 @@
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
+#include "../../mesh/mesh_task.h"
 
 namespace ui::screen::contact_detail {
 
@@ -17,9 +18,10 @@ static int32_t contact_lat = 0;  // scaled 1e6
 static int32_t contact_lon = 0;
 static uint8_t contact_type = 0;
 static bool contact_has_path = false;
+static uint8_t contact_pubkey[7] = {};
+static bool has_pubkey = false;
 
 // UI widgets
-static lv_obj_t* lbl_name = NULL;
 static lv_obj_t* lbl_coords = NULL;
 static lv_obj_t* lbl_distance = NULL;
 static lv_obj_t* lbl_bearing_text = NULL;
@@ -28,13 +30,20 @@ static lv_obj_t* compass_canvas = NULL;
 static constexpr double DEG_TO_RAD = M_PI / 180.0;
 static constexpr double R_EARTH_KM = 6371.0;
 
-void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t type, bool has_path) {
+void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t type, bool has_path,
+                 const uint8_t* pubkey_prefix) {
     strncpy(contact_name, name, sizeof(contact_name) - 1);
     contact_name[31] = 0;
     contact_lat = gps_lat;
     contact_lon = gps_lon;
     contact_type = type;
     contact_has_path = has_path;
+    if (pubkey_prefix) {
+        memcpy(contact_pubkey, pubkey_prefix, 7);
+        has_pubkey = true;
+    } else {
+        has_pubkey = false;
+    }
 }
 
 // Haversine distance in km
@@ -152,9 +161,23 @@ static void draw_compass(lv_obj_t* parent, double bearing_deg) {
 
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
+static void on_add(lv_event_t* e) {
+    if (has_pubkey) {
+        mesh::task::add_contact_by_prefix(contact_pubkey);
+    }
+    ui::screen_mgr::pop(true);
+}
+
+static void on_remove(lv_event_t* e) {
+    if (has_pubkey) {
+        mesh::task::remove_contact_by_prefix(contact_pubkey);
+    }
+    ui::screen_mgr::pop(true);
+}
+
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, contact_name, on_back);
+    ui::nav::back_button(parent, "Contacts", on_back);
 
     double c_lat = contact_lat / 1e6;
     double c_lon = contact_lon / 1e6;
@@ -162,7 +185,7 @@ static void create(lv_obj_t* parent) {
     bool has_own_gps = model::gps.has_fix;
 
     // Name
-    lbl_name = lv_label_create(parent);
+    lv_obj_t* lbl_name = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_name, LV_ALIGN_TOP_MID, 0, 100);
@@ -172,7 +195,7 @@ static void create(lv_obj_t* parent) {
     lbl_coords = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_coords, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_coords, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_coords, LV_ALIGN_TOP_MID, 0, 145);
+    lv_obj_align(lbl_coords, LV_ALIGN_TOP_MID, 0, 140);
 
     if (has_contact_gps) {
         static char coord_buf[48];
@@ -186,7 +209,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_t* lbl_info = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_info, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 175);
+    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 170);
     static char info_buf[48];
     snprintf(info_buf, sizeof(info_buf), "Route: %s", contact_has_path ? "Direct" : "Unknown");
     lv_label_set_text(lbl_info, info_buf);
@@ -195,7 +218,7 @@ static void create(lv_obj_t* parent) {
     lbl_distance = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_distance, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_distance, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_distance, LV_ALIGN_TOP_MID, 0, 210);
+    lv_obj_align(lbl_distance, LV_ALIGN_TOP_MID, 0, 205);
 
     if (has_contact_gps && has_own_gps) {
         double dist = calc_distance_km(model::gps.lat, model::gps.lng, c_lat, c_lon);
@@ -215,13 +238,22 @@ static void create(lv_obj_t* parent) {
     } else {
         lv_label_set_text(lbl_distance, "");
     }
+
+    // Add/Remove button at bottom (only if we have a pubkey to act on)
+    if (has_pubkey) {
+        bool is_existing = mesh::task::is_contact(contact_pubkey);
+        lv_obj_t* btn = ui::nav::text_button(parent,
+            is_existing ? "Remove Contact" : "Add Contact",
+            is_existing ? on_remove : on_add, NULL);
+        lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    }
 }
 
 static void entry() {}
 static void exit_fn() {}
 static void destroy() {
     scr = NULL;
-    lbl_name = lbl_coords = lbl_distance = lbl_bearing_text = NULL;
+    lbl_coords = lbl_distance = lbl_bearing_text = NULL;
     compass_canvas = NULL;
 }
 

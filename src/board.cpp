@@ -1,7 +1,5 @@
 #include "board.h"
 #include "nvs_param.h"
-#include "fonts/firasans_12.h"
-#include "fonts/firasans_20.h"
 
 namespace board {
 

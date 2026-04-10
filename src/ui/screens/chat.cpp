@@ -25,10 +25,21 @@ static void poll_new(lv_timer_t* t) {
         // already stored in model by BridgeUITask
     }
 
+    // Rebuild if a message was deleted (indices shifted)
+    if (last_displayed > model::message_count) {
+        ui::msg_list::clear(msg_container);
+        for (int i = 0; i < model::message_count; i++) {
+            auto& msg = model::messages[i];
+            ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
+        }
+        last_displayed = model::message_count;
+        return;
+    }
+
     // Display any new messages since last check
     while (last_displayed < model::message_count) {
         auto& msg = model::messages[last_displayed];
-        ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self);
+        ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, last_displayed);
         last_displayed++;
     }
 }
@@ -44,7 +55,7 @@ static void create(lv_obj_t* parent) {
     // Load all stored messages
     for (int i = 0; i < model::message_count; i++) {
         auto& msg = model::messages[i];
-        ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self);
+        ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
     }
     last_displayed = model::message_count;
 

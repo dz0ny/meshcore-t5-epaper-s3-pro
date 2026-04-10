@@ -8,8 +8,8 @@ namespace ui::msg_list {
 // Create a scrollable message list inside parent.
 lv_obj_t* create(lv_obj_t* parent);
 
-// Append a message bubble to the list.
-void append(lv_obj_t* list, const char* sender, const char* text, uint32_t timestamp, bool is_self);
+// Append a message bubble to the list. msg_idx is the index in model::messages[].
+void append(lv_obj_t* list, const char* sender, const char* text, uint32_t timestamp, bool is_self, int msg_idx = -1);
 
 // Clear all messages from the list.
 void clear(lv_obj_t* list);

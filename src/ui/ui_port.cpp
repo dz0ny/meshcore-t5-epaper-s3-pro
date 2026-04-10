@@ -142,6 +142,9 @@ void init() {
     lv_indev_set_read_cb(indev, touch_read_cb);
     lv_indev_set_display(indev, disp);
 
+    // Disable scroll momentum/throw — instant stop on e-ink (100 = max deceleration)
+    lv_indev_set_scroll_throw(indev, 100);
+
     lv_theme_t *th = lv_theme_simple_init(disp);
     lv_display_set_theme(disp, th);
 }
