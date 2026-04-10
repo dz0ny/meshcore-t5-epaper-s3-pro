@@ -63,11 +63,9 @@ static void entry() {
     ui::port::set_backlight(0);
     ui::statusbar::hide();
     update();
-    setCpuFrequencyMhz(80);
 }
 
 static void exit_fn() {
-    setCpuFrequencyMhz(240);
 }
 
 static void destroy() {

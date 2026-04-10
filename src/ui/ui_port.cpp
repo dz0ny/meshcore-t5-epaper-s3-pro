@@ -13,30 +13,24 @@ static inline void checkError(enum EpdDrawError err) {
     }
 }
 
-// RENDER_MODE_DIRECT flush: px_map is the persistent full-screen buffer,
-// area identifies only the dirty region. We convert just those pixels
-// and do a partial e-paper update.
+// RENDER_MODE_DIRECT flush: px_map is the persistent full-screen L8 buffer,
+// area identifies only the dirty region. L8 format means each pixel is already
+// 8-bit grayscale — we just pack into 4-bit nibbles for epdiy.
 //
-// Rotation is inlined for EPD_ROT_INVERTED_PORTRAIT (the only rotation used):
+// Rotation inlined for EPD_ROT_INVERTED_PORTRAIT:
 //   physical_x = rotated_y
 //   physical_y = epd_height() - 1 - rotated_x
-// This avoids per-pixel function call overhead of epd_draw_pixel().
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     int32_t disp_w = epd_rotated_display_width();
     uint8_t *fb = epd_hl_get_framebuffer(&board::hl);
-    uint16_t *src = (uint16_t *)px_map;
-    int32_t phys_w = epd_width();  // physical width (960 for landscape panel)
-    int32_t phys_h = epd_height(); // physical height (540)
+    int32_t phys_w = epd_width();
+    int32_t phys_h = epd_height();
 
-    // Convert dirty area: RGB565 → 4-bit grayscale, inline rotation to physical coords
+    // Pack L8 (8-bit gray) → 4-bit nibbles in epdiy framebuffer with inline rotation
     for (int32_t ry = area->y1; ry <= area->y2; ry++) {
         for (int32_t rx = area->x1; rx <= area->x2; rx++) {
-            // RGB565 → grayscale
-            uint16_t px = src[ry * disp_w + rx];
-            uint8_t gray = ((((px >> 11) & 0x1F) << 3) * 66 +
-                            (((px >> 5) & 0x3F) << 2) * 129 +
-                            ((px & 0x1F) << 3) * 25 + 128) >> 8;
+            uint8_t gray = px_map[ry * disp_w + rx];
 
             // Inline EPD_ROT_INVERTED_PORTRAIT rotation
             int32_t px_x = ry;
@@ -109,12 +103,11 @@ void init() {
 
     lv_display_t *disp = lv_display_create(disp_w, disp_h);
     lv_display_set_flush_cb(disp, disp_flush_cb);
-    lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
+    lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
 
-    // DIRECT mode: LVGL keeps a persistent framebuffer and only redraws dirty areas.
-    // Two full-screen buffers in PSRAM for double-buffered DIRECT rendering.
-    // No intermediate decode buffer — we write directly to epdiy's framebuffer.
-    size_t buf_size = pixel_count * sizeof(uint16_t);
+    // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
+    // 1 byte/pixel instead of 2 — halves buffer size and eliminates color conversion.
+    size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
     void *buf2 = ps_calloc(1, buf_size);
     lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);

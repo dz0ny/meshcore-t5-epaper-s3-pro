@@ -12,8 +12,8 @@
    COLOR SETTINGS
  *====================*/
 
-/** Color depth: 16 (RGB565) — same as v8, epdiy handles conversion */
-#define LV_COLOR_DEPTH 16
+/** Color depth: 8 — matches LV_COLOR_FORMAT_L8 for e-ink grayscale */
+#define LV_COLOR_DEPTH 8
 
 /*=========================
    STDLIB WRAPPER SETTINGS
