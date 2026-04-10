@@ -117,20 +117,20 @@ void start(int core) {
         lv_screen_load(splash);
 
         lv_obj_t *title = lv_label_create(splash);
-        lv_obj_set_style_text_font(title, &Font_Mono_Bold_90, LV_PART_MAIN);
+        lv_obj_set_style_text_font(title, &lv_font_montserrat_ext_30, LV_PART_MAIN);
         lv_obj_set_style_text_color(title, lv_color_hex(0x000000), LV_PART_MAIN);
         lv_label_set_text(title, "Mesh\nCore");
         lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
 
         lv_obj_t *sub = lv_label_create(splash);
-        lv_obj_set_style_text_font(sub, &Font_Mono_Bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_font(sub, &lv_font_montserrat_ext_30, LV_PART_MAIN);
         lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
         lv_label_set_text(sub, "T5-ePaper");
         lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
 
         lv_obj_t *ver = lv_label_create(splash);
-        lv_obj_set_style_text_font(ver, &Font_Mono_Bold_25, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ver, &lv_font_montserrat_ext_28, LV_PART_MAIN);
         lv_obj_set_style_text_color(ver, lv_color_hex(0x000000), LV_PART_MAIN);
         lv_label_set_text(ver, T_PAPER_SW_VERSION);
         lv_obj_align(ver, LV_ALIGN_CENTER, 0, 100);

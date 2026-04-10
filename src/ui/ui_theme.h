@@ -39,3 +39,9 @@ LV_FONT_DECLARE(Font_Mono_Bold_30);
 LV_FONT_DECLARE(Font_Mono_Bold_90);
 LV_FONT_DECLARE(Font_Geist_Bold_20);
 LV_FONT_DECLARE(Font_Geist_Light_20);
+
+// Custom montserrat with Latin Extended (č,š,ć,ž,đ) + LVGL symbols
+LV_FONT_DECLARE(lv_font_montserrat_ext_24);
+LV_FONT_DECLARE(lv_font_montserrat_ext_28);
+LV_FONT_DECLARE(lv_font_montserrat_ext_30);
+LV_FONT_DECLARE(lv_font_montserrat_ext_80);

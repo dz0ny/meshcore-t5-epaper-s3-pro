@@ -55,7 +55,7 @@ static void rebuild_list() {
 
         // "Add" hint
         lv_obj_t* hint = lv_label_create(row);
-        lv_obj_set_style_text_font(hint, &Font_Mono_Bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_font(hint, &lv_font_montserrat_ext_30, LV_PART_MAIN);
         lv_obj_set_style_text_color(hint, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(hint, "+Add");
     }
