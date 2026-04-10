@@ -47,4 +47,5 @@ LV_FONT_DECLARE(lv_font_noto_28);       // message text, values
 
 // Montserrat Bold — menus, titles, clock
 LV_FONT_DECLARE(lv_font_montserrat_bold_30);  // menus, titles, settings
-LV_FONT_DECLARE(lv_font_montserrat_bold_80);  // big clock
+LV_FONT_DECLARE(lv_font_montserrat_bold_80);   // lock screen clock
+LV_FONT_DECLARE(lv_font_montserrat_bold_120);  // home screen clock

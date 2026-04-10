@@ -71,7 +71,7 @@ static void create(lv_obj_t* parent) {
     // Big clock
     lbl_clock = lv_label_create(parent);
     lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, 100);
-    lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_bold_80, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_bold_120, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_clock, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
 
