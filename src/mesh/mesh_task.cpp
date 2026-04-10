@@ -12,13 +12,15 @@
 #include "companion/NodePrefs.h"
 #include "companion/MyMesh.h"
 #include <helpers/esp32/SerialBLEInterface.h>
+#include "companion/NullSerialInterface.h"
 #include "companion/BridgeUITask.h"
 #include "../board.h"
 
 // ---------- Globals ----------
 
 static SerialBLEInterface ble_serial;
-static BridgeUITask bridge_ui(&mc_board, &ble_serial);
+static NullSerialInterface null_serial;
+static BridgeUITask bridge_ui(&mc_board, &null_serial);
 
 static StdRNG mc_rng;
 static SimpleMeshTables mc_tables;
@@ -84,9 +86,8 @@ void start(int core) {
         the_mesh_ptr->savePrefs();
     }
 
-    // BLE off by default — user can enable from Settings > Mesh
-    // Just register the interface, don't start BLE yet
-    the_mesh_ptr->startInterface(ble_serial);
+    // BLE off by default — start with null serial, user enables from Settings
+    the_mesh_ptr->startInterface(null_serial);
 
     // Apply radio params from prefs
     NodePrefs* prefs = the_mesh_ptr->getNodePrefs();
@@ -241,6 +242,7 @@ static bool ble_active = false;
 void ble_enable() {
     if (ble_active || !the_mesh_ptr) return;
     ble_serial.begin(BLE_NAME_PREFIX, the_mesh_ptr->getNodePrefs()->node_name, the_mesh_ptr->getBLEPin());
+    the_mesh_ptr->startInterface(ble_serial);
     ble_active = true;
     Serial.println("BLE: enabled");
 }
@@ -248,6 +250,7 @@ void ble_enable() {
 void ble_disable() {
     if (!ble_active) return;
     ble_serial.disable();
+    the_mesh_ptr->startInterface(null_serial);
     ble_active = false;
     Serial.println("BLE: disabled");
 }
