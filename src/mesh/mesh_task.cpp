@@ -468,6 +468,21 @@ bool remove_contact_by_prefix(const uint8_t* pubkey_prefix) {
     return ok;
 }
 
+bool toggle_favorite(const uint8_t* pubkey_prefix) {
+    if (!the_mesh_ptr || !mesh_mutex) return false;
+    bool is_fav = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ContactInfo* c = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+        if (c) {
+            c->flags ^= 0x01;  // toggle bit 0
+            is_fav = (c->flags & 0x01) != 0;
+            if (store) store->saveContacts(the_mesh_ptr);
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return is_fav;
+}
+
 void clear_contacts() {
     if (!the_mesh_ptr || !mesh_mutex || !store) return;
     if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
@@ -510,6 +525,7 @@ void push_all_contacts() {
             strncpy(cu.name, c.name, sizeof(cu.name) - 1);
             memcpy(cu.pub_key, c.id.pub_key, 32);
             cu.type = c.type;
+            cu.flags = c.flags;
             cu.gps_lat = c.gps_lat;
             cu.gps_lon = c.gps_lon;
             cu.path_len = c.out_path_len;

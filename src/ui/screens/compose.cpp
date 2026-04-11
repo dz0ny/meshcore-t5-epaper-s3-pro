@@ -8,6 +8,7 @@
 #include "../../sd_log.h"
 #include "../../mesh/mesh_task.h"
 #include "../../mesh/mesh_bridge.h"
+#include <helpers/AdvertDataHelpers.h>
 
 namespace ui::screen::compose {
 
@@ -121,10 +122,11 @@ static void load_entries() {
     pick_entries[pick_count].is_channel = true;
     pick_count++;
 
-    // Then contacts
+    // Then contacts — only chat nodes and rooms, not relays/sensors
     mesh::task::push_all_contacts();
     mesh::bridge::ContactUpdate cu;
     while (mesh::bridge::pop_contact(cu) && pick_count < 65) {
+        if (cu.type == ADV_TYPE_REPEATER || cu.type == ADV_TYPE_SENSOR) continue;
         strncpy(pick_entries[pick_count].name, cu.name, 31);
         pick_entries[pick_count].name[31] = 0;
         pick_entries[pick_count].is_channel = false;

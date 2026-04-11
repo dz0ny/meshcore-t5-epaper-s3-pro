@@ -79,6 +79,9 @@ bool ble_is_enabled();
 void set_ble_pin(uint32_t pin);
 uint32_t get_ble_pin();
 
+// Toggle favorite flag on a contact (bit 0 of ContactInfo::flags)
+bool toggle_favorite(const uint8_t* pubkey_prefix);
+
 // Clear all contacts or channels (saves immediately)
 void clear_contacts();
 void clear_channels();

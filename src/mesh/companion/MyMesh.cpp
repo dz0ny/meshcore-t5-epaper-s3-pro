@@ -616,46 +616,7 @@ void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packe
   if (_ui) _ui->newMsg(path_len, channel_name, text, offline_queue_len);
 }
 
-void MyMesh::onChannelDataRecv(const mesh::GroupChannel &channel, mesh::Packet *pkt, uint16_t data_type,
-                               const uint8_t *data, size_t data_len) {
-  uint8_t channel_idx = findChannelIdx(channel);
-  if (_prefs.fast_gps_channel_idx != FAST_GPS_CHANNEL_DISABLED &&
-      _prefs.fast_gps_channel_idx < MAX_GROUP_CHANNELS &&
-      channel_idx == _prefs.fast_gps_channel_idx) {
-    _fast_gps_send_holdoff_until = futureMillis(FAST_GPS_CHANNEL_RX_HOLDOFF_MS);
-  }
-
-  if (data_len > MAX_CHANNEL_DATA_LENGTH) {
-    MESH_DEBUG_PRINTLN("onChannelDataRecv: dropping payload_len=%d exceeds frame limit=%d",
-                       (uint32_t)data_len, (uint32_t)MAX_CHANNEL_DATA_LENGTH);
-    return;
-  }
-
-  int i = 0;
-  out_frame[i++] = RESP_CODE_CHANNEL_DATA_RECV;
-  out_frame[i++] = (int8_t)(pkt->getSNR() * 4);
-  out_frame[i++] = 0; // reserved1
-  out_frame[i++] = 0; // reserved2
-
-  out_frame[i++] = channel_idx;
-  out_frame[i++] = pkt->isRouteFlood() ? pkt->path_len : 0xFF;
-  out_frame[i++] = (uint8_t)(data_type & 0xFF);
-  out_frame[i++] = (uint8_t)(data_type >> 8);
-  out_frame[i++] = (uint8_t)data_len;
-
-  int copy_len = (int)data_len;
-  if (copy_len > 0) {
-    memcpy(&out_frame[i], data, copy_len);
-    i += copy_len;
-  }
-  addToOfflineQueue(out_frame, i);
-
-  if (_serial->isConnected()) {
-    uint8_t frame[1];
-    frame[0] = PUSH_CODE_MSG_WAITING; // send push 'tickle'
-    _serial->writeFrame(frame, 1);
-  }
-}
+// onChannelDataRecv removed — no longer in MeshCore base class
 
 uint8_t MyMesh::onContactRequest(const ContactInfo &contact, uint32_t sender_timestamp, const uint8_t *data,
                                  uint8_t len, uint8_t *reply) {

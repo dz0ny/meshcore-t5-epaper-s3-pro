@@ -17,6 +17,7 @@ struct ContactUpdate {
     char name[32];
     uint8_t pub_key[32];
     uint8_t type;       // ADV_TYPE_*
+    uint8_t flags;      // bit 0 = favorite
     int32_t gps_lat;    // 6 decimal places * 1e6
     int32_t gps_lon;
     uint8_t path_len;   // 0xFF = unknown

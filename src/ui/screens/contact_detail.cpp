@@ -180,6 +180,13 @@ static void on_remove(lv_event_t* e) {
     ui::screen_mgr::pop(true);
 }
 
+static void on_favorite(lv_event_t* e) {
+    if (has_pubkey) {
+        bool is_fav = mesh::task::toggle_favorite(contact_pubkey);
+        ui::toast::show(is_fav ? "Added to favorites" : "Removed from favorites");
+    }
+}
+
 static void on_send_message(lv_event_t* e) {
     ui::screen::compose::set_recipient(contact_name);
     ui::screen_mgr::push(SCREEN_COMPOSE, true);
@@ -255,17 +262,23 @@ static void create(lv_obj_t* parent) {
 
         if (is_existing) {
             bool can_chat = (contact_type == ADV_TYPE_CHAT || contact_type == ADV_TYPE_ROOM);
-            int btn_y = -20;
+            int next_y = -20;
 
+            // Favorite toggle (bottom-most)
+            lv_obj_t* fav_btn = ui::nav::text_button(parent, LV_SYMBOL_OK " Favorite", on_favorite, NULL);
+            lv_obj_align(fav_btn, LV_ALIGN_BOTTOM_MID, 0, next_y);
+            next_y -= 90;
+
+            // Remove Contact
+            lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
+            lv_obj_align(rm_btn, LV_ALIGN_BOTTOM_MID, 0, next_y);
+            next_y -= 90;
+
+            // Send Message (only for chat/room types)
             if (can_chat) {
                 lv_obj_t* msg_btn = ui::nav::text_button(parent, "Send Message", on_send_message, NULL);
-                lv_obj_align(msg_btn, LV_ALIGN_BOTTOM_MID, 0, -110);
-                btn_y = -20;
+                lv_obj_align(msg_btn, LV_ALIGN_BOTTOM_MID, 0, next_y);
             }
-
-            // Remove Contact button
-            lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
-            lv_obj_align(rm_btn, LV_ALIGN_BOTTOM_MID, 0, btn_y);
         } else {
             lv_obj_t* add_btn = ui::nav::text_button(parent, "Add Contact", on_add, NULL);
             lv_obj_align(add_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
