@@ -27,6 +27,7 @@ static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint8_t* data_rd, siz
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if (cmd == NULL) {
         ESP_LOGE("epdiy", "insufficient memory for I2C transaction");
+        return ESP_ERR_NO_MEM;
     }
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, ( EPDIY_PCA9555_ADDR << 1 ) | I2C_MASTER_WRITE, true);
@@ -34,14 +35,15 @@ static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint8_t* data_rd, siz
 	i2c_master_stop(cmd);
 
     esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS);
+    i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK) {
         return ret;
     }
-	i2c_cmd_link_delete(cmd);
 
 	cmd = i2c_cmd_link_create();
     if (cmd == NULL) {
         ESP_LOGE("epdiy", "insufficient memory for I2C transaction");
+        return ESP_ERR_NO_MEM;
     }
     i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, ( EPDIY_PCA9555_ADDR << 1 ) | I2C_MASTER_READ, true);
@@ -52,12 +54,9 @@ static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint8_t* data_rd, siz
     i2c_master_stop(cmd);
 
 	ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS);
-    if (ret != ESP_OK) {
-        return ret;
-    }
     i2c_cmd_link_delete(cmd);
 
-    return ESP_OK;
+    return ret;
 }
 
 static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t ctrl,  uint8_t* data_wr, size_t size)
@@ -65,6 +64,7 @@ static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t ctrl,  uint8
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if (cmd == NULL) {
         ESP_LOGE("epdiy", "insufficient memory for I2C transaction");
+        return ESP_ERR_NO_MEM;
     }
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, ( EPDIY_PCA9555_ADDR  << 1 ) | I2C_MASTER_WRITE, true);

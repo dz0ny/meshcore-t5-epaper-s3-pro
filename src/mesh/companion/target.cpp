@@ -13,17 +13,16 @@ uint16_t T5ePaperBoard::getBattMilliVolts() {
 RADIO_CLASS radio = new Module(P_LORA_NSS, P_LORA_DIO_1, P_LORA_RESET, P_LORA_BUSY, SPI);
 WRAPPER_CLASS radio_driver(radio, mc_board);
 
-ESP32RTCClock fallback_clock;
-AutoDiscoverRTCClock rtc_clock(fallback_clock);
+// Use software-only RTC for mesh — no I2C, avoids cross-core bus conflict with epdiy.
+// Time is synced from PCF8563 hardware RTC by model::update_clock() on Core 1.
+ESP32RTCClock rtc_clock;
 
 // GPS via MeshCore's MicroNMEA provider — uses Serial1 (mapped to PIN_GPS_TX/RX)
-MicroNMEALocationProvider gps_provider(Serial1, &rtc_clock);
+MicroNMEALocationProvider gps_provider(Serial1);
 EnvironmentSensorManager sensors(gps_provider);
 
-// Call once from board::init() before any tasks start — avoids I2C race with epdiy
 void rtc_init() {
-    fallback_clock.begin();
-    rtc_clock.begin(Wire);
+    rtc_clock.begin();
 }
 
 bool radio_init() {

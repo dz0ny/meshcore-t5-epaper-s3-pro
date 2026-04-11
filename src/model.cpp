@@ -163,6 +163,15 @@ void update_clock() {
     clock.hour = (uint8_t)local_h;
     clock.minute = utc_m;
     clock.second = utc_s;
+
+    // Sync MeshCore's software RTC from hardware RTC (runs on Core 1, no I2C conflict)
+    // Construct approximate UTC unix timestamp for mesh timestamps
+    if (clock.year > 0) {
+        // Rough unix time: days since 2000 * 86400 + time
+        uint32_t days = (uint32_t)(clock.year + 2000 - 1970) * 365 + clock.month * 30 + clock.day;
+        uint32_t utc_epoch = days * 86400 + utc_h * 3600 + utc_m * 60 + utc_s;
+        rtc_clock.setCurrentTime(utc_epoch);
+    }
 }
 
 // Message history

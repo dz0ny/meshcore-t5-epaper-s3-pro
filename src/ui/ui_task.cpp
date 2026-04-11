@@ -135,7 +135,6 @@ static unsigned long backlight_off_at = 0;
 
 static bool boot_btn_last = true;   // GPIO 0 is active-low, idle=high
 static uint32_t boot_press_start = 0;
-static bool io48_btn_last = false;   // PCA9555 button (IO48) via button_read()
 static const uint32_t LONG_PRESS_MS = 2000;
 
 static void ui_task_fn(void* param) {
@@ -177,19 +176,6 @@ static void ui_task_fn(void* param) {
         }
         boot_btn_last = boot_now;
 
-        // IO48 button (PCA9555 IO expander) — compose / wake from lock
-        bool io48_now = button_read();
-        if (io48_now && !io48_btn_last) {
-            model::touch_activity();
-            if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
-                ui::statusbar::show();
-                ui::screen_mgr::switch_to(SCREEN_HOME, false);
-            } else {
-                ui::screen::compose::set_recipient(NULL);
-                ui::screen_mgr::push(SCREEN_COMPOSE, true);
-            }
-        }
-        io48_btn_last = io48_now;
 
         // Check sleep timeout — enter lock screen after inactivity
         if (model::should_sleep() && ui::screen_mgr::top_id() != SCREEN_LOCK) {

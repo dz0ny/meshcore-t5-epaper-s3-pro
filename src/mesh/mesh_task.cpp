@@ -49,10 +49,7 @@ static void mesh_task_fn(void* param) {
 
     while (1) {
         if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(50))) {
-            // Grab I2C mutex — mesh loop reads RTC via I2C, must not race with epdiy on Core 1
-            if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
             the_mesh_ptr->loop();
-            if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
 
             sensors.loop();  // GPS NMEA parsing (serial only, no I2C)
 

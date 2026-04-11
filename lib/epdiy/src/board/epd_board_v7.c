@@ -143,7 +143,7 @@ static void epd_board_init(uint32_t epd_row_width) {
     ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void *) CFG_INTR));
 
     // set all epdiy lines to output except TPS interrupt + PWR good
-    ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | __CFG_PIN_STV, 1));
+    pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | __CFG_PIN_STV, 1);
     
     pca9555_set_inversion(config_reg.port, 0x00, 0);
     pca9555_set_inversion(config_reg.port, 0x00, 1);
@@ -181,7 +181,7 @@ static void epd_board_deinit() {
 
   epd_lcd_deinit();
 
-  ESP_ERROR_CHECK(pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
+  pca9555_set_config(config_reg.port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1);
 
   int tries = 0;
   while (!((pca9555_read_input(config_reg.port, 1) & 0xC0) == 0x80)) {
@@ -212,7 +212,12 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t *
     if (config_reg.vcom_ctrl) value |= CFG_PIN_VCOM_CTRL;
     if (config_reg.wakeup) value |= CFG_PIN_WAKEUP;
 
-    ESP_ERROR_CHECK(pca9555_set_value(config_reg.port, value, 1));
+    esp_err_t err = pca9555_set_value(config_reg.port, value, 1);
+    if (err != ESP_OK) {
+      ESP_LOGE("epdiy", "pca9555_set_value failed: 0x%x, retrying", err);
+      vTaskDelay(1);
+      pca9555_set_value(config_reg.port, value, 1);
+    }
   }
 }
 
@@ -238,7 +243,12 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
   while (!(pca9555_read_input(config_reg.port, 1) & CFG_PIN_PWRGOOD)) {
   }
 
-  ESP_ERROR_CHECK(tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F));
+  esp_err_t err = tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F);
+  if (err != ESP_OK) {
+    ESP_LOGE("epdiy", "tps_write_register failed: 0x%x, retrying", err);
+    vTaskDelay(1);
+    tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F);
+  }
 
   tps_set_vcom(config_reg.port, vcom);
 
