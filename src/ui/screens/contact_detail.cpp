@@ -8,6 +8,7 @@
 #include "../components/nav_button.h"
 #include "../../model.h"
 #include "../../mesh/mesh_task.h"
+#include <helpers/AdvertDataHelpers.h>
 #include "../components/toast.h"
 
 namespace ui::screen::contact_detail {
@@ -253,13 +254,18 @@ static void create(lv_obj_t* parent) {
         bool is_existing = mesh::task::is_contact(contact_pubkey);
 
         if (is_existing) {
-            // Send Message button
-            lv_obj_t* msg_btn = ui::nav::text_button(parent, "Send Message", on_send_message, NULL);
-            lv_obj_align(msg_btn, LV_ALIGN_BOTTOM_MID, 0, -110);
+            bool can_chat = (contact_type == ADV_TYPE_CHAT || contact_type == ADV_TYPE_ROOM);
+            int btn_y = -20;
+
+            if (can_chat) {
+                lv_obj_t* msg_btn = ui::nav::text_button(parent, "Send Message", on_send_message, NULL);
+                lv_obj_align(msg_btn, LV_ALIGN_BOTTOM_MID, 0, -110);
+                btn_y = -20;
+            }
 
             // Remove Contact button
             lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
-            lv_obj_align(rm_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+            lv_obj_align(rm_btn, LV_ALIGN_BOTTOM_MID, 0, btn_y);
         } else {
             lv_obj_t* add_btn = ui::nav::text_button(parent, "Add Contact", on_add, NULL);
             lv_obj_align(add_btn, LV_ALIGN_BOTTOM_MID, 0, -20);

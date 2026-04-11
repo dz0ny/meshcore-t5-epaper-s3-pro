@@ -390,55 +390,8 @@ bool MyMesh::isAutoAddEnabled() const {
   return (_prefs.manual_add_contacts & 1) == 0;
 }
 
-bool MyMesh::shouldAutoAddContactType(uint8_t contact_type) const {
-  if ((_prefs.manual_add_contacts & 1) == 0) {
-    return true;
-  }
-
-  uint8_t type_bit = 0;
-  switch (contact_type) {
-    case ADV_TYPE_CHAT:
-      type_bit = AUTO_ADD_CHAT;
-      break;
-    case ADV_TYPE_REPEATER:
-      type_bit = AUTO_ADD_REPEATER;
-      break;
-    case ADV_TYPE_ROOM:
-      type_bit = AUTO_ADD_ROOM_SERVER;
-      break;
-    case ADV_TYPE_SENSOR:
-      type_bit = AUTO_ADD_SENSOR;
-      break;
-    default:
-      return false;  // Unknown type, don't auto-add
-  }
-
-  return (_prefs.autoadd_config & type_bit) != 0;
-}
-
-bool MyMesh::shouldOverwriteWhenFull() const {
-  return (_prefs.autoadd_config & AUTO_ADD_OVERWRITE_OLDEST) != 0;
-}
-
-uint8_t MyMesh::getAutoAddMaxHops() const {
-  return _prefs.autoadd_max_hops;
-}
-
-void MyMesh::onContactOverwrite(const uint8_t* pub_key) {
-    _store->deleteBlobByKey(pub_key, PUB_KEY_SIZE); // delete from storage
-  if (_serial->isConnected()) {
-    out_frame[0] = PUSH_CODE_CONTACT_DELETED;
-    memcpy(&out_frame[1], pub_key, PUB_KEY_SIZE);
-    _serial->writeFrame(out_frame, 1 + PUB_KEY_SIZE);
-  }
-}
-
-void MyMesh::onContactsFull() {
-  if (_serial->isConnected()) {
-    out_frame[0] = PUSH_CODE_CONTACTS_FULL;
-    _serial->writeFrame(out_frame, 1);
-  }
-}
+// Removed: shouldAutoAddContactType, shouldOverwriteWhenFull, getAutoAddMaxHops,
+// onContactsFull, onContactOverwrite — no longer in MeshCore base class
 
 void MyMesh::onDiscoveredContact(ContactInfo &contact, bool is_new, uint8_t path_len, const uint8_t* path) {
   // Discovery/contacts are handled via getRecentlyHeard() and direct mesh access.
