@@ -6,6 +6,7 @@
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
+#include "../components/geo_utils.h"
 #include "../../model.h"
 #include "../../mesh/mesh_task.h"
 #include <helpers/AdvertDataHelpers.h>
@@ -30,9 +31,6 @@ static lv_obj_t* lbl_distance = NULL;
 static lv_obj_t* lbl_bearing_text = NULL;
 static lv_obj_t* compass_canvas = NULL;
 
-static constexpr double DEG_TO_RAD = M_PI / 180.0;
-static constexpr double R_EARTH_KM = 6371.0;
-
 void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t type, bool has_path,
                  const uint8_t* pubkey_prefix) {
     strncpy(contact_name, name, sizeof(contact_name) - 1);
@@ -47,37 +45,6 @@ void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t typ
     } else {
         has_pubkey = false;
     }
-}
-
-// Haversine distance in km
-static double calc_distance_km(double lat1, double lon1, double lat2, double lon2) {
-    double dLat = (lat2 - lat1) * DEG_TO_RAD;
-    double dLon = (lon2 - lon1) * DEG_TO_RAD;
-    double a = sin(dLat / 2) * sin(dLat / 2) +
-               cos(lat1 * DEG_TO_RAD) * cos(lat2 * DEG_TO_RAD) *
-               sin(dLon / 2) * sin(dLon / 2);
-    return R_EARTH_KM * 2.0 * atan2(sqrt(a), sqrt(1.0 - a));
-}
-
-// Bearing from point 1 to point 2 in degrees (0=N, 90=E)
-static double calc_bearing(double lat1, double lon1, double lat2, double lon2) {
-    double dLon = (lon2 - lon1) * DEG_TO_RAD;
-    double y = sin(dLon) * cos(lat2 * DEG_TO_RAD);
-    double x = cos(lat1 * DEG_TO_RAD) * sin(lat2 * DEG_TO_RAD) -
-               sin(lat1 * DEG_TO_RAD) * cos(lat2 * DEG_TO_RAD) * cos(dLon);
-    double bearing = atan2(y, x) * (180.0 / M_PI);
-    return fmod(bearing + 360.0, 360.0);
-}
-
-static const char* bearing_to_cardinal(double bearing) {
-    if (bearing >= 337.5 || bearing < 22.5)  return "N";
-    if (bearing < 67.5)  return "NE";
-    if (bearing < 112.5) return "E";
-    if (bearing < 157.5) return "SE";
-    if (bearing < 202.5) return "S";
-    if (bearing < 247.5) return "SW";
-    if (bearing < 292.5) return "W";
-    return "NW";
 }
 
 // Draw compass rose with direction arrow using LVGL line objects
@@ -109,7 +76,7 @@ static void draw_compass(lv_obj_t* parent, double bearing_deg) {
     }
 
     // Direction arrow — thick line from center toward the bearing
-    double rad = bearing_deg * DEG_TO_RAD;
+    double rad = bearing_deg * ui::geo::DEG_TO_RAD;
     int arrow_len = 90;
     int tip_x = cx + (int)(sin(rad) * arrow_len);
     int tip_y = cy - (int)(cos(rad) * arrow_len);
@@ -238,13 +205,13 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(lbl_distance, LV_ALIGN_TOP_MID, 0, 230);
 
     if (has_contact_gps && has_own_gps) {
-        double dist = calc_distance_km(model::gps.lat, model::gps.lng, c_lat, c_lon);
-        double bearing = calc_bearing(model::gps.lat, model::gps.lng, c_lat, c_lon);
+        double dist = ui::geo::distance_km(model::gps.lat, model::gps.lng, c_lat, c_lon);
+        double bearing = ui::geo::bearing(model::gps.lat, model::gps.lng, c_lat, c_lon);
         static char dist_buf[48];
         if (dist < 1.0) {
-            snprintf(dist_buf, sizeof(dist_buf), "%dm %s", (int)(dist * 1000), bearing_to_cardinal(bearing));
+            snprintf(dist_buf, sizeof(dist_buf), "%dm %s", (int)(dist * 1000), ui::geo::bearing_to_cardinal(bearing));
         } else {
-            snprintf(dist_buf, sizeof(dist_buf), "%.1fkm %s", dist, bearing_to_cardinal(bearing));
+            snprintf(dist_buf, sizeof(dist_buf), "%.1fkm %s", dist, ui::geo::bearing_to_cardinal(bearing));
         }
         lv_label_set_text(lbl_distance, dist_buf);
 

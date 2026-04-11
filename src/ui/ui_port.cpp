@@ -85,6 +85,9 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         .height = (int)lv_area_get_height(area),
     };
 
+    // Grab I2C mutex — epdiy poweron/poweroff uses I2C (PCA9555), must not race with Core 0
+    if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
+
     if (refresh_mode == UI_REFRESH_MODE_FAST) {
         epd_poweron();
         checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), update_rect));
@@ -94,7 +97,6 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         checkError(epd_hl_update_area(&board::hl, MODE_GL16, epd_ambient_temperature(), update_rect));
         epd_poweroff();
     } else if (refresh_mode == UI_REFRESH_MODE_NEAT) {
-        // NEAT: full white clear then full redraw for best quality
         epd_hl_set_all_white(&board::hl);
         epd_poweron();
         checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
@@ -103,6 +105,8 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
         epd_poweroff();
     }
+
+    if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
 
     lv_display_flush_ready(disp);
 }

@@ -1,7 +1,10 @@
 #include "board.h"
 #include "nvs_param.h"
+#include "mesh/companion/target.h"
 
 namespace board {
+
+SemaphoreHandle_t i2c_mutex = NULL;
 
 // ---------- Global peripheral instances ----------
 
@@ -142,6 +145,12 @@ void init() {
     peri_status[E_PERI_TOUCH] = detail::touch_init();
     peri_status[E_PERI_SD_CARD] = detail::sd_init();
     peri_status[E_PERI_GPS] = detail::gps_init();
+
+    // I2C mutex for cross-core safety (epdiy on Core 1, mesh/RTC on Core 0)
+    i2c_mutex = xSemaphoreCreateMutex();
+
+    // Init MeshCore RTC clock before tasks start (avoids I2C race with epdiy)
+    rtc_init();
 
     Serial.println("Board init complete");
     for (int i = 0; i < E_PERI_MAX; i++) {

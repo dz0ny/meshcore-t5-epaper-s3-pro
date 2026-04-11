@@ -20,9 +20,13 @@ AutoDiscoverRTCClock rtc_clock(fallback_clock);
 MicroNMEALocationProvider gps_provider(Serial1, &rtc_clock);
 EnvironmentSensorManager sensors(gps_provider);
 
-bool radio_init() {
+// Call once from board::init() before any tasks start — avoids I2C race with epdiy
+void rtc_init() {
     fallback_clock.begin();
     rtc_clock.begin(Wire);
+}
+
+bool radio_init() {
     // SPI already initialized by board::init(), pass NULL to skip re-init
     return radio.std_init(NULL);
 }

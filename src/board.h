@@ -110,6 +110,9 @@ extern EpdiyHighlevelState hl;
 
 void init();
 
+// Global I2C mutex — protects Wire bus shared between epdiy (Core 1) and mesh/RTC (Core 0)
+extern SemaphoreHandle_t i2c_mutex;
+
 // Home button flag — set by GT911 callback, polled by UI task
 extern volatile bool home_button_pressed;
 

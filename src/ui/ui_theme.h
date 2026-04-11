@@ -33,6 +33,7 @@ enum screen_id {
     SCREEN_SET_BLE        = 15,
     SCREEN_SET_STORAGE    = 16,
     SCREEN_COMPOSE        = 17,
+    SCREEN_MAP            = 18,
 };
 
 // ---------- Font declarations ----------

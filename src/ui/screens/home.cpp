@@ -42,6 +42,10 @@ static void on_discovery_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_DISCOVERY, true);
 }
 
+static void on_map_click(lv_event_t* e) {
+    ui::screen_mgr::push(SCREEN_MAP, true);
+}
+
 static void on_compose_click(lv_event_t* e) {
     ui::screen::compose::set_recipient(NULL);
     ui::screen_mgr::push(SCREEN_COMPOSE, true);
@@ -91,6 +95,7 @@ static void create(lv_obj_t* parent) {
 
     ui::nav::menu_item(menu, NULL, "Compose", on_compose_click, NULL);
     ui::nav::menu_item(menu, NULL, "Discovery", on_discovery_click, NULL);
+    ui::nav::menu_item(menu, NULL, "Map", on_map_click, NULL);
     ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
     lbl_msg_badge = ui::nav::toggle_item(menu, "Messages", "", on_chat_click, NULL);
     ui::nav::menu_item(menu, NULL, "Status", on_status_click, NULL);

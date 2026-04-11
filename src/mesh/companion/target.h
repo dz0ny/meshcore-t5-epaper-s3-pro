@@ -25,6 +25,7 @@ extern AutoDiscoverRTCClock rtc_clock;
 extern EnvironmentSensorManager sensors;
 extern MicroNMEALocationProvider gps_provider;
 
+void rtc_init();   // call from board::init() before tasks start
 bool radio_init();
 uint32_t radio_get_rng_seed();
 void radio_set_params(float freq, float bw, uint8_t sf, uint8_t cr);

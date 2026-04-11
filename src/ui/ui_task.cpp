@@ -31,6 +31,7 @@
 #include "screens/set_ble.h"
 #include "screens/set_storage.h"
 #include "screens/compose.h"
+#include "screens/map.h"
 
 static void show_power_off_splash() {
     ui::statusbar::hide();
@@ -361,6 +362,7 @@ void start(int core) {
     ui::screen_mgr::register_screen(15, &ui::screen::set_ble::lifecycle);
     ui::screen_mgr::register_screen(16, &ui::screen::set_storage::lifecycle);
     ui::screen_mgr::register_screen(17, &ui::screen::compose::lifecycle);
+    ui::screen_mgr::register_screen(18, &ui::screen::map::lifecycle);
 
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);
