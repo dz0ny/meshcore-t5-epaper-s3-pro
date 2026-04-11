@@ -12,6 +12,7 @@
 #include "../board.h"
 #include "../model.h"
 #include "../sd_log.h"
+#include "../mesh/mesh_task.h"
 #include "screens/home.h"
 #include "screens/contacts.h"
 #include "screens/chat.h"
@@ -308,6 +309,14 @@ void start(int core) {
         lv_timer_handler();
         model::update_battery();
 
+        lv_label_set_text(status, "Loading identity...");
+        lv_timer_handler();
+
+        // Wait for mesh task to finish init (identity/PKI, radio, contacts)
+        while (!mesh::task::is_ready()) {
+            delay(50);
+        }
+
         lv_label_set_text(status, "Starting mesh...");
         lv_timer_handler();
         model::update_mesh();
@@ -316,7 +325,6 @@ void start(int core) {
         lv_timer_handler();
         model::update_gps();
 
-        // Clock needs GPS/mesh location for timezone, so update last
         lv_label_set_text(status, "Setting clock...");
         lv_timer_handler();
         model::update_clock();

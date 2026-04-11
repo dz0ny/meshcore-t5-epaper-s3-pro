@@ -9,7 +9,8 @@
 #include <helpers/ESP32Board.h>
 #include <helpers/radiolib/CustomSX1262Wrapper.h>
 #include <helpers/AutoDiscoverRTCClock.h>
-#include <helpers/SensorManager.h>
+#include <helpers/sensors/EnvironmentSensorManager.h>
+#include <helpers/sensors/MicroNMEALocationProvider.h>
 
 // Custom board that reads battery from BQ27220 fuel gauge
 class T5ePaperBoard : public ESP32Board {
@@ -21,7 +22,8 @@ public:
 extern T5ePaperBoard mc_board;
 extern WRAPPER_CLASS radio_driver;
 extern AutoDiscoverRTCClock rtc_clock;
-extern SensorManager sensors;
+extern EnvironmentSensorManager sensors;
+extern MicroNMEALocationProvider gps_provider;
 
 bool radio_init();
 uint32_t radio_get_rng_seed();

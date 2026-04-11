@@ -8,6 +8,9 @@ namespace mesh::task {
 // Must be called after board::init() since it uses the SPI bus and LoRa radio.
 void start(int core);
 
+// True once mesh init is complete (identity loaded, radio configured).
+bool is_ready();
+
 // Send a text message to the currently selected contact.
 // Thread-safe — can be called from UI core.
 bool send_message(const char* recipient_prefix, const char* text);

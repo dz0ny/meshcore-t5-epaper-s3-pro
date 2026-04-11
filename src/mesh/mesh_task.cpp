@@ -32,6 +32,7 @@ static DataStore* store = NULL;
 static MyMesh* the_mesh_ptr = NULL;
 static SemaphoreHandle_t mesh_mutex = NULL;
 static bool ble_active = false;
+static volatile bool mesh_ready = false;
 
 // ---------- SD flush on silence ----------
 
@@ -48,6 +49,7 @@ static void mesh_task_fn(void* param) {
     while (1) {
         if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(50))) {
             the_mesh_ptr->loop();
+            sensors.loop();  // GPS NMEA parsing + location update
 
             // Update bridge status
             mesh::bridge::MeshStatus s = {};
@@ -147,8 +149,11 @@ void start(int core) {
     the_mesh_ptr->advert();
 #endif
 
+    mesh_ready = true;
     xTaskCreatePinnedToCore(mesh_task_fn, "mesh", 1024 * 12, NULL, 5, NULL, core);
 }
+
+bool is_ready() { return mesh_ready; }
 
 bool send_message(const char* recipient_prefix, const char* text) {
     if (!the_mesh_ptr || !mesh_mutex) return false;

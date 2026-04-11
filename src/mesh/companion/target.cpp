@@ -15,7 +15,10 @@ WRAPPER_CLASS radio_driver(radio, mc_board);
 
 ESP32RTCClock fallback_clock;
 AutoDiscoverRTCClock rtc_clock(fallback_clock);
-SensorManager sensors;
+
+// GPS via MeshCore's MicroNMEA provider — uses Serial1 (mapped to PIN_GPS_TX/RX)
+MicroNMEALocationProvider gps_provider(Serial1, &rtc_clock);
+EnvironmentSensorManager sensors(gps_provider);
 
 bool radio_init() {
     fallback_clock.begin();

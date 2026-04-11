@@ -20,155 +20,8 @@ EpdiyHighlevelState hl;
 // Home button
 volatile bool home_button_pressed = false;
 
-// GPS state
-static TaskHandle_t gps_handle = NULL;
-static double gps_lat = 0, gps_lng = 0;
-static uint32_t gps_vsat = 0;
-static uint8_t gps_hour = 0, gps_minute = 0, gps_second = 0;
-static bool gps_is_ublox = false;
-static bool gps_rtc_synced = false;
-SFE_UBLOX_GNSS ublox;
-
-// Sync RTC from GPS time when we get a valid fix
-static void sync_rtc_from_gps() {
-    if (gps_rtc_synced) return;
-    if (!peri_status[E_PERI_RTC]) return;
-    if (!gps.date.isValid() || !gps.time.isValid()) return;
-    if (gps.date.year() < 2024) return;
-
-    rtc.setDateTime(gps.date.year(), gps.date.month(), gps.date.day(),
-                    gps.time.hour(), gps.time.minute(), gps.time.second());
-    gps_rtc_synced = true;
-    Serial.printf("RTC synced from GPS: %04d-%02d-%02d %02d:%02d:%02d\n",
-        gps.date.year(), gps.date.month(), gps.date.day(),
-        gps.time.hour(), gps.time.minute(), gps.time.second());
-}
-
-// ---------- GPS: L76K detection (Quectel, NMEA at 9600 baud) ----------
-
-static bool detect_L76K() {
-    SerialGPS.begin(9600, SERIAL_8N1, BOARD_GPS_RXD, BOARD_GPS_TXD);
-    for (int attempt = 0; attempt < 3; attempt++) {
-        // Silence all NMEA sentences first
-        SerialGPS.write("$PCAS03,0,0,0,0,0,0,0,0,0,0,,,0,0*02\r\n");
-        delay(5);
-        uint32_t timeout = millis() + 3000;
-        while (SerialGPS.available()) {
-            SerialGPS.readString();
-            if (millis() > timeout) return false;
-        }
-        SerialGPS.flush();
-        delay(200);
-
-        // Request firmware version
-        SerialGPS.write("$PCAS06,0*1B\r\n");
-        timeout = millis() + 500;
-        while (!SerialGPS.available()) {
-            if (millis() > timeout) return false;
-        }
-        SerialGPS.setTimeout(10);
-        String ver = SerialGPS.readStringUntil('\n');
-        if (ver.startsWith("$GPTXT,01,01,02")) {
-            // Configure: GPS + GLONASS, all NMEA sentences, vehicle mode
-            SerialGPS.write("$PCAS04,5*1C\r\n");
-            delay(250);
-            SerialGPS.write("$PCAS03,1,1,1,1,1,1,1,1,1,1,,,0,0*02\r\n");
-            delay(250);
-            SerialGPS.write("$PCAS11,3*1E\r\n");
-            Serial.println("GPS: L76K detected at 9600 baud");
-            return true;
-        }
-        delay(500);
-    }
-    return false;
-}
-
-// ---------- GPS: u-blox detection (M10Q, UBX at 38400 baud) ----------
-
-static bool detect_ublox() {
-    // Try 38400 first (factory default for M10Q on this board)
-    SerialGPS.begin(38400, SERIAL_8N1, BOARD_GPS_RXD, BOARD_GPS_TXD);
-    if (ublox.begin(SerialGPS)) {
-        Serial.println("GPS: u-blox detected at 38400 baud");
-        return true;
-    }
-
-    // Fallback: try 9600
-    SerialGPS.updateBaudRate(9600);
-    if (ublox.begin(SerialGPS)) {
-        // Set to 38400 for better throughput
-        ublox.setSerialRate(38400);
-        delay(100);
-        SerialGPS.updateBaudRate(38400);
-        if (ublox.begin(SerialGPS)) {
-            Serial.println("GPS: u-blox detected at 9600, switched to 38400");
-            return true;
-        }
-    }
-    return false;
-}
-
-// ---------- GPS task: NMEA parsing (L76K) ----------
-
-static void gps_task_nmea(void* param) {
-    while (1) {
-        while (SerialGPS.available()) {
-            int c = SerialGPS.read();
-            if (gps.encode(c)) {
-                if (gps.location.isValid()) {
-                    gps_lat = gps.location.lat();
-                    gps_lng = gps.location.lng();
-                }
-                if (gps.time.isValid()) {
-                    gps_hour = gps.time.hour();
-                    gps_minute = gps.time.minute();
-                    gps_second = gps.time.second();
-                }
-                if (gps.satellites.isValid()) {
-                    gps_vsat = gps.satellites.value();
-                }
-                // Sync RTC as soon as we have valid time — no need to wait for fix
-                sync_rtc_from_gps();
-            }
-        }
-        delay(1);
-    }
-}
-
-// ---------- GPS task: UBX polling (u-blox) ----------
-
-static void gps_task_ublox(void* param) {
-    // Enable NMEA output on u-blox so TinyGPSPlus can also parse
-    ublox.setUART1Output(COM_TYPE_UBX | COM_TYPE_NMEA);
-    ublox.setNavigationFrequency(1); // 1Hz
-    ublox.setAutoPVT(true);          // automatic PVT polling
-    ublox.saveConfiguration();
-
-    while (1) {
-        ublox.checkUblox();
-
-        if (ublox.getPVT()) {
-            gps_lat = ublox.getLatitude() / 1e7;
-            gps_lng = ublox.getLongitude() / 1e7;
-            gps_hour = ublox.getHour();
-            gps_minute = ublox.getMinute();
-            gps_second = ublox.getSecond();
-            gps_vsat = ublox.getSIV();
-
-            // Sync RTC from u-blox time
-            if (!gps_rtc_synced && ublox.getDateValid() && ublox.getTimeValid() &&
-                ublox.getYear() >= 2024 && peri_status[E_PERI_RTC]) {
-                rtc.setDateTime(ublox.getYear(), ublox.getMonth(), ublox.getDay(),
-                                ublox.getHour(), ublox.getMinute(), ublox.getSecond());
-                gps_rtc_synced = true;
-                Serial.printf("RTC synced from u-blox: %04d-%02d-%02d %02d:%02d:%02d\n",
-                    ublox.getYear(), ublox.getMonth(), ublox.getDay(),
-                    ublox.getHour(), ublox.getMinute(), ublox.getSecond());
-            }
-        }
-        delay(100);
-    }
-}
+// GPS is now handled by MeshCore's EnvironmentSensorManager + MicroNMEALocationProvider
+// (configured in target.cpp, polled by sensors.loop() in mesh_task.cpp)
 
 // ---------- Detail init functions ----------
 
@@ -250,22 +103,10 @@ bool sd_init() {
 }
 
 bool gps_init() {
-    // Try L76K first (Quectel, 9600 baud NMEA)
-    if (detect_L76K()) {
-        gps_is_ublox = false;
-        xTaskCreate(gps_task_nmea, "gps", 1024 * 4, NULL, GPS_PRIORITY, &gps_handle);
-        return true;
-    }
-
-    // Try u-blox M10Q (38400/9600 baud, UBX protocol)
-    if (detect_ublox()) {
-        gps_is_ublox = true;
-        xTaskCreate(gps_task_ublox, "gps", 1024 * 4, NULL, GPS_PRIORITY, &gps_handle);
-        return true;
-    }
-
-    Serial.println("GPS: no module detected");
-    return false;
+    // GPS is now initialized by MeshCore's EnvironmentSensorManager (sensors.begin())
+    // via MicroNMEALocationProvider which uses Serial1 with PIN_GPS_TX/RX
+    // Just return true — GPS detection happens in sensors.begin()
+    return true;
 }
 
 } // namespace detail
@@ -373,12 +214,11 @@ float charger_prechrg_ma() { return ppm.getPrechargeCurr(); }
 // ---------- GPS ----------
 
 void gps_get_coord(double* lat, double* lng) {
-    *lat = gps_lat;
-    *lng = gps_lng;
+    *lat = 0; *lng = 0; // GPS now via MeshCore sensors
 }
 
 uint32_t gps_satellites() {
-    return gps_vsat;
+    return 0; // GPS now via MeshCore sensors
 }
 
 // ---------- RTC ----------

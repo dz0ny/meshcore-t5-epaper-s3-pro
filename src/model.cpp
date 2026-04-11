@@ -3,6 +3,7 @@
 #include "mesh/mesh_bridge.h"
 #include "mesh/mesh_task.h"
 #include "mesh/companion/target.h"
+#include <helpers/sensors/LocationProvider.h>
 #include "nvs_param.h"
 
 namespace model {
@@ -13,42 +14,24 @@ Mesh    mesh = {};
 Clock   clock = {};
 
 void update_gps() {
-    double lat, lng;
-    board::gps_get_coord(&lat, &lng);
-    gps.lat = lat;
-    gps.lng = lng;
-    gps.satellites = board::gps_satellites();
-    gps.has_fix = (lat != 0.0 || lng != 0.0);
-    gps.module_ok = board::peri_status[E_PERI_GPS];
-
-    // Feed GPS coordinates to MeshCore SensorManager for location sharing
-    if (gps.has_fix) {
-        sensors.node_lat = lat;
-        sensors.node_lon = lng;
-    }
-
-    if (!gps.module_ok) {
-        gps.status_text = "No Module";
-    } else if (board::gps.charsProcessed() < 10) {
-        gps.status_text = "No Data";
-    } else if (gps.has_fix) {
-        gps.status_text = "Fix OK";
+    // Read from MeshCore's EnvironmentSensorManager / MicroNMEALocationProvider
+    LocationProvider* loc = sensors.getLocationProvider();
+    if (loc) {
+        gps.module_ok = true;
+        gps.has_fix = loc->isValid();
+        if (gps.has_fix) {
+            gps.lat = loc->getLatitude() / 1e6;
+            gps.lng = loc->getLongitude() / 1e6;
+            gps.altitude_m = loc->getAltitude() / 1000.0;
+        }
+        gps.satellites = loc->satellitesCount();
+        gps.status_text = gps.has_fix ? "Fix OK" : "Searching...";
     } else {
-        gps.status_text = "Searching...";
+        gps.module_ok = false;
+        gps.status_text = "No Module";
     }
 
-    gps.chars_processed = board::gps.charsProcessed();
-
-    if (board::gps.speed.isValid()) gps.speed_kmh = board::gps.speed.kmph();
-    if (board::gps.altitude.isValid()) gps.altitude_m = board::gps.altitude.meters();
-    if (board::gps.hdop.isValid()) gps.hdop = board::gps.hdop.hdop();
-    if (board::gps.course.isValid()) gps.course_deg = board::gps.course.deg();
-
-    if (board::gps.time.isValid()) {
-        gps.hour = board::gps.time.hour();
-        gps.minute = board::gps.time.minute();
-        gps.second = board::gps.time.second();
-    }
+    // GPS time is synced to RTC by MicroNMEALocationProvider automatically
 }
 
 void update_battery() {
