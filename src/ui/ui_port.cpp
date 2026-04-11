@@ -86,6 +86,9 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         .height = (int)lv_area_get_height(area),
     };
 
+    // Protect I2C bus — epdiy uses raw I2C for PCA9555/TPS, must not overlap with Wire
+    if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
+
     if (refresh_mode == UI_REFRESH_MODE_FAST) {
         epd_poweron();
         checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), update_rect));
@@ -104,11 +107,15 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         epd_poweroff();
     }
 
+    if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
+
     lv_display_flush_ready(disp);
 }
 
 static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     static int16_t x = 0, y = 0;
+    // Protect I2C — GT911 touch uses Wire
+    if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
     if (board::touch.isPressed() && touch_enabled) {
         if (board::touch.getPoint(&x, &y, 1)) {
             data->state = LV_INDEV_STATE_PRESSED;
@@ -116,6 +123,7 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
     }
+    if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
     data->point.x = x;
     data->point.y = y;
 }

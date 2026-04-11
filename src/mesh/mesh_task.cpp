@@ -152,7 +152,7 @@ void start(int core) {
 #endif
 
     mesh_ready = true;
-    xTaskCreatePinnedToCore(mesh_task_fn, "mesh", 1024 * 12, NULL, 5, NULL, core);
+    xTaskCreate(mesh_task_fn, "mesh", 1024 * 12, NULL, 5, NULL);
 }
 
 bool is_ready() { return mesh_ready; }

@@ -193,10 +193,13 @@ static void ui_task_fn(void* param) {
         // No full-screen invalidation — LVGL tracks dirty areas automatically.
         // Only widgets whose text/state changes get redrawn + partial e-paper update.
         if (millis() > next_model_update) {
+            // I2C mutex protects Wire access (battery, RTC) from epdiy raw I2C
+            if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
             model::update_clock();
             model::update_gps();
             model::update_battery();
             model::update_mesh();
+            if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
             ui::statusbar::update_now();
             ui::screen::home::update();
             next_model_update = millis() + 2000;
@@ -204,9 +207,11 @@ static void ui_task_fn(void* param) {
 
         // Lock screen: update every 60 seconds
         if (ui::screen_mgr::top_id() == SCREEN_LOCK && millis() > next_lock_update) {
+            if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
             model::update_clock();
             model::update_battery();
             model::update_mesh();
+            if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
             ui::screen::lock::update();
             next_lock_update = millis() + 60000;
         }
@@ -357,8 +362,8 @@ void start(int core) {
     lv_task_handler();
     Serial.println("UI: starting task...");
 
-    // Start task pinned to core
-    xTaskCreatePinnedToCore(ui_task_fn, "ui", 1024 * 32, NULL, 5, NULL, core);
+    // Start UI task (no core pinning — let FreeRTOS schedule)
+    xTaskCreate(ui_task_fn, "ui", 1024 * 32, NULL, 5, NULL);
 }
 
 } // namespace ui::task

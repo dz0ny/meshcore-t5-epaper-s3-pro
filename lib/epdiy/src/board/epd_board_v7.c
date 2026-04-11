@@ -214,8 +214,20 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t *
 
     esp_err_t err = pca9555_set_value(config_reg.port, value, 1);
     if (err != ESP_OK) {
-      ESP_LOGE("epdiy", "pca9555_set_value failed: 0x%x, retrying", err);
-      vTaskDelay(1);
+      ESP_LOGE("epdiy", "pca9555_set_value failed: 0x%x, reinstalling I2C driver", err);
+      i2c_driver_delete(config_reg.port);
+      i2c_config_t recover_conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = CFG_SDA,
+        .scl_io_num = CFG_SCL,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master = { .clk_speed = 100000 },
+        .clk_flags = 0,
+      };
+      i2c_param_config(config_reg.port, &recover_conf);
+      i2c_driver_install(config_reg.port, I2C_MODE_MASTER, 0, 0, 0);
+      vTaskDelay(2);
       pca9555_set_value(config_reg.port, value, 1);
     }
   }
@@ -245,8 +257,20 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
 
   esp_err_t err = tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F);
   if (err != ESP_OK) {
-    ESP_LOGE("epdiy", "tps_write_register failed: 0x%x, retrying", err);
-    vTaskDelay(1);
+    ESP_LOGE("epdiy", "tps_write_register failed: 0x%x, reinstalling I2C driver", err);
+    i2c_driver_delete(config_reg.port);
+    i2c_config_t recover_conf = {
+      .mode = I2C_MODE_MASTER,
+      .sda_io_num = CFG_SDA,
+      .scl_io_num = CFG_SCL,
+      .sda_pullup_en = GPIO_PULLUP_ENABLE,
+      .scl_pullup_en = GPIO_PULLUP_ENABLE,
+      .master = { .clk_speed = 100000 },
+      .clk_flags = 0,
+    };
+    i2c_param_config(config_reg.port, &recover_conf);
+    i2c_driver_install(config_reg.port, I2C_MODE_MASTER, 0, 0, 0);
+    vTaskDelay(2);
     tps_write_register(config_reg.port, TPS_REG_ENABLE, 0x3F);
   }
 

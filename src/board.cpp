@@ -133,6 +133,7 @@ void init() {
     Serial.begin(115200);
     SPI.begin(BOARD_SPI_SCLK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
     Wire.begin(BOARD_SDA, BOARD_SCL);
+    Wire.setTimeOut(50);  // 50ms timeout (default 50ms, but explicit)
     pinMode(BOARD_BL_EN, OUTPUT);
 
     nsv_param_init();
