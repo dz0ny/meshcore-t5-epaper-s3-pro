@@ -40,34 +40,8 @@ void io_extend_set_config(uint8_t port, uint8_t mask)
 
 void io_extend_lora_gps_power_on(bool en)
 {
-    uint8_t io_val0 = pca9555_read_input(BOARD_I2C_PORT, 0);
-    uint8_t io_val1 = pca9555_read_input(BOARD_I2C_PORT, 1);
-
-    uint8_t io_wr0 = pca9555_read_write(BOARD_I2C_PORT, 0);
-    uint8_t io_in0 = pca9555_read_inversion(BOARD_I2C_PORT, 0);
-    uint8_t io_co0 = pca9555_read_config(BOARD_I2C_PORT, 0);
-
-    uint8_t io_wr1 = pca9555_read_write(BOARD_I2C_PORT, 1);
-    uint8_t io_in1 = pca9555_read_inversion(BOARD_I2C_PORT, 1);
-    uint8_t io_co1 = pca9555_read_config(BOARD_I2C_PORT, 1);
-
-    // printf("io_extend_0 : 0x%x\n", io_val0);
-    // printf("io_extend_1 : 0x%x\n", io_val1);
-
-    // printf("io_wr0 : 0x%x\n", io_wr0);
-    // printf("io_wr1 : 0x%x\n", io_wr1);
-
-    // printf("io_in0 : 0x%x\n", io_in0);
-    // printf("io_in1 : 0x%x\n", io_in1);
-
-    // printf("io_co0 : 0x%x\n", io_co0);
-    // printf("io_co1 : 0x%x\n", io_co1);
-    // if(en) {
-    //     value = io_val | PCA_PIN_P00;
-    // } else {
-    //     value = io_val & ~(PCA_PIN_P00);
-    // }
-    // pca9555_set_value(BOARD_I2C_PORT, value, 0);
+    (void)en;
+    // IO expander power control is handled by epdiy board driver
 }
 
 bool button_read(void)
