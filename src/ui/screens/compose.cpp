@@ -28,7 +28,7 @@ struct PickEntry {
     char name[32];
     bool is_channel;
 };
-static PickEntry pick_entries[65];
+static PickEntry pick_entries[MAX_CONTACTS + MAX_GROUP_CHANNELS + 1];  // contacts + channels + public
 static int pick_count = 0;
 
 void set_recipient(const char* name) {

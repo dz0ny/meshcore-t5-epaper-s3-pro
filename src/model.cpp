@@ -1,3 +1,6 @@
+#include <esp_heap_caps.h>
+#include <time.h>
+#include <sys/time.h>
 #include "model.h"
 #include "board.h"
 #include "mesh/mesh_bridge.h"
@@ -31,7 +34,19 @@ void update_gps() {
         gps.status_text = "No Module";
     }
 
-    // GPS time is synced to RTC by MicroNMEALocationProvider automatically
+    // MicroNMEALocationProvider syncs ESP32 system clock via rtc_clock.setCurrentTime().
+    // Also sync hardware RTC so it persists across reboots.
+    static bool hw_rtc_synced = false;
+    if (gps.has_fix && !hw_rtc_synced && board::peri_status[E_PERI_RTC]) {
+        time_t now;
+        time(&now);
+        struct tm utc;
+        gmtime_r(&now, &utc);
+        board::rtc.setDateTime(utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
+                               utc.tm_hour, utc.tm_min, utc.tm_sec);
+        hw_rtc_synced = true;
+        Serial.println("GPS: hardware RTC synced");
+    }
 }
 
 void update_battery() {
@@ -75,17 +90,24 @@ void update_mesh() {
 }
 
 void update_clock() {
-    // RTC is always UTC
-    uint8_t utc_h, utc_m, utc_s;
-    board::rtc_get_time(&utc_h, &utc_m, &utc_s);
-    board::rtc_get_date(&clock.year, &clock.month, &clock.day, nullptr);
+    // Read UTC from ESP32 system clock (seeded from hardware RTC at boot, updated by GPS)
+    time_t now;
+    time(&now);
+    struct tm utc;
+    gmtime_r(&now, &utc);
+
+    uint8_t utc_h = utc.tm_hour;
+    uint8_t utc_m = utc.tm_min;
+    uint8_t utc_s = utc.tm_sec;
+    clock.year  = utc.tm_year + 1900 - 2000;  // 2-digit year
+    clock.month = utc.tm_mon + 1;
+    clock.day   = utc.tm_mday;
 
     // Auto timezone from GPS coordinates, fallback to MeshCore advertised location.
     double lat = gps.lat;
     double lng = gps.lng;
     bool has_loc = gps.has_fix && (lat != 0.0 || lng != 0.0);
 
-    // Fallback: use MeshCore advertised location if no GPS fix
     if (!has_loc && mesh.node_name) {
         lat = mesh::task::get_node_lat();
         lng = mesh::task::get_node_lon();
@@ -93,15 +115,13 @@ void update_clock() {
     }
 
     if (has_loc) {
-
         // Europe special cases
         if (lat > 35 && lat < 72 && lng > -12 && lng < 40) {
             if (lng < 0)            clock.tz_offset_hours = 0;  // UK, Portugal, Iceland
-            else if (lng < 16)      clock.tz_offset_hours = 1;  // CET: France, Germany, Italy, Spain, Slovenia, Croatia
-            else if (lng < 30)      clock.tz_offset_hours = 2;  // EET: Finland, Greece, Romania, Turkey
+            else if (lng < 16)      clock.tz_offset_hours = 1;  // CET
+            else if (lng < 30)      clock.tz_offset_hours = 2;  // EET
             else                    clock.tz_offset_hours = 3;  // Moscow
         }
-        // Americas
         else if (lng < -52) {
             if (lng < -120)         clock.tz_offset_hours = -8; // PST
             else if (lng < -105)    clock.tz_offset_hours = -7; // MST
@@ -109,18 +129,16 @@ void update_clock() {
             else if (lng < -70)     clock.tz_offset_hours = -5; // EST
             else                    clock.tz_offset_hours = -4; // AST
         }
-        // Asia/Pacific
         else if (lng > 40) {
-            if (lng < 60)           clock.tz_offset_hours = 4;  // Gulf
-            else if (lng < 82)      clock.tz_offset_hours = 5;  // Pakistan/India
-            else if (lng < 98)      clock.tz_offset_hours = 6;  // Bangladesh
-            else if (lng < 105)     clock.tz_offset_hours = 7;  // Thailand
-            else if (lng < 120)     clock.tz_offset_hours = 8;  // China
-            else if (lng < 135)     clock.tz_offset_hours = 9;  // Japan/Korea
-            else if (lng < 150)     clock.tz_offset_hours = 10; // Australia East
-            else                    clock.tz_offset_hours = 12; // NZ
+            if (lng < 60)           clock.tz_offset_hours = 4;
+            else if (lng < 82)      clock.tz_offset_hours = 5;
+            else if (lng < 98)      clock.tz_offset_hours = 6;
+            else if (lng < 105)     clock.tz_offset_hours = 7;
+            else if (lng < 120)     clock.tz_offset_hours = 8;
+            else if (lng < 135)     clock.tz_offset_hours = 9;
+            else if (lng < 150)     clock.tz_offset_hours = 10;
+            else                    clock.tz_offset_hours = 12;
         }
-        // Fallback: longitude / 15
         else {
             clock.tz_offset_hours = (int8_t)(lng / 15.0);
         }
@@ -131,31 +149,18 @@ void update_clock() {
     if (has_loc && clock.year > 0) {
         uint8_t m = clock.month;
         uint8_t d = clock.day;
-        // European DST: last Sunday of March → last Sunday of October
-        // Simplified: April-September always DST, March if d>=25, October if d<25
         if (lat > 35 && lat < 72 && lng > -12 && lng < 40) {
-            if (m >= 4 && m <= 9) {
-                dst = 1;  // April through September: always DST
-            } else if (m == 3 && d >= 25) {
-                dst = 1;  // Late March
-            } else if (m == 10 && d < 25) {
-                dst = 1;  // Early October
-            }
+            if (m >= 4 && m <= 9) dst = 1;
+            else if (m == 3 && d >= 25) dst = 1;
+            else if (m == 10 && d < 25) dst = 1;
         }
-        // US DST: second Sunday of March → first Sunday of November
-        // Simplified: April-October always DST, March if d>=8, November if d<8
         else if (lng < -52 && lng > -130) {
-            if (m >= 4 && m <= 10) {
-                dst = 1;
-            } else if (m == 3 && d >= 8) {
-                dst = 1;
-            } else if (m == 11 && d < 8) {
-                dst = 1;
-            }
+            if (m >= 4 && m <= 10) dst = 1;
+            else if (m == 3 && d >= 8) dst = 1;
+            else if (m == 11 && d < 8) dst = 1;
         }
     }
 
-    // Apply timezone + DST to get local time
     int local_h = utc_h + clock.tz_offset_hours + dst;
     if (local_h < 0) local_h += 24;
     if (local_h >= 24) local_h -= 24;
@@ -163,20 +168,17 @@ void update_clock() {
     clock.hour = (uint8_t)local_h;
     clock.minute = utc_m;
     clock.second = utc_s;
-
-    // Sync MeshCore's software RTC from hardware RTC (runs on Core 1, no I2C conflict)
-    // Construct approximate UTC unix timestamp for mesh timestamps
-    if (clock.year > 0) {
-        // Rough unix time: days since 2000 * 86400 + time
-        uint32_t days = (uint32_t)(clock.year + 2000 - 1970) * 365 + clock.month * 30 + clock.day;
-        uint32_t utc_epoch = days * 86400 + utc_h * 3600 + utc_m * 60 + utc_s;
-        rtc_clock.setCurrentTime(utc_epoch);
-    }
 }
 
-// Message history
-StoredMessage messages[MAX_STORED_MESSAGES] = {};
+// Message history — allocated in PSRAM to save DRAM
+StoredMessage* messages = nullptr;
 int message_count = 0;
+
+void init_messages() {
+    if (!messages) {
+        messages = (StoredMessage*)heap_caps_calloc(MAX_STORED_MESSAGES, sizeof(StoredMessage), MALLOC_CAP_SPIRAM);
+    }
+}
 
 void delete_message(int idx) {
     if (idx < 0 || idx >= message_count) return;

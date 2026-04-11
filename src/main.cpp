@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <WiFi.h>
+#include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "board.h"
@@ -12,9 +12,9 @@ static void mesh_init_task(void* param) {
 }
 
 void setup() {
-    // Disable WiFi completely to save power
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
+    // Disable WiFi at driver level to free DRAM (~40KB)
+    esp_wifi_stop();
+    esp_wifi_deinit();
     // Initialize all hardware (serial, SPI, I2C, screen, touch, PMU, GPS, SD)
     board::init();
 
@@ -29,5 +29,5 @@ void setup() {
 
 void loop() {
     // Everything runs in FreeRTOS tasks.
-    delay(1000);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 }

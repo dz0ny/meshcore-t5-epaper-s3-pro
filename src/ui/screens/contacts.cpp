@@ -28,7 +28,7 @@ struct DisplayContact {
     int32_t gps_lat;
     int32_t gps_lon;
 };
-static DisplayContact displayed[100];
+static DisplayContact displayed[MAX_CONTACTS];
 static int display_count = 0;
 
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }

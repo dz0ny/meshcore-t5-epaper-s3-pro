@@ -91,9 +91,10 @@ struct StoredMessage {
 };
 
 #define MAX_STORED_MESSAGES 50
-extern StoredMessage messages[MAX_STORED_MESSAGES];
+extern StoredMessage* messages;
 extern int message_count;
 
+void init_messages();  // call once at startup to allocate PSRAM
 void touch_activity();  // call on any user interaction
 bool should_sleep();    // check if timeout expired
 void delete_message(int idx);  // remove message at index, shift remaining

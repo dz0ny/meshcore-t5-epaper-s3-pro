@@ -1,4 +1,5 @@
 #include "board.h"
+#include "model.h"
 #include "nvs_param.h"
 #include "mesh/companion/target.h"
 
@@ -132,17 +133,37 @@ void init() {
 
     Serial.begin(115200);
     SPI.begin(BOARD_SPI_SCLK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
-    Wire.begin(BOARD_SDA, BOARD_SCL);
-    Wire.setTimeOut(50);  // 50ms timeout (default 50ms, but explicit)
     pinMode(BOARD_BL_EN, OUTPUT);
 
     nsv_param_init();
+    model::init_messages();
+
+    // I2C first — epdiy reuses the existing driver
+    Wire.begin(BOARD_SDA, BOARD_SCL);
+    Wire.setTimeOut(50);
 
     peri_status[E_PERI_BQ27220] = detail::bq27220_init();
     peri_status[E_PERI_INK_POWER] = detail::screen_init();
     io_extend_lora_gps_power_on(true);
     peri_status[E_PERI_BQ25896] = detail::bq25896_init();
     peri_status[E_PERI_RTC] = detail::rtc_init();
+
+    // Seed ESP32 system clock from hardware RTC (one-time I2C read)
+    if (peri_status[E_PERI_RTC]) {
+        RTC_DateTime dt = rtc.getDateTime();
+        struct tm t = {};
+        t.tm_year = dt.year - 1900;
+        t.tm_mon  = dt.month - 1;
+        t.tm_mday = dt.day;
+        t.tm_hour = dt.hour;
+        t.tm_min  = dt.minute;
+        t.tm_sec  = dt.second;
+        struct timeval tv = { .tv_sec = mktime(&t), .tv_usec = 0 };
+        settimeofday(&tv, NULL);
+        Serial.printf("System clock seeded from RTC: %04d-%02d-%02d %02d:%02d:%02d\n",
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second);
+    }
+
     peri_status[E_PERI_TOUCH] = detail::touch_init();
     peri_status[E_PERI_SD_CARD] = detail::sd_init();
     peri_status[E_PERI_GPS] = detail::gps_init();
@@ -150,13 +171,13 @@ void init() {
     // I2C mutex for cross-core safety (epdiy on Core 1, mesh/RTC on Core 0)
     i2c_mutex = xSemaphoreCreateMutex();
 
-    // Init MeshCore RTC clock before tasks start (avoids I2C race with epdiy)
-    rtc_init();
-
     Serial.println("Board init complete");
     for (int i = 0; i < E_PERI_MAX; i++) {
         Serial.printf("  peri[%d] = %s\n", i, peri_status[i] ? "OK" : "FAIL");
     }
+    Serial.printf("Free DRAM: %u, Free PSRAM: %u\n",
+        heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+        heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 }
 
 // ---------- Battery ----------

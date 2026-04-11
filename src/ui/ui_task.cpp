@@ -1,7 +1,9 @@
 #include <Arduino.h>
 #include <esp_sleep.h>
+#include <esp_heap_caps.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <OneButton.h>
 #include "lvgl.h"
 
 #include "ui_task.h"
@@ -68,7 +70,7 @@ static void show_power_off_splash() {
     lv_obj_align(hint, LV_ALIGN_CENTER, 0, 120);
 
     lv_timer_handler();
-    delay(3000);
+    vTaskDelay(pdMS_TO_TICKS(3000));
 }
 
 // Cut battery power via BQ25896 BATFET_DIS (PPM.shutdown)
@@ -111,17 +113,17 @@ void do_power_off() {
 
     Serial.println("SHUTDOWN: attempting battery FET shutdown (PPM.shutdown)");
     Serial.flush();
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
     shutdown_battery();
 
     Serial.println("SHUTDOWN: battery shutdown sent, waiting 1s...");
     Serial.flush();
-    delay(1000);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     // If we get here, USB is connected — battery shutdown had no effect
     Serial.println("SHUTDOWN: still alive — USB powered, entering deep sleep");
     Serial.flush();
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BOARD_BOOT_BTN, 0);
     esp_deep_sleep_start();
@@ -133,13 +135,40 @@ static unsigned long next_model_update = 0;
 static unsigned long next_lock_update = 0;
 static unsigned long backlight_off_at = 0;
 
-static bool boot_btn_last = true;   // GPIO 0 is active-low, idle=high
-static uint32_t boot_press_start = 0;
-static const uint32_t LONG_PRESS_MS = 2000;
+static OneButton boot_btn(BOARD_BOOT_BTN, true, true);  // active-low, internal pull-up
+static OneButton pca_btn;  // PCA9535 IO expander button (PC12)
+
+static void on_boot_click() {
+    model::touch_activity();
+    if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
+        ui::statusbar::show();
+        ui::screen_mgr::switch_to(SCREEN_HOME, false);
+    } else {
+        ui::screen::lock::show();
+    }
+}
+
+static void on_boot_long_press() {
+    do_power_off();
+}
+
+static void on_pca_click() {
+    model::touch_activity();
+    if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
+        ui::statusbar::show();
+    }
+    ui::screen_mgr::switch_to(SCREEN_HOME, false);
+}
 
 static void ui_task_fn(void* param) {
-    // Setup BOOT button as input (GPIO 0)
-    pinMode(BOARD_BOOT_BTN, INPUT_PULLUP);
+    // BOOT button (GPIO 0): short press toggles lock, long press powers off
+    boot_btn.setPressTicks(2000);
+    boot_btn.attachClick(on_boot_click);
+    boot_btn.attachLongPressStart(on_boot_long_press);
+
+    // PCA9535 IO expander button (PC12): acts as home button
+    pca_btn.setup(0, true, false);  // pin unused, active-low, no internal pull-up
+    pca_btn.attachClick(on_pca_click);
 
     while (1) {
         // Home button (GT911 touch center)
@@ -152,29 +181,9 @@ static void ui_task_fn(void* param) {
             ui::screen_mgr::switch_to(SCREEN_HOME, false);
         }
 
-        // BOOT button (GPIO 0)
-        // Short press: toggle lock screen
-        // Long press (>2s): power off
-        bool boot_now = digitalRead(BOARD_BOOT_BTN) == LOW;
-        if (boot_now && !boot_btn_last) {
-            boot_press_start = millis();
-        } else if (boot_now && boot_btn_last && boot_press_start > 0) {
-            if ((millis() - boot_press_start) >= LONG_PRESS_MS) {
-                do_power_off();
-            }
-        } else if (!boot_now && boot_btn_last && boot_press_start > 0) {
-            if ((millis() - boot_press_start) < LONG_PRESS_MS) {
-                model::touch_activity();
-                if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
-                    ui::statusbar::show();
-                    ui::screen_mgr::switch_to(SCREEN_HOME, false);
-                } else {
-                    ui::screen::lock::show();
-                }
-            }
-            boot_press_start = 0;
-        }
-        boot_btn_last = boot_now;
+        // Tick button state machines
+        boot_btn.tick();
+        pca_btn.tick(!button_read());  // button_read() returns true when pressed, OneButton expects pin level
 
 
         // Check sleep timeout — enter lock screen after inactivity
@@ -182,9 +191,11 @@ static void ui_task_fn(void* param) {
             ui::screen::lock::show();
         }
 
-        // Track if we're on lock screen before LVGL processes touch events
+        // Single I2C touch read per loop — cache to avoid hammering the bus
+        bool touch_pressed = board::peri_status[E_PERI_TOUCH] && board::touch.isPressed();
+
         bool was_locked = (ui::screen_mgr::top_id() == SCREEN_LOCK);
-        bool lock_touched = was_locked && board::touch.isPressed();
+        bool lock_touched = was_locked && touch_pressed;
         if (lock_touched) {
             model::touch_activity();
         }
@@ -193,31 +204,26 @@ static void ui_task_fn(void* param) {
         // No full-screen invalidation — LVGL tracks dirty areas automatically.
         // Only widgets whose text/state changes get redrawn + partial e-paper update.
         if (millis() > next_model_update) {
-            // I2C mutex protects Wire access (battery, RTC) from epdiy raw I2C
-            if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
             model::update_clock();
             model::update_gps();
             model::update_battery();
             model::update_mesh();
-            if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
             ui::statusbar::update_now();
             ui::screen::home::update();
-            next_model_update = millis() + 2000;
+            next_model_update = millis() + 10000;  // 10s — e-ink doesn't need fast updates
         }
 
         // Lock screen: update every 60 seconds
         if (ui::screen_mgr::top_id() == SCREEN_LOCK && millis() > next_lock_update) {
-            if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
             model::update_clock();
             model::update_battery();
             model::update_mesh();
-            if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
             ui::screen::lock::update();
             next_lock_update = millis() + 60000;
         }
 
         // Reset activity on any touch + auto backlight at night
-        if (board::touch.isPressed()) {
+        if (touch_pressed) {
             model::touch_activity();
             // Auto-backlight: turn on at night if in Auto mode
             if (ui::port::is_backlight_auto()) {
@@ -306,7 +312,7 @@ void start(int core) {
 
         // Wait for mesh task to finish init (identity/PKI, radio, contacts)
         while (!mesh::task::is_ready()) {
-            delay(50);
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
 
         lv_label_set_text(status, "Starting mesh...");
@@ -323,7 +329,7 @@ void start(int core) {
 
         lv_label_set_text(status, "Ready");
         lv_timer_handler();
-        delay(500);
+        vTaskDelay(pdMS_TO_TICKS(500));
 
         lv_obj_delete(splash);
     }
@@ -362,8 +368,8 @@ void start(int core) {
     lv_task_handler();
     Serial.println("UI: starting task...");
 
-    // Start UI task (no core pinning — let FreeRTOS schedule)
-    xTaskCreate(ui_task_fn, "ui", 1024 * 32, NULL, 5, NULL);
+    // Pin UI to core 1
+    xTaskCreatePinnedToCore(ui_task_fn, "ui", 1024 * 16, NULL, 5, NULL, 1);
 }
 
 } // namespace ui::task

@@ -38,7 +38,7 @@ struct MapContact {
     lv_obj_t* dot;
     lv_obj_t* name_lbl;
 };
-static MapContact contacts[64];
+static MapContact contacts[32];
 static int contact_count = 0;
 
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }

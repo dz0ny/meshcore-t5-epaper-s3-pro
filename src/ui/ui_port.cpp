@@ -86,9 +86,6 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         .height = (int)lv_area_get_height(area),
     };
 
-    // Protect I2C bus — epdiy uses raw I2C for PCA9555/TPS, must not overlap with Wire
-    if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
-
     if (refresh_mode == UI_REFRESH_MODE_FAST) {
         epd_poweron();
         checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), update_rect));
@@ -107,23 +104,27 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         epd_poweroff();
     }
 
-    if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
-
     lv_display_flush_ready(disp);
 }
 
 static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     static int16_t x = 0, y = 0;
-    // Protect I2C — GT911 touch uses Wire
-    if (board::i2c_mutex) xSemaphoreTake(board::i2c_mutex, portMAX_DELAY);
-    if (board::touch.isPressed() && touch_enabled) {
-        if (board::touch.getPoint(&x, &y, 1)) {
-            data->state = LV_INDEV_STATE_PRESSED;
+    static lv_indev_state_t last_state = LV_INDEV_STATE_RELEASED;
+    static uint32_t next_poll = 0;
+
+    // Throttle I2C touch reads to ~10Hz — e-ink doesn't need faster
+    uint32_t now = millis();
+    if (now >= next_poll) {
+        next_poll = now + 100;
+        if (board::touch.isPressed() && touch_enabled) {
+            if (board::touch.getPoint(&x, &y, 1)) {
+                last_state = LV_INDEV_STATE_PRESSED;
+            }
+        } else {
+            last_state = LV_INDEV_STATE_RELEASED;
         }
-    } else {
-        data->state = LV_INDEV_STATE_RELEASED;
     }
-    if (board::i2c_mutex) xSemaphoreGive(board::i2c_mutex);
+    data->state = last_state;
     data->point.x = x;
     data->point.y = y;
 }
@@ -145,12 +146,11 @@ void init() {
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
 
     // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
-    // Double buffered in PSRAM — CPU renders to buf2 while buf1 flushes to e-paper.
+    // Single buffer — e-paper is slow, no benefit from double buffering.
     size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
-    void *buf2 = ps_calloc(1, buf_size);
     prev_frame = (uint8_t *)ps_calloc(1, buf_size);  // for change detection
-    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_buffers(disp, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_heap_caps.h>
 #include <Mesh.h>
 #include <SPIFFS.h>
 #include <SD.h>
@@ -73,10 +74,10 @@ static void mesh_task_fn(void* param) {
                 last_activity_tick = millis();  // avoid re-checking immediately
             }
 
-            rtc_clock.tick();
+            // rtc_clock.tick() is a no-op for ESP32RTCClock (uses system time())
             xSemaphoreGive(mesh_mutex);
         }
-        delay(1);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -102,10 +103,12 @@ void start(int core) {
 
     // SPIFFS for identity/prefs, SD for contacts/channels (if available)
     if (board::peri_status[E_PERI_SD_CARD]) {
-        store = new DataStore(SPIFFS, SD, rtc_clock);
+        void* sm = heap_caps_malloc(sizeof(DataStore), MALLOC_CAP_SPIRAM);
+        store = new (sm) DataStore(SPIFFS, SD, rtc_clock);
         Serial.println("MESH: using SD for contacts/channels");
     } else {
-        store = new DataStore(SPIFFS, rtc_clock);
+        void* sm = heap_caps_malloc(sizeof(DataStore), MALLOC_CAP_SPIRAM);
+        store = new (sm) DataStore(SPIFFS, rtc_clock);
         Serial.println("MESH: using SPIFFS only (no SD)");
     }
     store->begin();
@@ -115,8 +118,9 @@ void start(int core) {
         sd_log::load();
     }
 
-    // Create mesh
-    the_mesh_ptr = new MyMesh(radio_driver, mc_rng, rtc_clock, mc_tables, *store, &bridge_ui);
+    // Create mesh — allocate in PSRAM to save DRAM (MyMesh contains contacts[] array ~16KB)
+    void* mesh_mem = heap_caps_malloc(sizeof(MyMesh), MALLOC_CAP_SPIRAM);
+    the_mesh_ptr = new (mesh_mem) MyMesh(radio_driver, mc_rng, rtc_clock, mc_tables, *store, &bridge_ui);
     the_mesh_ptr->begin(false); // no display (we handle UI separately)
 
     // Disable auto-add — contacts are added explicitly from Discovery screen
@@ -152,7 +156,8 @@ void start(int core) {
 #endif
 
     mesh_ready = true;
-    xTaskCreate(mesh_task_fn, "mesh", 1024 * 12, NULL, 5, NULL);
+    // Pin mesh to core 0
+    xTaskCreatePinnedToCore(mesh_task_fn, "mesh", 1024 * 8, NULL, 5, NULL, 0);
 }
 
 bool is_ready() { return mesh_ready; }
@@ -355,13 +360,13 @@ void enter_sleep(uint32_t wake_secs) {
         // Wait for any active radio transaction to finish
         int wait = 0;
         while (radio_driver.isReceiving() && wait < 100) {
-            delay(10);
+            vTaskDelay(pdMS_TO_TICKS(10));
             wait++;
         }
 
         Serial.println("MESH: entering light sleep");
         Serial.flush();
-        delay(50);
+        vTaskDelay(pdMS_TO_TICKS(50));
 
         // Configure wake on LoRa DIO1 (incoming packet) + touch INT
         esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);

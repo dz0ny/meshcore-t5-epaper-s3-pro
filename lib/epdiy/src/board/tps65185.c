@@ -10,41 +10,31 @@ static const int EPDIY_TPS_ADDR = 0x68;
 
 static uint8_t i2c_master_read_slave(i2c_port_t i2c_num, int reg)
 {
-	uint8_t r_data[1] = {0};
+	uint8_t r_data[1];
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    if (cmd == NULL) {
-        ESP_LOGE("epdiy", "TPS I2C: insufficient memory");
-        return 0;
-    }
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, ( EPDIY_TPS_ADDR << 1 ) | I2C_MASTER_WRITE, true);
 	i2c_master_write_byte(cmd, reg, true);
 	i2c_master_stop(cmd);
 
-    esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS);
+    ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS));
 	i2c_cmd_link_delete(cmd);
-    if (ret != ESP_OK) {
-        ESP_LOGE("epdiy", "TPS I2C read phase 1 failed: 0x%x", ret);
-        return 0;
-    }
 
 	cmd = i2c_cmd_link_create();
-    if (cmd == NULL) {
-        ESP_LOGE("epdiy", "TPS I2C: insufficient memory");
-        return 0;
-    }
     i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, ( EPDIY_TPS_ADDR << 1 ) | I2C_MASTER_READ, true);
+    /*
+	if (size > 1) {
+        i2c_master_read(cmd, data_rd, size - 1, I2C_MASTER_ACK);
+    }
+    */
     i2c_master_read_byte(cmd, r_data, I2C_MASTER_NACK);
     i2c_master_stop(cmd);
 
-	ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS);
+	ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS));
     i2c_cmd_link_delete(cmd);
-    if (ret != ESP_OK) {
-        ESP_LOGE("epdiy", "TPS I2C read phase 2 failed: 0x%x", ret);
-        return 0;
-    }
+
 
     return r_data[0];
 }
@@ -52,10 +42,6 @@ static uint8_t i2c_master_read_slave(i2c_port_t i2c_num, int reg)
 static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t ctrl,  uint8_t* data_wr, size_t size)
 {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    if (cmd == NULL) {
-        ESP_LOGE("epdiy", "TPS I2C: insufficient memory");
-        return ESP_ERR_NO_MEM;
-    }
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, ( EPDIY_TPS_ADDR  << 1 ) | I2C_MASTER_WRITE, true);
     i2c_master_write_byte(cmd, ctrl, true);
@@ -69,8 +55,12 @@ static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t ctrl,  uint8
 
 esp_err_t tps_write_register(i2c_port_t port, int reg, uint8_t value) {
 	uint8_t w_data[1];
-    w_data[0] = value;
-    return i2c_master_write_slave(port, reg, w_data, 1);
+    esp_err_t err;
+
+	w_data[0] = value;
+
+    err = i2c_master_write_slave(port, reg, w_data, 1);
+    return err;
 }
 
 
@@ -80,8 +70,8 @@ uint8_t tps_read_register(i2c_port_t i2c_num, int reg) {
 
 void tps_set_vcom(i2c_port_t i2c_num, unsigned vcom_mV) {
     unsigned val = vcom_mV / 10;
-    tps_write_register(i2c_num, 4, (val & 0x100) >> 8);
-    tps_write_register(i2c_num, 3, val & 0xFF);
+    ESP_ERROR_CHECK(tps_write_register(i2c_num, 4, (val & 0x100) >> 8));
+    ESP_ERROR_CHECK(tps_write_register(i2c_num, 3, val & 0xFF));
 }
 
 int8_t tps_read_thermistor(i2c_port_t i2c_num) {
@@ -89,10 +79,12 @@ int8_t tps_read_thermistor(i2c_port_t i2c_num) {
     int tries = 0;
     while (true) {
         uint8_t val = tps_read_register(i2c_num, TPS_REG_TMST1);
+        // temperature conversion done
         if (val & 0x20) {
             break;
         }
         tries++;
+
         if (tries >= 100) {
             ESP_LOGE("epdiy", "thermistor read timeout!");
             break;

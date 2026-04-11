@@ -50,7 +50,7 @@ static void on_factory_reset(lv_event_t* e) {
     SD.remove("/channels2");
 
     Serial.println("Factory reset — rebooting...");
-    delay(500);
+    vTaskDelay(pdMS_TO_TICKS(500));
     ESP.restart();
 }
 
