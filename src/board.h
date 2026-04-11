@@ -15,8 +15,6 @@
 #define XPOWERS_CHIP_BQ25896
 #include <XPowersLib.h>
 #include "board/pca9555.h"
-#include <TinyGPS++.h>
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 #include <SPIFFS.h>
 
 // Software / hardware version
@@ -105,8 +103,6 @@ extern XPowersPPM ppm;
 extern BQ27220 bq27220;
 extern TouchDrvGT911 touch;
 extern SensorPCF8563 rtc;
-extern TinyGPSPlus gps;         // NMEA parser (used by both L76K and u-blox)
-extern SFE_UBLOX_GNSS ublox;   // u-blox UBX protocol handler
 extern SX1262 lora_radio;
 
 // E-paper state

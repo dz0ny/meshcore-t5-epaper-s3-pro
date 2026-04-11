@@ -10,7 +10,6 @@ XPowersPPM ppm;
 BQ27220 bq27220;
 TouchDrvGT911 touch;
 SensorPCF8563 rtc;
-TinyGPSPlus gps;
 
 // E-paper
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
