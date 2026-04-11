@@ -14,15 +14,10 @@ struct GPS {
     double lat;
     double lng;
     uint32_t satellites;
-    double speed_kmh;
     double altitude_m;
-    double hdop;
-    double course_deg;
-    uint32_t chars_processed;
-    uint8_t hour, minute, second;
     bool has_fix;
     bool module_ok;
-    // "No Module", "No Data", "Searching...", "Fix OK"
+    // "No Module", "Searching...", "Fix OK"
     const char* status_text;
 };
 

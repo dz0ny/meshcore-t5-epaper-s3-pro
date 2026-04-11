@@ -289,6 +289,8 @@ void set_gps_enabled(bool enabled) {
     if (!the_mesh_ptr) return;
     the_mesh_ptr->getNodePrefs()->gps_enabled = enabled ? 1 : 0;
     the_mesh_ptr->savePrefs();
+    // Also toggle the sensor manager GPS
+    sensors.setSettingValue("gps", enabled ? "1" : "0");
 }
 
 bool get_gps_enabled() {
