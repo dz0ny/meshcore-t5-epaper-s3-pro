@@ -1,6 +1,7 @@
 #include "ui_port.h"
 #include "../board.h"
 #include <epdiy.h>
+#include <Wire.h>
 
 namespace ui::port {
 
