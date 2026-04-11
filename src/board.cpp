@@ -114,6 +114,29 @@ bool gps_init() {
 
 } // namespace detail
 
+void seed_clock_from_rtc() {
+    if (!peri_status[E_PERI_RTC]) return;
+    RTC_DateTime dt = rtc.getDateTime();
+    Serial.printf("RTC raw: %04d-%02d-%02d %02d:%02d:%02d\n",
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second);
+    if (dt.year >= 2020 && dt.year <= 2099) {
+        setenv("TZ", "UTC0", 1);
+        tzset();
+        struct tm t = {};
+        t.tm_year = dt.year - 1900;
+        t.tm_mon  = dt.month - 1;
+        t.tm_mday = dt.day;
+        t.tm_hour = dt.hour;
+        t.tm_min  = dt.minute;
+        t.tm_sec  = dt.second;
+        t.tm_isdst = 0;
+        time_t epoch = mktime(&t);
+        struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
+        settimeofday(&tv, NULL);
+        Serial.printf("System clock seeded: epoch=%ld\n", (long)epoch);
+    }
+}
+
 // ---------- Main init ----------
 
 void init() {
@@ -148,21 +171,7 @@ void init() {
     peri_status[E_PERI_BQ25896] = detail::bq25896_init();
     peri_status[E_PERI_RTC] = detail::rtc_init();
 
-    // Seed ESP32 system clock from hardware RTC (one-time I2C read)
-    if (peri_status[E_PERI_RTC]) {
-        RTC_DateTime dt = rtc.getDateTime();
-        struct tm t = {};
-        t.tm_year = dt.year - 1900;
-        t.tm_mon  = dt.month - 1;
-        t.tm_mday = dt.day;
-        t.tm_hour = dt.hour;
-        t.tm_min  = dt.minute;
-        t.tm_sec  = dt.second;
-        struct timeval tv = { .tv_sec = mktime(&t), .tv_usec = 0 };
-        settimeofday(&tv, NULL);
-        Serial.printf("System clock seeded from RTC: %04d-%02d-%02d %02d:%02d:%02d\n",
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second);
-    }
+    seed_clock_from_rtc();
 
     peri_status[E_PERI_TOUCH] = detail::touch_init();
     peri_status[E_PERI_SD_CARD] = detail::sd_init();

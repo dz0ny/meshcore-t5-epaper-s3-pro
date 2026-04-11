@@ -1,8 +1,11 @@
+#include <Arduino.h>
 #include "settings.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../../board.h"
+
+extern void do_power_off();
 
 namespace ui::screen::settings {
 
@@ -14,26 +17,23 @@ static void on_gps(lv_event_t* e) { ui::screen_mgr::push(SCREEN_SET_GPS, true); 
 static void on_mesh(lv_event_t* e) { ui::screen_mgr::push(SCREEN_SET_MESH, true); }
 static void on_ble(lv_event_t* e) { ui::screen_mgr::push(SCREEN_SET_BLE, true); }
 static void on_storage(lv_event_t* e) { ui::screen_mgr::push(SCREEN_SET_STORAGE, true); }
+static void on_power_off(lv_event_t* e) { do_power_off(); }
+static void on_reboot(lv_event_t* e) { ESP.restart(); }
 
 static void create(lv_obj_t* parent) {
     scr = parent;
     ui::nav::back_button(parent, "Settings", on_back);
 
-    lv_obj_t* menu = lv_obj_create(parent);
-    lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);
-    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, 110);
-    lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(menu, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t* menu = ui::nav::scroll_list(parent);
 
     ui::nav::menu_item(menu, NULL, "Display", on_display, NULL);
     ui::nav::menu_item(menu, NULL, "Bluetooth", on_ble, NULL);
     ui::nav::menu_item(menu, NULL, "GPS", on_gps, NULL);
     ui::nav::menu_item(menu, NULL, "Mesh", on_mesh, NULL);
     ui::nav::menu_item(menu, NULL, "Storage", on_storage, NULL);
+
+    ui::nav::menu_item(menu, NULL, "Power Off", on_power_off, NULL);
+    ui::nav::menu_item(menu, NULL, "Reboot", on_reboot, NULL);
 
     // Version info at bottom
     lv_obj_t* ver = lv_label_create(menu);

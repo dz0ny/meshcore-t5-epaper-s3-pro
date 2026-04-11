@@ -13,7 +13,6 @@
 #include "components/statusbar.h"
 #include "../board.h"
 #include "../model.h"
-#include "../sd_log.h"
 #include "../mesh/mesh_task.h"
 #include "screens/home.h"
 #include "screens/contacts.h"
@@ -73,58 +72,19 @@ static void show_power_off_splash() {
     vTaskDelay(pdMS_TO_TICKS(3000));
 }
 
-// Cut battery power via BQ25896 BATFET_DIS (PPM.shutdown)
-// Only works on battery — no effect when USB connected
-// Wake by pressing PWR/QON button or connecting USB
-static void shutdown_battery() {
-    board::ppm.shutdown();
-}
-
 void do_power_off() {
-    Serial.println("SHUTDOWN: starting power off sequence");
-    Serial.flush();
-
     show_power_off_splash();
 
-    Serial.println("SHUTDOWN: flushing SD");
-    Serial.flush();
-    sd_log::flush();
+    // Force LVGL to render the splash and flush to e-paper
+    lv_timer_handler();
+    lv_refr_now(NULL);
 
-    Serial.println("SHUTDOWN: sleeping touch");
-    Serial.flush();
-    board::touch.sleep();
+    // Try battery FET shutdown first (instant off on battery power)
+    board::ppm.shutdown();
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    Serial.println("SHUTDOWN: pulling RST pins low");
-    Serial.flush();
-    digitalWrite(BOARD_TOUCH_RST, LOW);
-    digitalWrite(BOARD_LORA_RST, LOW);
-    gpio_hold_en((gpio_num_t)BOARD_TOUCH_RST);
-    gpio_hold_en((gpio_num_t)BOARD_LORA_RST);
-    gpio_deep_sleep_hold_en();
-
-    Serial.println("SHUTDOWN: disabling GPS/LoRa power");
-    Serial.flush();
-    io_extend_lora_gps_power_on(false);
-
-    Serial.println("SHUTDOWN: backlight off, epd poweroff");
-    Serial.flush();
-    ui::port::set_backlight(0);
-    epd_poweroff();
-
-    Serial.println("SHUTDOWN: attempting battery FET shutdown (PPM.shutdown)");
-    Serial.flush();
-    vTaskDelay(pdMS_TO_TICKS(100));
-    shutdown_battery();
-
-    Serial.println("SHUTDOWN: battery shutdown sent, waiting 1s...");
-    Serial.flush();
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    // If we get here, USB is connected — battery shutdown had no effect
-    Serial.println("SHUTDOWN: still alive — USB powered, entering deep sleep");
-    Serial.flush();
-    vTaskDelay(pdMS_TO_TICKS(100));
-
+    // Still alive — USB powered, go to deep sleep instead
+    // Wake on BOOT button press
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BOARD_BOOT_BTN, 0);
     esp_deep_sleep_start();
 }
@@ -325,6 +285,9 @@ void start(int core) {
 
         lv_label_set_text(status, "Setting clock...");
         lv_timer_handler();
+        // Re-seed system clock from hardware RTC — MeshCore's begin() may have
+        // overwritten it with an old contact timestamp via bootstrapRTCfromContacts()
+        board::seed_clock_from_rtc();
         model::update_clock();
 
         lv_label_set_text(status, "Ready");

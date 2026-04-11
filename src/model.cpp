@@ -99,7 +99,15 @@ void update_clock() {
     uint8_t utc_h = utc.tm_hour;
     uint8_t utc_m = utc.tm_min;
     uint8_t utc_s = utc.tm_sec;
-    clock.year  = utc.tm_year + 1900 - 2000;  // 2-digit year
+    int full_year = utc.tm_year + 1900;
+    clock.year  = (full_year >= 2000 && full_year <= 2099) ? full_year - 2000 : 0;
+
+    static bool clock_debug_once = false;
+    if (!clock_debug_once) {
+        Serial.printf("update_clock: time_t=%ld year=%d UTC=%02d:%02d:%02d\n",
+            (long)now, full_year, utc_h, utc_m, utc_s);
+        clock_debug_once = true;
+    }
     clock.month = utc.tm_mon + 1;
     clock.day   = utc.tm_mday;
 

@@ -19,8 +19,8 @@
    STDLIB WRAPPER SETTINGS
  *=========================*/
 
-/* Use standard C stdlib — ESP32 with PSRAM will use PSRAM for large allocations */
-#define LV_USE_STDLIB_MALLOC    LV_STDLIB_CLIB
+/* Custom malloc routed to PSRAM — all LVGL widget allocations go to PSRAM */
+#define LV_USE_STDLIB_MALLOC    LV_STDLIB_CUSTOM
 #define LV_USE_STDLIB_STRING    LV_STDLIB_CLIB
 #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_CLIB
 
@@ -28,7 +28,7 @@
    HAL SETTINGS
  *====================*/
 
-#define LV_DEF_REFR_PERIOD 100    /**< [ms] — e-ink doesn't need fast refresh, saves CPU */
+#define LV_DEF_REFR_PERIOD 100    /**< [ms] — e-ink refresh period */
 
 /* Tick provided via lv_tick_set_cb() in ui_port.cpp */
 
@@ -42,15 +42,30 @@
    FEATURE CONFIG
  *====================*/
 
-/** Disable scroll animations for e-paper */
+/** Disable animations entirely for e-paper */
 #define LV_ANIM_DEF_TIME 0
+#define LV_USE_ANIM 0
 
 #define LV_USE_ASSERT_NULL          0
 #define LV_USE_ASSERT_MALLOC        0
 #define LV_USE_ASSERT_OBJ           0
 
-/** Draw buffer count (1 or 2). 2 allows double buffering. */
 #define LV_DRAW_BUF_ALIGN 4
+
+/** Reduce widget style cache — e-ink UI is simple */
+#define LV_STYLE_PROP_MATRIX_FLAT_SIZE 0
+
+/** Disable label text selection (saves RAM per label) */
+#define LV_LABEL_TEXT_SELECTION 0
+
+/** Disable long label scrolling — e-ink can't animate */
+#define LV_LABEL_LONG_TXT_HINT 0
+
+/** No opacity/blending needed on e-ink */
+#define LV_OPA_MIX_MAX_SPEED 0
+
+/** Reduce draw unit count */
+#define LV_DRAW_SW_DRAW_UNIT_CNT 1
 
 /*====================
    FONT USAGE
@@ -94,7 +109,7 @@
 #define LV_USE_CHART      0
 #define LV_USE_CHECKBOX   0
 #define LV_USE_DROPDOWN   0
-#define LV_USE_IMAGE      1
+#define LV_USE_IMAGE      0
 #define LV_USE_IMAGEBUTTON 0
 #define LV_USE_KEYBOARD   1
 #define LV_USE_LABEL      1
@@ -120,8 +135,14 @@
    DRAWING / RENDERING
  *====================*/
 
-/** Enable complex drawing */
-#define LV_USE_DRAW_SW_COMPLEX 1
+/** Disable complex drawing features not needed on e-ink (shadows, gradients, etc.) */
+#define LV_USE_DRAW_SW_COMPLEX 0
+
+/** Disable image caching — e-ink redraws infrequently */
+#define LV_IMAGE_CACHE_DEF_SIZE 0
+
+/** Disable layer caching */
+#define LV_LAYER_SIMPLE_BUF_SIZE 0
 
 /** Disable vector graphics engines — not needed for e-ink UI */
 #define LV_USE_VECTOR_GRAPHIC 0

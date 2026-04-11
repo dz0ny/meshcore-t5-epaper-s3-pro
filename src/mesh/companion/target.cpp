@@ -22,7 +22,8 @@ MicroNMEALocationProvider gps_provider(Serial1);
 EnvironmentSensorManager sensors(gps_provider);
 
 void rtc_init() {
-    rtc_clock.begin();
+    // Skip rtc_clock.begin() — it overwrites settimeofday() with a hardcoded 2024 date.
+    // System clock is already seeded from hardware RTC in board::init().
 }
 
 bool radio_init() {

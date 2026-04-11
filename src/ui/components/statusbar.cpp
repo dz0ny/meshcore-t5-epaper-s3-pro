@@ -28,9 +28,10 @@ static void do_update() {
         lv_label_set_text(lbl_gps, "  ");
     }
 
-    // Free DRAM
+    // Free memory
     uint32_t dram_kb = heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024;
-    lv_label_set_text_fmt(lbl_dram, "%luK", (unsigned long)dram_kb);
+    uint32_t psram_kb = heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024;
+    lv_label_set_text_fmt(lbl_dram, "D%luK P%luK", (unsigned long)dram_kb, (unsigned long)psram_kb);
 
     // BLE: icon when active
     if (mesh::task::ble_is_enabled()) {

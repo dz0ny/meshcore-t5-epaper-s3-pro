@@ -1,16 +1,9 @@
-#include <Arduino.h>
-#include <esp_sleep.h>
-#include <epdiy.h>
 #include "home.h"
 #include "compose.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
-#include "../ui_port.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
-#include "../../board.h"
-
-extern void do_power_off();
 
 namespace ui::screen::home {
 
@@ -22,20 +15,17 @@ static lv_obj_t* lbl_msg_badge = NULL;
 
 // ---------- Event handlers ----------
 
-static void on_contacts_click(lv_event_t* e) {
-    ui::screen_mgr::push(SCREEN_CONTACTS, true);
-}
-
 static void on_chat_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_CHAT, true);
 }
 
-static void on_settings_click(lv_event_t* e) {
-    ui::screen_mgr::push(SCREEN_SETTINGS, true);
+static void on_compose_click(lv_event_t* e) {
+    ui::screen::compose::set_recipient(NULL);
+    ui::screen_mgr::push(SCREEN_COMPOSE, true);
 }
 
-static void on_status_click(lv_event_t* e) {
-    ui::screen_mgr::push(SCREEN_STATUS, true);
+static void on_contacts_click(lv_event_t* e) {
+    ui::screen_mgr::push(SCREEN_CONTACTS, true);
 }
 
 static void on_discovery_click(lv_event_t* e) {
@@ -46,13 +36,12 @@ static void on_map_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_MAP, true);
 }
 
-static void on_compose_click(lv_event_t* e) {
-    ui::screen::compose::set_recipient(NULL);
-    ui::screen_mgr::push(SCREEN_COMPOSE, true);
+static void on_status_click(lv_event_t* e) {
+    ui::screen_mgr::push(SCREEN_STATUS, true);
 }
 
-static void on_power_off(lv_event_t* e) {
-    do_power_off();
+static void on_settings_click(lv_event_t* e) {
+    ui::screen_mgr::push(SCREEN_SETTINGS, true);
 }
 
 // ---------- Lifecycle ----------
@@ -93,14 +82,13 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    lbl_msg_badge = ui::nav::toggle_item(menu, "Messages", "", on_chat_click, NULL);
     ui::nav::menu_item(menu, NULL, "Compose", on_compose_click, NULL);
+    ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
     ui::nav::menu_item(menu, NULL, "Discovery", on_discovery_click, NULL);
     ui::nav::menu_item(menu, NULL, "Map", on_map_click, NULL);
-    ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
-    lbl_msg_badge = ui::nav::toggle_item(menu, "Messages", "", on_chat_click, NULL);
     ui::nav::menu_item(menu, NULL, "Status", on_status_click, NULL);
     ui::nav::menu_item(menu, NULL, "Settings", on_settings_click, NULL);
-    ui::nav::menu_item(menu, NULL, "Power Off", on_power_off, NULL);
 }
 
 // Called by model update cycle (every 2s) via lv_timer — just update labels

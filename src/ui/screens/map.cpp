@@ -184,11 +184,13 @@ static void rebuild_map() {
         lv_obj_add_event_cb(dot, on_contact_tap, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         contacts[i].dot = dot;
 
-        // Name label below dot
+        // Name label below dot — white bg for readability over grid lines
         lv_obj_t* nlbl = lv_label_create(map_area);
         lv_obj_set_style_text_font(nlbl, &lv_font_noto_24, LV_PART_MAIN);
         lv_obj_set_style_text_color(nlbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        // Truncate name to ~8 chars for map
+        lv_obj_set_style_bg_color(nlbl, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(nlbl, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(nlbl, 2, LV_PART_MAIN);
         char short_name[10];
         strncpy(short_name, contacts[i].name, 9);
         short_name[9] = 0;
@@ -232,10 +234,13 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_size(btn_out, 80, 60);
     lv_obj_align(btn_out, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
 
-    // Distance info label (shown on contact tap)
+    // Distance info label (shown on contact tap) — white bg for readability over grid
     lbl_dist_info = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_dist_info, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_dist_info, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_dist_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(lbl_dist_info, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(lbl_dist_info, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(lbl_dist_info, 4, LV_PART_MAIN);
     lv_obj_set_style_text_align(lbl_dist_info, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(lbl_dist_info, lv_pct(90));
     lv_obj_align(lbl_dist_info, LV_ALIGN_BOTTOM_MID, 0, -85);

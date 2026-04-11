@@ -47,10 +47,7 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    if (icon_src) {
-        lv_obj_t* icon = lv_image_create(cont);
-        lv_image_set_src(icon, icon_src);
-    }
+    (void)icon_src;  // unused — all callers pass NULL
 
     lv_obj_t* lbl = lv_label_create(cont);
     lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);

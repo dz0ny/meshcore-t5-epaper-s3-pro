@@ -109,6 +109,7 @@ extern SX1262 lora_radio;
 extern EpdiyHighlevelState hl;
 
 void init();
+void seed_clock_from_rtc();  // (re)seed ESP32 system clock from hardware RTC
 
 // Global I2C mutex — protects Wire bus shared between epdiy (Core 1) and mesh/RTC (Core 0)
 extern SemaphoreHandle_t i2c_mutex;
