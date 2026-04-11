@@ -17,11 +17,13 @@ static void do_update() {
 
     lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
 
-    // GPS: icon only — filled when fix, empty when no fix
+    // GPS: icon when fix, warning icon when no fix
     if (model::gps.has_fix) {
         lv_label_set_text(lbl_gps, LV_SYMBOL_GPS);
+    } else if (model::gps.module_ok) {
+        lv_label_set_text(lbl_gps, LV_SYMBOL_WARNING);
     } else {
-        lv_label_set_text(lbl_gps, "  ");  // blank when no GPS
+        lv_label_set_text(lbl_gps, "  ");
     }
 
     // BLE: icon when active

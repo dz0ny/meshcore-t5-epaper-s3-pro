@@ -49,6 +49,10 @@ extern QueueHandle_t message_queue;   // MessageIn items
 extern SemaphoreHandle_t status_mutex;
 extern MeshStatus status;
 
+// ---------- Discovery change flag ----------
+
+extern volatile bool discovery_changed;
+
 // ---------- API ----------
 
 void init();

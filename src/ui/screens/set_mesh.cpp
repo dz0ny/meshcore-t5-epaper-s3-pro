@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <esp_random.h>
 #include "set_mesh.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
@@ -16,8 +15,6 @@ static lv_obj_t* lbl_sf = NULL;
 static lv_obj_t* lbl_cr = NULL;
 static lv_obj_t* lbl_txpow = NULL;
 static lv_obj_t* lbl_gps_share = NULL;
-static lv_obj_t* lbl_ble = NULL;
-static lv_obj_t* lbl_pin = NULL;
 
 static const float freqs[] = {868.0, 869.525, 869.618, 915.0, 433.0};
 static const int n_freqs = 5;
@@ -34,7 +31,7 @@ static int find_f(const float* a, int n, float v) { for (int i=0;i<n;i++) if(a[i
 static int find_u8(const uint8_t* a, int n, uint8_t v) { for (int i=0;i<n;i++) if(a[i]==v) return i; return 0; }
 static int find_i8(const int8_t* a, int n, int8_t v) { for (int i=0;i<n;i++) if(a[i]==v) return i; return 0; }
 
-static char buf[32]; // temp for formatting
+static char buf[32];
 
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
@@ -73,21 +70,6 @@ static void on_gps_share(lv_event_t* e) {
     mesh::task::set_advert_location(!cur);
     if (lbl_gps_share) lv_label_set_text(lbl_gps_share, !cur ? "On" : "Off");
 }
-static void on_pin_regen(lv_event_t* e) {
-    uint32_t pin = esp_random() % 900000 + 100000;
-    mesh::task::set_ble_pin(pin);
-    if (lbl_pin) lv_label_set_text_fmt(lbl_pin, "%lu", (unsigned long)pin);
-}
-
-static void on_ble_toggle(lv_event_t* e) {
-    if (mesh::task::ble_is_enabled()) {
-        mesh::task::ble_disable();
-        if (lbl_ble) lv_label_set_text(lbl_ble, "Off");
-    } else {
-        mesh::task::ble_enable();
-        if (lbl_ble) lv_label_set_text(lbl_ble, "On");
-    }
-}
 
 static void create(lv_obj_t* parent) {
     scr = parent;
@@ -96,6 +78,10 @@ static void create(lv_obj_t* parent) {
     lv_obj_t* list = ui::nav::scroll_list(parent);
 
     auto& m = model::mesh;
+
+    // Read-only node name
+    ui::nav::toggle_item(list, "Node", m.node_name ? m.node_name : "--", nullptr, NULL);
+
     snprintf(buf, sizeof(buf), "%.3f", m.freq_mhz);
     lbl_freq = ui::nav::toggle_item(list, "Freq", buf, on_freq, NULL);
     snprintf(buf, sizeof(buf), "%.1f kHz", m.bw_khz);
@@ -107,20 +93,13 @@ static void create(lv_obj_t* parent) {
     snprintf(buf, sizeof(buf), "%d dBm", m.tx_power_dbm);
     lbl_txpow = ui::nav::toggle_item(list, "TX Power", buf, on_txpow, NULL);
     lbl_gps_share = ui::nav::toggle_item(list, "GPS Share", mesh::task::get_advert_location() ? "On" : "Off", on_gps_share, NULL);
-
-    lbl_ble = ui::nav::toggle_item(list, "BLE", mesh::task::ble_is_enabled() ? "On" : "Off", on_ble_toggle, NULL);
-
-    // Read-only info
-    ui::nav::toggle_item(list, "Node", m.node_name ? m.node_name : "--", nullptr, NULL);
-    snprintf(buf, sizeof(buf), "%lu", (unsigned long)mesh::task::get_ble_pin());
-    lbl_pin = ui::nav::toggle_item(list, "BLE PIN", buf, on_pin_regen, NULL);
 }
 
 static void entry() {}
 static void exit_fn() {}
 static void destroy() {
     scr = NULL;
-    lbl_freq = lbl_bw = lbl_sf = lbl_cr = lbl_txpow = lbl_gps_share = lbl_ble = lbl_pin = NULL;
+    lbl_freq = lbl_bw = lbl_sf = lbl_cr = lbl_txpow = lbl_gps_share = NULL;
 }
 
 screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };

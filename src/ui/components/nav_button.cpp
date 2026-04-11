@@ -5,21 +5,22 @@ namespace ui::nav {
 
 lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_obj_t* row = lv_obj_create(parent);
-    lv_obj_align(row, LV_ALIGN_TOP_LEFT, 5, 50);
-    lv_obj_set_size(row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_align(row, LV_ALIGN_TOP_LEFT, 0, 50);
+    lv_obj_set_size(row, lv_pct(95), 70);
     lv_obj_set_style_bg_opa(row, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(row, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(row, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(row, 10, LV_PART_MAIN);
     lv_obj_set_style_pad_column(row, 8, LV_PART_MAIN);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row, cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_ext_click_area(row, 20);
+    lv_obj_set_ext_click_area(row, 25);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* arrow = lv_label_create(row);
-    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(arrow, LV_SYMBOL_LEFT);
 
@@ -58,7 +59,7 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
 
     lv_obj_t* arrow = lv_label_create(cont);
     lv_obj_set_flex_grow(arrow, 1);
-    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(arrow, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(arrow, LV_SYMBOL_RIGHT);
     lv_obj_set_style_text_align(arrow, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
@@ -95,12 +96,20 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label_text, const char* valu
 }
 
 lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void* user_data) {
-    lv_obj_t* btn = lv_button_create(parent);
+    lv_obj_t* btn = lv_obj_create(parent);
+    lv_obj_set_size(btn, lv_pct(85), 80);
     lv_obj_set_style_bg_color(btn, lv_color_hex(EPD_COLOR_FG), LV_PART_MAIN);
-    lv_obj_set_style_pad_all(btn, 10, LV_PART_MAIN);
+    lv_obj_set_style_border_width(btn, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(btn, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_radius(btn, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(btn, 15, LV_PART_MAIN);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, user_data);
+    lv_obj_set_ext_click_area(btn, 15);
 
     lv_obj_t* lbl = lv_label_create(btn);
+    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_label_set_text(lbl, text);
     lv_obj_center(lbl);

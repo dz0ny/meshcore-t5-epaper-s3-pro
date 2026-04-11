@@ -8,6 +8,7 @@ typedef enum
     NVS_ID_EPD_VCOM,
     NVS_ID_REFRESH_MODE,
     NVS_ID_SLEEP_TIMEOUT,
+    NVS_ID_BLE_ENABLED,
     NVS_ID_MAX,
 } NVSDataID;
 

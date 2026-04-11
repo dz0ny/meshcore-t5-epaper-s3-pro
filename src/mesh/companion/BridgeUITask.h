@@ -48,7 +48,9 @@ public:
     }
 
     void notify(UIEventType t) override {
-        // Could trigger a screen refresh flag here if needed
+        if (t == UIEventType::newContactMessage) {
+            mesh::bridge::discovery_changed = true;
+        }
     }
 
     void loop() override {

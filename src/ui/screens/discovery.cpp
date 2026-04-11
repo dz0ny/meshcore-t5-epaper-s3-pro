@@ -5,6 +5,7 @@
 #include "../components/nav_button.h"
 #include "../components/text_utils.h"
 #include "../../mesh/mesh_task.h"
+#include "../../mesh/mesh_bridge.h"
 
 namespace ui::screen::discovery {
 
@@ -35,24 +36,33 @@ static void rebuild_list() {
     if (!node_list) return;
     lv_obj_clean(node_list);
 
+    if (node_count == 0) {
+        lv_obj_t* empty = lv_label_create(node_list);
+        lv_obj_set_width(empty, lv_pct(100));
+        lv_obj_set_flex_grow(empty, 1);
+        lv_obj_set_style_text_font(empty, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_text(empty, "\n\n\nListening...");
+        return;
+    }
+
     for (int i = 0; i < node_count; i++) {
         char clean_name[32];
         strncpy(clean_name, nodes[i].name, sizeof(clean_name) - 1);
         clean_name[31] = 0;
         ui::text::strip_emoji(clean_name);
 
-        ui::nav::toggle_item(node_list, clean_name, "+Add", on_node_click, (void*)(intptr_t)i);
-    }
-
-    if (node_count == 0) {
-        lv_obj_t* empty = lv_label_create(node_list);
-        lv_obj_set_style_text_font(empty, &lv_font_montserrat_24, LV_PART_MAIN);
-        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_label_set_text(empty, "Listening for nodes...");
+        bool already_added = mesh::task::is_contact(nodes[i].pubkey_prefix);
+        ui::nav::toggle_item(node_list, clean_name,
+            already_added ? LV_SYMBOL_OK : "+Add",
+            on_node_click, (void*)(intptr_t)i);
     }
 }
 
 static void poll_discovered(lv_timer_t* t) {
+    if (!mesh::bridge::discovery_changed) return;
+    mesh::bridge::discovery_changed = false;
     node_count = mesh::task::get_discovered(nodes, 16);
     rebuild_list();
 }
@@ -67,7 +77,8 @@ static void create(lv_obj_t* parent) {
 static void entry() {
     node_count = mesh::task::get_discovered(nodes, 16);
     rebuild_list();
-    poll_timer = lv_timer_create(poll_discovered, 3000, NULL);
+    mesh::bridge::discovery_changed = false;
+    poll_timer = lv_timer_create(poll_discovered, 500, NULL);
 }
 
 static void exit_fn() {

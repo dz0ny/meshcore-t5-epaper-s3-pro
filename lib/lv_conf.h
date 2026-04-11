@@ -45,8 +45,8 @@
 /** Disable scroll animations for e-paper */
 #define LV_ANIM_DEF_TIME 0
 
-#define LV_USE_ASSERT_NULL          1
-#define LV_USE_ASSERT_MALLOC        1
+#define LV_USE_ASSERT_NULL          0
+#define LV_USE_ASSERT_MALLOC        0
 #define LV_USE_ASSERT_OBJ           0
 
 /** Draw buffer count (1 or 2). 2 allows double buffering. */
@@ -56,12 +56,12 @@
    FONT USAGE
  *====================*/
 
-#define LV_FONT_MONTSERRAT_14 1   /* Default font */
-#define LV_FONT_MONTSERRAT_18 1   /* Message sender names */
-#define LV_FONT_MONTSERRAT_20 1   /* Menu arrows with symbols */
-#define LV_FONT_MONTSERRAT_22 1   /* Message text + contacts — has full Unicode */
-#define LV_FONT_MONTSERRAT_24 1   /* Statusbar — readable on e-ink */
-#define LV_FONT_MONTSERRAT_28 1   /* Message text — Unicode + readable */
+#define LV_FONT_MONTSERRAT_14 1   /* Default font (required by LVGL internals) */
+#define LV_FONT_MONTSERRAT_18 0
+#define LV_FONT_MONTSERRAT_20 0
+#define LV_FONT_MONTSERRAT_22 0
+#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_28 0
 
 /** Default font */
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
@@ -78,7 +78,7 @@
  *====================*/
 
 #define LV_USE_FLEX 1
-#define LV_USE_GRID 1
+#define LV_USE_GRID 0
 
 /*====================
    WIDGETS
@@ -86,35 +86,68 @@
 
 #define LV_USE_ANIMIMG    0
 #define LV_USE_ARC        0
-#define LV_USE_BAR        1
+#define LV_USE_BAR        0
 #define LV_USE_BUTTON     1
-#define LV_USE_BUTTONMATRIX 0
+#define LV_USE_BUTTONMATRIX 1   /* required by keyboard */
 #define LV_USE_CALENDAR   0
 #define LV_USE_CANVAS     0
 #define LV_USE_CHART      0
-#define LV_USE_CHECKBOX   1
-#define LV_USE_DROPDOWN   1
+#define LV_USE_CHECKBOX   0
+#define LV_USE_DROPDOWN   0
 #define LV_USE_IMAGE      1
 #define LV_USE_IMAGEBUTTON 0
-#define LV_USE_KEYBOARD   0
+#define LV_USE_KEYBOARD   1
 #define LV_USE_LABEL      1
 #define LV_USE_LED        0
 #define LV_USE_LINE       1
-#define LV_USE_LIST       1
+#define LV_USE_LIST       0
 #define LV_USE_MENU       0
 #define LV_USE_MSGBOX     0
 #define LV_USE_ROLLER     0
 #define LV_USE_SCALE      0
-#define LV_USE_SLIDER     1
+#define LV_USE_SLIDER     0
 #define LV_USE_SPAN       0
 #define LV_USE_SPINBOX    0
 #define LV_USE_SPINNER    0
-#define LV_USE_SWITCH     1
-#define LV_USE_TEXTAREA   0
+#define LV_USE_SWITCH     0
+#define LV_USE_TEXTAREA   1
 #define LV_USE_TABLE      0
 #define LV_USE_TABVIEW    0
 #define LV_USE_TILEVIEW   0
 #define LV_USE_WIN        0
+
+/*====================
+   DRAWING / RENDERING
+ *====================*/
+
+/** Enable complex drawing */
+#define LV_USE_DRAW_SW_COMPLEX 1
+
+/** Disable vector graphics engines — not needed for e-ink UI */
+#define LV_USE_VECTOR_GRAPHIC 0
+#define LV_USE_THORVG 0
+#define LV_USE_DRAW_VG_LITE 0
+
+/** Disable font engines we don't use (we use pre-compiled .c fonts) */
+#define LV_USE_FREETYPE 0
+#define LV_USE_TINY_TTF 0
+
+/** Disable BiDi and Arabic shaping — saves RAM and CPU */
+#define LV_USE_BIDI 0
+#define LV_USE_ARABIC_PERSIAN_CHARS 0
+
+/** Disable logging in release builds */
+#define LV_USE_LOG 0
+
+/** Image decoders — only need built-in */
+#define LV_USE_LIBPNG 0
+#define LV_USE_LIBJPEG_TURBO 0
+#define LV_USE_BMP 0
+#define LV_USE_GIF 0
+#define LV_USE_QRCODE 0
+#define LV_USE_BARCODE 0
+#define LV_USE_RLE 0
+#define LV_USE_LZ4 0
 
 /*====================
    OTHERS

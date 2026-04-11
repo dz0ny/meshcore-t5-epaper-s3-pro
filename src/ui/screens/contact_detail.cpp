@@ -2,11 +2,13 @@
 #include <cstring>
 #include <cstdio>
 #include "contact_detail.h"
+#include "compose.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
 #include "../../mesh/mesh_task.h"
+#include "../components/toast.h"
 
 namespace ui::screen::contact_detail {
 
@@ -82,7 +84,7 @@ static void draw_compass(lv_obj_t* parent, double bearing_deg) {
     // Compass container
     lv_obj_t* compass = lv_obj_create(parent);
     lv_obj_set_size(compass, 280, 280);
-    lv_obj_align(compass, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_align(compass, LV_ALIGN_CENTER, 0, 60);
     lv_obj_set_style_bg_color(compass, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(compass, 3, LV_PART_MAIN);
     lv_obj_set_style_border_color(compass, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -163,7 +165,8 @@ static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void on_add(lv_event_t* e) {
     if (has_pubkey) {
-        mesh::task::add_contact_by_prefix(contact_pubkey);
+        bool ok = mesh::task::add_contact_by_prefix(contact_pubkey);
+        ui::toast::show(ok ? "Contact added" : "Add failed");
     }
     ui::screen_mgr::pop(true);
 }
@@ -171,8 +174,14 @@ static void on_add(lv_event_t* e) {
 static void on_remove(lv_event_t* e) {
     if (has_pubkey) {
         mesh::task::remove_contact_by_prefix(contact_pubkey);
+        ui::toast::show("Contact removed");
     }
     ui::screen_mgr::pop(true);
+}
+
+static void on_send_message(lv_event_t* e) {
+    ui::screen::compose::set_recipient(contact_name);
+    ui::screen_mgr::push(SCREEN_COMPOSE, true);
 }
 
 static void create(lv_obj_t* parent) {
@@ -186,16 +195,16 @@ static void create(lv_obj_t* parent) {
 
     // Name
     lv_obj_t* lbl_name = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_name, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_name, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_align(lbl_name, LV_ALIGN_TOP_MID, 0, 130);
     lv_label_set_text(lbl_name, contact_name);
 
     // Contact coords
     lbl_coords = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_coords, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_coords, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_coords, LV_ALIGN_TOP_MID, 0, 140);
+    lv_obj_align(lbl_coords, LV_ALIGN_TOP_MID, 0, 165);
 
     if (has_contact_gps) {
         static char coord_buf[48];
@@ -209,16 +218,16 @@ static void create(lv_obj_t* parent) {
     lv_obj_t* lbl_info = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_info, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 170);
+    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 195);
     static char info_buf[48];
     snprintf(info_buf, sizeof(info_buf), "Route: %s", contact_has_path ? "Direct" : "Unknown");
     lv_label_set_text(lbl_info, info_buf);
 
     // Distance + bearing
     lbl_distance = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_distance, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_distance, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_distance, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_distance, LV_ALIGN_TOP_MID, 0, 205);
+    lv_obj_align(lbl_distance, LV_ALIGN_TOP_MID, 0, 230);
 
     if (has_contact_gps && has_own_gps) {
         double dist = calc_distance_km(model::gps.lat, model::gps.lng, c_lat, c_lon);
@@ -239,13 +248,22 @@ static void create(lv_obj_t* parent) {
         lv_label_set_text(lbl_distance, "");
     }
 
-    // Add/Remove button at bottom (only if we have a pubkey to act on)
+    // Action buttons at bottom
     if (has_pubkey) {
         bool is_existing = mesh::task::is_contact(contact_pubkey);
-        lv_obj_t* btn = ui::nav::text_button(parent,
-            is_existing ? "Remove Contact" : "Add Contact",
-            is_existing ? on_remove : on_add, NULL);
-        lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+
+        if (is_existing) {
+            // Send Message button
+            lv_obj_t* msg_btn = ui::nav::text_button(parent, "Send Message", on_send_message, NULL);
+            lv_obj_align(msg_btn, LV_ALIGN_BOTTOM_MID, 0, -110);
+
+            // Remove Contact button
+            lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
+            lv_obj_align(rm_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+        } else {
+            lv_obj_t* add_btn = ui::nav::text_button(parent, "Add Contact", on_add, NULL);
+            lv_obj_align(add_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+        }
     }
 }
 

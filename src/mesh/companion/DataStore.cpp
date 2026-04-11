@@ -18,7 +18,6 @@ DataStore::DataStore(FILESYSTEM& fs, mesh::RTCClock& clock) : _fs(&fs), _fsExtra
 {
 }
 
-#if defined(EXTRAFS) || defined(QSPIFLASH)
 DataStore::DataStore(FILESYSTEM& fs, FILESYSTEM& fsExtra, mesh::RTCClock& clock) : _fs(&fs), _fsExtra(&fsExtra), _clock(&clock),
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
     identity_store(fs, "")
@@ -29,7 +28,6 @@ DataStore::DataStore(FILESYSTEM& fs, FILESYSTEM& fsExtra, mesh::RTCClock& clock)
 #endif
 {
 }
-#endif
 
 static File openWrite(FILESYSTEM* fs, const char* filename) {
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
@@ -574,49 +572,60 @@ bool DataStore::deleteBlobByKey(const uint8_t key[], int key_len) {
   return true; // this is just a stub on NRF52/STM32 platforms
 }
 #else
-inline void makeBlobPath(const uint8_t key[], int key_len, char* path, size_t path_size) {
-  char fname[18];
-  if (key_len > 8) key_len = 8; // just use first 8 bytes (prefix)
-  mesh::Utils::toHex(fname, key, key_len);
-  sprintf(path, "/bl/%s", fname);
-}
+// ESP32: in-memory blob cache — avoids flash wear from frequent advert writes.
+// Ring buffer of recent adverts, matched by 7-byte pubkey prefix.
+#define ESP32_BLOB_MAX_LEN  166  // MAX_ADVERT_PKT_LEN
+#define ESP32_BLOB_SLOTS     32
+
+struct BlobSlot {
+  uint8_t  key[7];
+  uint8_t  len;
+  uint8_t  data[ESP32_BLOB_MAX_LEN];
+};
+static BlobSlot blob_cache[ESP32_BLOB_SLOTS] = {};
+static int blob_write_idx = 0;
 
 uint8_t DataStore::getBlobByKey(const uint8_t key[], int key_len, uint8_t dest_buf[]) {
-  char path[64];
-  makeBlobPath(key, key_len, path, sizeof(path));
-
-  if (_fs->exists(path)) {
-    File f = openRead(_fs, path);
-    if (f) {
-      int len = f.read(dest_buf, 255); // currently MAX 255 byte blob len supported!!
-      f.close();
-      return len;
+  int match_len = (key_len > 7) ? 7 : key_len;
+  for (int i = 0; i < ESP32_BLOB_SLOTS; i++) {
+    if (blob_cache[i].len > 0 && memcmp(key, blob_cache[i].key, match_len) == 0) {
+      memcpy(dest_buf, blob_cache[i].data, blob_cache[i].len);
+      return blob_cache[i].len;
     }
   }
-  return 0; // not found
+  return 0;
 }
 
 bool DataStore::putBlobByKey(const uint8_t key[], int key_len, const uint8_t src_buf[], uint8_t len) {
-  char path[64];
-  makeBlobPath(key, key_len, path, sizeof(path));
+  if (len > ESP32_BLOB_MAX_LEN) return false;
+  int match_len = (key_len > 7) ? 7 : key_len;
 
-  File f = openWrite(_fs, path);
-  if (f) {
-    int n = f.write(src_buf, len);
-    f.close();
-    if (n == len) return true; // success!
-
-    _fs->remove(path); // blob was only partially written!
+  // Update existing entry if found
+  for (int i = 0; i < ESP32_BLOB_SLOTS; i++) {
+    if (blob_cache[i].len > 0 && memcmp(key, blob_cache[i].key, match_len) == 0) {
+      memcpy(blob_cache[i].data, src_buf, len);
+      blob_cache[i].len = len;
+      return true;
+    }
   }
-  return false; // error
+
+  // Insert into next slot (ring buffer eviction)
+  BlobSlot& slot = blob_cache[blob_write_idx];
+  memcpy(slot.key, key, 7);
+  memcpy(slot.data, src_buf, len);
+  slot.len = len;
+  blob_write_idx = (blob_write_idx + 1) % ESP32_BLOB_SLOTS;
+  return true;
 }
 
 bool DataStore::deleteBlobByKey(const uint8_t key[], int key_len) {
-  char path[64];
-  makeBlobPath(key, key_len, path, sizeof(path));
-
-  _fs->remove(path);
-  
-  return true; // return true even if file did not exist
+  int match_len = (key_len > 7) ? 7 : key_len;
+  for (int i = 0; i < ESP32_BLOB_SLOTS; i++) {
+    if (blob_cache[i].len > 0 && memcmp(key, blob_cache[i].key, match_len) == 0) {
+      blob_cache[i].len = 0;
+      return true;
+    }
+  }
+  return true;
 }
 #endif

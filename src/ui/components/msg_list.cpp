@@ -55,45 +55,48 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     lv_obj_set_height(bubble, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(bubble, 8, LV_PART_MAIN);
     lv_obj_set_style_radius(bubble, 8, LV_PART_MAIN);
-    lv_obj_clear_flag(bubble, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(bubble, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
+    lv_obj_add_flag(bubble, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_set_flex_flow(bubble, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(bubble, 2, LV_PART_MAIN);
 
+    lv_obj_set_style_bg_color(bubble, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(bubble, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(bubble, lv_color_hex(EPD_COLOR_FG), LV_PART_MAIN);
+
+    // Sent messages: indent from left to distinguish from received
     if (is_self) {
-        lv_obj_set_style_bg_color(bubble, lv_color_hex(EPD_COLOR_FG), LV_PART_MAIN);
-        lv_obj_set_style_border_width(bubble, 0, LV_PART_MAIN);
-    } else {
-        lv_obj_set_style_bg_color(bubble, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-        lv_obj_set_style_border_width(bubble, 2, LV_PART_MAIN);
-        lv_obj_set_style_border_color(bubble, lv_color_hex(EPD_COLOR_FG), LV_PART_MAIN);
+        lv_obj_set_style_pad_left(wrapper, 60, LV_PART_MAIN);
     }
 
     // Sender name
     if (clean_sender[0]) {
         lv_obj_t* lbl_name = lv_label_create(bubble);
         lv_obj_set_style_text_font(lbl_name, &lv_font_noto_24, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl_name,
-            lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(lbl_name, clean_sender);
     }
 
-    // Message text — bold for e-ink readability, montserrat for Unicode
+    // Message text
     lv_obj_t* lbl_text = lv_label_create(bubble);
     lv_obj_set_width(lbl_text, lv_pct(100));
     lv_label_set_long_mode(lbl_text, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(lbl_text, &lv_font_noto_28, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_text,
-        lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_text, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_text, clean_text);
 
-    // Time inside bubble, bottom-right — like WhatsApp
+    // Time inside bubble, bottom-right
     lv_obj_t* lbl_time = lv_label_create(bubble);
     lv_obj_set_style_text_font(lbl_time, &lv_font_noto_24, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_time,
-        lv_color_hex(is_self ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_time, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(lbl_time, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_width(lbl_time, lv_pct(100));
-    lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
+    if (msg_idx >= 0 && msg_idx < model::message_count) {
+        lv_label_set_text_fmt(lbl_time, "%02d:%02d",
+            model::messages[msg_idx].hour, model::messages[msg_idx].minute);
+    } else {
+        lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
+    }
 
     // Auto-scroll to bottom (newest messages at bottom)
     lv_obj_scroll_to_y(list, LV_COORD_MAX, LV_ANIM_OFF);

@@ -24,10 +24,17 @@ void full_clean();
 void touch_enable();
 void touch_disable();
 
-// Backlight: 0=Auto, 1=Off, 2=Low, 3=Mid, 4=High
-void set_backlight(int level);
+// Backlight mode: 0=Auto, 1=Off
+void set_backlight(int mode);
 int  get_backlight();
 const char* get_backlight_name();
 bool is_backlight_auto();
+
+// Brightness: 0=Low, 1=Mid, 2=High (intensity when backlight is on)
+void set_brightness(int level);
+int  get_brightness();
+const char* get_brightness_name();
+int  get_brightness_pwm();
+void apply_backlight();  // turn on at current brightness
 
 } // namespace ui::port

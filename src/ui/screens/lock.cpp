@@ -9,6 +9,7 @@
 namespace ui::screen::lock {
 
 static lv_obj_t* scr = NULL;
+static lv_obj_t* lbl_node_name = NULL;
 static lv_obj_t* lbl_time = NULL;
 static lv_obj_t* lbl_date = NULL;
 static lv_obj_t* lbl_unread = NULL;
@@ -24,6 +25,12 @@ static void on_unread_click(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
+
+    lbl_node_name = lv_label_create(parent);
+    lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, 55);
+    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "T-Paper");
 
     lbl_time = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_bold_120, LV_PART_MAIN);
@@ -53,6 +60,8 @@ static void create(lv_obj_t* parent) {
 void update() {
     if (!lbl_time) return;
 
+    if (lbl_node_name && model::mesh.node_name)
+        lv_label_set_text(lbl_node_name, model::mesh.node_name);
     lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
     lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
         model::clock.day, model::clock.month, model::clock.year);
@@ -82,6 +91,7 @@ static void exit_fn() {
 
 static void destroy() {
     scr = NULL;
+    lbl_node_name = NULL;
     lbl_time = lbl_date = lbl_unread = lbl_info = NULL;
 }
 

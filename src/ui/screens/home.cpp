@@ -2,12 +2,15 @@
 #include <esp_sleep.h>
 #include <epdiy.h>
 #include "home.h"
+#include "compose.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../ui_port.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
 #include "../../board.h"
+
+extern void do_power_off();
 
 namespace ui::screen::home {
 
@@ -39,21 +42,13 @@ static void on_discovery_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_DISCOVERY, true);
 }
 
-static void on_power_off(lv_event_t* e) {
-    // Deep sleep — same as factory ui_sleep()
-    board::touch.sleep();
-    digitalWrite(BOARD_TOUCH_RST, LOW);
-    digitalWrite(BOARD_LORA_RST, LOW);
-    gpio_hold_en((gpio_num_t)BOARD_TOUCH_RST);
-    gpio_hold_en((gpio_num_t)BOARD_LORA_RST);
-    gpio_deep_sleep_hold_en();
-    io_extend_lora_gps_power_on(false);
-    ui::port::set_backlight(0);
-    epd_poweroff();
+static void on_compose_click(lv_event_t* e) {
+    ui::screen::compose::set_recipient(NULL);
+    ui::screen_mgr::push(SCREEN_COMPOSE, true);
+}
 
-    // Wake on BOOT button (GPIO 0, active low)
-    esp_sleep_enable_ext0_wakeup((gpio_num_t)BOARD_BOOT_BTN, 0);
-    esp_deep_sleep_start();
+static void on_power_off(lv_event_t* e) {
+    do_power_off();
 }
 
 // ---------- Lifecycle ----------
@@ -94,6 +89,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    ui::nav::menu_item(menu, NULL, "Compose", on_compose_click, NULL);
     ui::nav::menu_item(menu, NULL, "Discovery", on_discovery_click, NULL);
     ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
     lbl_msg_badge = ui::nav::toggle_item(menu, "Messages", "", on_chat_click, NULL);

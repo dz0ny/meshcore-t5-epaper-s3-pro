@@ -12,6 +12,9 @@ void start(int core);
 // Thread-safe — can be called from UI core.
 bool send_message(const char* recipient_prefix, const char* text);
 
+// Send a message to a contact found by name prefix.
+bool send_to_name(const char* name, const char* text);
+
 // Send a broadcast to the public channel.
 bool send_public(const char* text);
 
@@ -72,6 +75,10 @@ void ble_disable();
 bool ble_is_enabled();
 void set_ble_pin(uint32_t pin);
 uint32_t get_ble_pin();
+
+// Clear all contacts or channels (saves immediately)
+void clear_contacts();
+void clear_channels();
 
 // Enter light sleep — waits for radio idle, then sleeps both cores.
 // Wakes on LoRa packet (DIO1) or timer.

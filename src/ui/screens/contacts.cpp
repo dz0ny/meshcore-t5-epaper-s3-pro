@@ -52,6 +52,17 @@ static void rebuild_list() {
     if (!contact_list) return;
     lv_obj_clean(contact_list);
 
+    if (display_count == 0) {
+        lv_obj_t* empty = lv_label_create(contact_list);
+        lv_obj_set_width(empty, lv_pct(100));
+        lv_obj_set_flex_grow(empty, 1);
+        lv_obj_set_style_text_font(empty, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_text(empty, "\n\n\nNo contacts yet");
+        return;
+    }
+
     for (int i = 0; i < display_count; i++) {
         ui::nav::menu_item(contact_list, NULL, displayed[i].name, on_contact_click, (void*)(intptr_t)i);
     }

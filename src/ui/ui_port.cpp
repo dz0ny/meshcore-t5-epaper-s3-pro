@@ -52,20 +52,27 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     int32_t phys_h = epd_height();
 
     // Pack L8 (8-bit gray) → 4-bit nibbles in epdiy framebuffer with inline rotation
+    // Optimized: for each row ry, px_x is constant (=ry), so precompute nibble mask/shift
+    int32_t half_w = phys_w / 2;
     for (int32_t ry = area->y1; ry <= area->y2; ry++) {
-        for (int32_t rx = area->x1; rx <= area->x2; rx++) {
-            uint8_t gray = px_map[ry * disp_w + rx];
+        int32_t px_x = ry;
+        int32_t byte_x = px_x / 2;
+        bool is_odd = px_x & 1;
+        const uint8_t *src_row = &px_map[ry * disp_w];
 
-            // Inline EPD_ROT_INVERTED_PORTRAIT rotation
-            int32_t px_x = ry;
-            int32_t px_y = phys_h - 1 - rx;
-
-            // Write 4-bit grayscale to framebuffer (2 pixels per byte)
-            uint8_t *buf_ptr = &fb[px_y * phys_w / 2 + px_x / 2];
-            if (px_x & 1) {
-                *buf_ptr = (*buf_ptr & 0x0F) | (gray & 0xF0);
-            } else {
-                *buf_ptr = (*buf_ptr & 0xF0) | (gray >> 4);
+        if (is_odd) {
+            for (int32_t rx = area->x1; rx <= area->x2; rx++) {
+                uint8_t gray = src_row[rx];
+                int32_t px_y = phys_h - 1 - rx;
+                uint8_t *bp = &fb[px_y * half_w + byte_x];
+                *bp = (*bp & 0x0F) | (gray & 0xF0);
+            }
+        } else {
+            for (int32_t rx = area->x1; rx <= area->x2; rx++) {
+                uint8_t gray = src_row[rx];
+                int32_t px_y = phys_h - 1 - rx;
+                uint8_t *bp = &fb[px_y * half_w + byte_x];
+                *bp = (*bp & 0xF0) | (gray >> 4);
             }
         }
     }
@@ -130,12 +137,12 @@ void init() {
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
 
     // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
-    // Single buffer — no double buffering needed since e-ink flush is slow anyway.
-    // Saves ~500KB PSRAM.
+    // Double buffered in PSRAM — CPU renders to buf2 while buf1 flushes to e-paper.
     size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
+    void *buf2 = ps_calloc(1, buf_size);
     prev_frame = (uint8_t *)ps_calloc(1, buf_size);  // for change detection
-    lv_display_set_buffers(disp, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
@@ -171,26 +178,41 @@ void full_clean() {
 void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
 
-// Backlight: 0=Auto, 1=Off, 2=Low, 3=Mid, 4=High
-static int backlight_level = 0;
-static const char* bl_names[] = {"Auto", "Off", "Low", "Mid", "High"};
-static const int bl_pwm[] = {0, 0, 50, 100, 230};
+// Backlight mode: 0=Auto, 1=On, 2=Off
+static int backlight_mode = 0;
+static const char* mode_names_bl[] = {"Auto", "On", "Off"};
 
-void set_backlight(int level) {
-    if (level < 0) level = 0;
-    if (level > 4) level = 4;
-    backlight_level = level;
-    // For Auto (0) and Off (1), turn off immediately. For fixed levels, set PWM.
-    if (level <= 1) {
-        analogWrite(BOARD_BL_EN, 0);
+// Brightness: 0=Low, 1=Mid, 2=High
+static int brightness = 1;  // default Mid
+static const char* bright_names[] = {"Low", "Mid", "High"};
+static const int bright_pwm[] = {50, 100, 230};
+
+void set_backlight(int mode) {
+    if (mode < 0) mode = 0;
+    if (mode > 2) mode = 2;
+    backlight_mode = mode;
+    if (mode == 1) {
+        analogWrite(BOARD_BL_EN, bright_pwm[brightness]);  // On at current brightness
     } else {
-        analogWrite(BOARD_BL_EN, bl_pwm[level]);
+        analogWrite(BOARD_BL_EN, 0);  // Off or Auto (auto handled by ui_task)
     }
 }
 
-bool is_backlight_auto() { return backlight_level == 0; }
+void set_brightness(int level) {
+    if (level < 0) level = 0;
+    if (level > 2) level = 2;
+    brightness = level;
+}
 
-int get_backlight() { return backlight_level; }
-const char* get_backlight_name() { return bl_names[backlight_level]; }
+void apply_backlight() {
+    analogWrite(BOARD_BL_EN, bright_pwm[brightness]);
+}
+
+bool is_backlight_auto() { return backlight_mode == 0; }
+int get_backlight() { return backlight_mode; }
+const char* get_backlight_name() { return mode_names_bl[backlight_mode]; }
+int get_brightness() { return brightness; }
+const char* get_brightness_name() { return bright_names[brightness]; }
+int get_brightness_pwm() { return bright_pwm[brightness]; }
 
 } // namespace ui::port

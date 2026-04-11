@@ -30,6 +30,9 @@ enum screen_id {
     SCREEN_LOCK        = 12,
     SCREEN_CONTACT_DETAIL = 13,
     SCREEN_MSG_DETAIL     = 14,
+    SCREEN_SET_BLE        = 15,
+    SCREEN_SET_STORAGE    = 16,
+    SCREEN_COMPOSE        = 17,
 };
 
 // ---------- Font declarations ----------

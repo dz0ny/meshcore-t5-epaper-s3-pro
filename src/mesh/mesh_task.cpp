@@ -7,6 +7,7 @@
 
 #include "mesh_task.h"
 #include "mesh_bridge.h"
+#include "../nvs_param.h"
 #include "companion/target.h"
 #include "companion/DataStore.h"
 #include "companion/NodePrefs.h"
@@ -30,6 +31,7 @@ static SimpleMeshTables mc_tables;
 static DataStore* store = NULL;
 static MyMesh* the_mesh_ptr = NULL;
 static SemaphoreHandle_t mesh_mutex = NULL;
+static bool ble_active = false;
 
 // ---------- SD flush on silence ----------
 
@@ -94,8 +96,14 @@ void start(int core) {
     // Init filesystems
     SPIFFS.begin(true);
 
-    // Always use SPIFFS for mesh data (reliable, doesn't conflict with SD on shared SPI)
-    store = new DataStore(SPIFFS, rtc_clock);
+    // SPIFFS for identity/prefs, SD for contacts/channels (if available)
+    if (board::peri_status[E_PERI_SD_CARD]) {
+        store = new DataStore(SPIFFS, SD, rtc_clock);
+        Serial.println("MESH: using SD for contacts/channels");
+    } else {
+        store = new DataStore(SPIFFS, rtc_clock);
+        Serial.println("MESH: using SPIFFS only (no SD)");
+    }
     store->begin();
 
     // Load saved messages from SD card (if available)
@@ -113,8 +121,15 @@ void start(int core) {
         the_mesh_ptr->savePrefs();
     }
 
-    // BLE off by default — start with null serial, user enables from Settings
-    the_mesh_ptr->startInterface(null_serial);
+    // Restore BLE state from NVS (default off)
+    if (nvs_param_get_u8(NVS_ID_BLE_ENABLED)) {
+        ble_serial.begin(BLE_NAME_PREFIX, the_mesh_ptr->getNodePrefs()->node_name, the_mesh_ptr->getBLEPin());
+        the_mesh_ptr->startInterface(ble_serial);
+        ble_active = true;
+        Serial.println("BLE: restored ON from NVS");
+    } else {
+        the_mesh_ptr->startInterface(null_serial);
+    }
 
     // Apply radio params from prefs
     NodePrefs* prefs = the_mesh_ptr->getNodePrefs();
@@ -150,9 +165,34 @@ bool send_message(const char* recipient_prefix, const char* text) {
     return ok;
 }
 
+bool send_to_name(const char* name, const char* text) {
+    if (!the_mesh_ptr || !mesh_mutex || !name || !text) return false;
+    bool ok = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ContactInfo* r = the_mesh_ptr->searchContactsByPrefix(name);
+        if (r) {
+            uint32_t ack, timeout;
+            int result = the_mesh_ptr->sendMessage(*r, rtc_clock.getCurrentTime(), 0, text, ack, timeout);
+            ok = (result != MSG_SEND_FAILED);
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return ok;
+}
+
 bool send_public(const char* text) {
-    // TODO: implement via channel
-    return false;
+    if (!the_mesh_ptr || !mesh_mutex || !text) return false;
+    bool ok = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ChannelDetails ch;
+        if (the_mesh_ptr->getChannel(0, ch)) {
+            ok = the_mesh_ptr->sendGroupMessage(
+                rtc_clock.getCurrentTime(), ch.channel,
+                the_mesh_ptr->getNodeName(), text, strlen(text));
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return ok;
 }
 
 const char* node_name() {
@@ -264,7 +304,7 @@ bool get_advert_location() {
 
 // ---------- BLE ----------
 
-static bool ble_active = false;
+
 
 void ble_enable() {
     if (ble_active || !the_mesh_ptr) return;
@@ -356,27 +396,39 @@ int get_discovered(DiscoveredNode* dest, int max_num) {
 bool add_contact_by_prefix(const uint8_t* pubkey_prefix) {
     if (!the_mesh_ptr || !mesh_mutex || !store) return false;
     bool ok = false;
+    Serial.printf("MESH: add_contact_by_prefix [%02X%02X%02X%02X%02X%02X%02X]\n",
+        pubkey_prefix[0], pubkey_prefix[1], pubkey_prefix[2], pubkey_prefix[3],
+        pubkey_prefix[4], pubkey_prefix[5], pubkey_prefix[6]);
+
     if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
         // Check if already a contact
         ContactInfo* existing = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
         if (existing) {
+            Serial.printf("MESH: already a contact: %s\n", existing->name);
             ok = true;
         } else {
             // Try blob store first (raw advert packets saved by MeshCore)
             uint8_t blob[256];
             uint8_t len = store->getBlobByKey(pubkey_prefix, 7, blob);
+            Serial.printf("MESH: blob lookup len=%d\n", len);
             if (len > 0) {
                 ok = the_mesh_ptr->importContact(blob, len);
-                if (ok) Serial.printf("MESH: contact added from blob (%d bytes)\n", len);
+                Serial.printf("MESH: importContact result=%d\n", ok);
+                if (ok) {
+                    // Run mesh loop to process the loopback packet
+                    the_mesh_ptr->loop();
+                    // Verify it was added
+                    ContactInfo* added = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+                    Serial.printf("MESH: after loop, contact found=%d\n", added != NULL);
+                    // Save contacts to flash
+                    store->saveContacts(the_mesh_ptr);
+                }
             }
 
             if (!ok) {
                 // Fallback: temporarily enable auto-add so next advert from this node gets added
-                uint8_t old = the_mesh_ptr->getNodePrefs()->manual_add_contacts;
-                the_mesh_ptr->getNodePrefs()->manual_add_contacts = 0; // enable auto-add
-                Serial.println("MESH: auto-add enabled temporarily, waiting for next advert");
-                // It will be re-disabled after the next onDiscoveredContact for this node
-                // For now just mark as pending
+                the_mesh_ptr->getNodePrefs()->manual_add_contacts = 0;
+                Serial.printf("MESH: auto-add enabled, waiting for next advert\n");
                 ok = true; // optimistic
             }
         }
@@ -407,6 +459,36 @@ bool remove_contact_by_prefix(const uint8_t* pubkey_prefix) {
         xSemaphoreGive(mesh_mutex);
     }
     return ok;
+}
+
+void clear_contacts() {
+    if (!the_mesh_ptr || !mesh_mutex || !store) return;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        // Remove all contacts one by one
+        ContactsIterator iter = the_mesh_ptr->startContactsIterator();
+        ContactInfo c;
+        while (iter.hasNext(the_mesh_ptr, c)) {
+            the_mesh_ptr->removeContact(c);
+            iter = the_mesh_ptr->startContactsIterator(); // restart after removal
+        }
+        store->saveContacts(the_mesh_ptr);
+        Serial.println("MESH: all contacts cleared");
+        xSemaphoreGive(mesh_mutex);
+    }
+}
+
+void clear_channels() {
+    if (!the_mesh_ptr || !mesh_mutex || !store) return;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        // Clear all channel slots
+        ChannelDetails empty = {};
+        for (int i = 0; i < 8; i++) {
+            the_mesh_ptr->setChannel(i, empty);
+        }
+        store->saveChannels(the_mesh_ptr);
+        Serial.println("MESH: all channels cleared");
+        xSemaphoreGive(mesh_mutex);
+    }
 }
 
 // ---------- Contact sync ----------

@@ -53,9 +53,19 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(msg_container, LV_ALIGN_BOTTOM_MID, 0, -10);
 
     // Load all stored messages
-    for (int i = 0; i < model::message_count; i++) {
-        auto& msg = model::messages[i];
-        ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
+    if (model::message_count == 0) {
+        lv_obj_t* empty = lv_label_create(msg_container);
+        lv_obj_set_width(empty, lv_pct(100));
+        lv_obj_set_flex_grow(empty, 1);
+        lv_obj_set_style_text_font(empty, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_text(empty, "\n\n\nNo messages yet");
+    } else {
+        for (int i = 0; i < model::message_count; i++) {
+            auto& msg = model::messages[i];
+            ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
+        }
     }
     last_displayed = model::message_count;
 

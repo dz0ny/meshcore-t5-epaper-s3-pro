@@ -6,6 +6,7 @@ QueueHandle_t contact_queue = NULL;
 QueueHandle_t message_queue = NULL;
 SemaphoreHandle_t status_mutex = NULL;
 MeshStatus status = {};
+volatile bool discovery_changed = false;
 
 void init() {
     contact_queue = xQueueCreate(128, sizeof(ContactUpdate));
