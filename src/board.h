@@ -12,6 +12,12 @@
 // Software version (shared)
 #define T_PAPER_SW_VERSION    "v0.2.0"
 
+#ifndef T_PAPER_GIT_HASH
+#define T_PAPER_GIT_HASH "unknown"
+#endif
+
+#define T_PAPER_FW_VERSION T_PAPER_SW_VERSION " (" T_PAPER_GIT_HASH ")"
+
 // ---------- Peripheral status enum (shared) ----------
 
 enum {
@@ -29,6 +35,24 @@ enum {
     E_PERI_TRACKBALL,
     E_PERI_MAX,
 };
+
+static inline const char* peri_name(int idx) {
+    switch (idx) {
+        case E_PERI_INK_POWER: return "ink_power";
+        case E_PERI_BQ25896: return "bq25896";
+        case E_PERI_BQ27220: return "bq27220";
+        case E_PERI_RTC: return "rtc";
+        case E_PERI_TOUCH: return "touch";
+        case E_PERI_LORA: return "lora";
+        case E_PERI_SD_CARD: return "sd_card";
+        case E_PERI_GPS: return "gps";
+        case E_PERI_WIFI: return "wifi";
+        case E_PERI_DISPLAY: return "display";
+        case E_PERI_KEYBOARD: return "keyboard";
+        case E_PERI_TRACKBALL: return "trackball";
+        default: return "unknown";
+    }
+}
 
 // ---------- Task priorities (shared) ----------
 

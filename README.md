@@ -8,7 +8,7 @@
   <img alt="Device" src="https://img.shields.io/badge/device-LilyGo%20T5%20ePaper%20Pro-444444" />
   <img alt="Display" src="https://img.shields.io/badge/display-4.7%22%20e--paper-d6d6d1" />
   <img alt="Connectivity" src="https://img.shields.io/badge/connectivity-LoRa%20mesh-6b6b67" />
-  <img alt="Install" src="https://img.shields.io/badge/install-browser%20flasher-2b2b28" />
+  <a href="https://dz0ny.github.io/meshcore-t5-epaper-s3-pro/"><img alt="Install" src="https://img.shields.io/badge/install-browser%20flasher-2b2b28" /></a>
 </p>
 
 <p align="center">
@@ -85,7 +85,7 @@ The interface is designed around the strengths of e-paper:
 
 The easiest way to install the latest build is through the web flasher:
 
-[Open Web Flasher](https://dz0ny.github.io/meshcore-t5-epaepr-pro/)
+[Open Web Flasher](https://dz0ny.github.io/meshcore-t5-epaper-s3-pro/)
 
 Use Chrome or Edge and connect the device with a USB data cable.
 

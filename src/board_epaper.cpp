@@ -184,7 +184,7 @@ void init() {
 
     Serial.println("Board init complete");
     for (int i = 0; i < E_PERI_MAX; i++) {
-        Serial.printf("  peri[%d] = %s\n", i, peri_status[i] ? "OK" : "FAIL");
+        Serial.printf("  %s = %s\n", peri_name(i), peri_status[i] ? "OK" : "FAIL");
     }
     Serial.printf("Free DRAM: %u, Free PSRAM: %u\n",
         heap_caps_get_free_size(MALLOC_CAP_INTERNAL),

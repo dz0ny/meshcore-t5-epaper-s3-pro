@@ -73,7 +73,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_t* ver = lv_label_create(menu);
     lv_obj_set_style_text_font(ver, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(ver, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text_fmt(ver, "FW: %s  HW: %s", T_PAPER_SW_VERSION, T_PAPER_HW_VERSION);
+    lv_label_set_text_fmt(ver, "FW: %s  HW: %s", T_PAPER_FW_VERSION, T_PAPER_HW_VERSION);
     lv_obj_set_style_pad_top(ver, 20, LV_PART_MAIN);
 }
 

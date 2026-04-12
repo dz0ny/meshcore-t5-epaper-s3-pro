@@ -306,7 +306,7 @@ void start(int core) {
         lv_obj_t *ver = lv_label_create(splash);
         lv_obj_set_style_text_font(ver, UI_FONT_BODY, LV_PART_MAIN);
         lv_obj_set_style_text_color(ver, lv_color_hex(0x000000), LV_PART_MAIN);
-        lv_label_set_text(ver, T_PAPER_SW_VERSION);
+        lv_label_set_text(ver, T_PAPER_FW_VERSION);
         lv_obj_align(ver, LV_ALIGN_CENTER, 0, 100);
 
         lv_obj_t *status = lv_label_create(splash);

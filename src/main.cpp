@@ -58,7 +58,7 @@ void setup() {
     // Start LVGL UI — splash polls mesh::task::is_ready()
     ui::task::start(-1);
 
-    Serial.println("t-paper ready");
+    Serial.printf("t-paper ready %s\n", T_PAPER_FW_VERSION);
 }
 
 void loop() {
