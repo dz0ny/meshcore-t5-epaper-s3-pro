@@ -45,14 +45,14 @@ static void show_power_off_splash() {
     lv_screen_load(splash);
 
     lv_obj_t* title = lv_label_create(splash);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_bold_80, LV_PART_MAIN);
+    lv_obj_set_style_text_font(title, UI_FONT_CLOCK_SM, LV_PART_MAIN);
     lv_obj_set_style_text_color(title, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_label_set_text(title, "MeshCore");
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
 
     lv_obj_t* sub = lv_label_create(splash);
-    lv_obj_set_style_text_font(sub, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(sub, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_label_set_text(sub, board::charger_vbus_in() ? "Sleep" : "Power Off");
     lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
@@ -60,7 +60,7 @@ static void show_power_off_splash() {
     lv_obj_t* hint = lv_label_create(splash);
     lv_obj_set_width(hint, lv_pct(80));
     lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(hint, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(hint, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(hint, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (board::charger_vbus_in()) {
@@ -78,11 +78,12 @@ void do_power_off() {
     show_power_off_splash();
     mesh::task::flush_storage();
 
+#ifdef BOARD_EPAPER
     // Try battery FET shutdown first (instant off on battery power)
     board::ppm.shutdown();
+#endif
 
-    // Still alive — USB powered, go to deep sleep instead
-    // Wake on BOOT button press
+    // Go to deep sleep — wake on BOOT button press
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BOARD_BOOT_BTN, 0);
     esp_deep_sleep_start();
 }
@@ -101,7 +102,9 @@ static unsigned long next_lock_mesh_update = 0;
 static unsigned long backlight_off_at = 0;
 
 static OneButton boot_btn(BOARD_BOOT_BTN, true, true);  // active-low, internal pull-up
+#ifdef BOARD_EPAPER
 static OneButton pca_btn;  // PCA9535 IO expander button (PC12)
+#endif
 
 static void on_boot_click() {
     model::touch_activity();
@@ -117,6 +120,7 @@ static void on_boot_long_press() {
     do_power_off();
 }
 
+#ifdef BOARD_EPAPER
 static void on_pca_click() {
     model::touch_activity();
     if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
@@ -124,6 +128,7 @@ static void on_pca_click() {
     }
     ui::screen_mgr::switch_to(SCREEN_HOME, false);
 }
+#endif
 
 static void dispatch_dirty(uint32_t flags) {
     if (flags == model::DIRTY_NONE) return;
@@ -153,11 +158,14 @@ static void ui_task_fn(void* param) {
     boot_btn.attachClick(on_boot_click);
     boot_btn.attachLongPressStart(on_boot_long_press);
 
+#ifdef BOARD_EPAPER
     // PCA9535 IO expander button (PC12): acts as home button
     pca_btn.setup(0, true, false);  // pin unused, active-low, no internal pull-up
     pca_btn.attachClick(on_pca_click);
+#endif
 
     while (1) {
+#ifdef BOARD_EPAPER
         // Home button (GT911 touch center)
         if (board::home_button_pressed) {
             board::home_button_pressed = false;
@@ -167,10 +175,13 @@ static void ui_task_fn(void* param) {
             }
             ui::screen_mgr::switch_to(SCREEN_HOME, false);
         }
+#endif
 
         // Tick button state machines
         boot_btn.tick();
+#ifdef BOARD_EPAPER
         pca_btn.tick(!button_read());  // button_read() returns true when pressed, OneButton expects pin level
+#endif
 
 
         // Check sleep timeout — enter lock screen after inactivity
@@ -179,7 +190,17 @@ static void ui_task_fn(void* param) {
         }
 
         // Single I2C touch read per loop — cache to avoid hammering the bus
-        bool touch_pressed = board::peri_status[E_PERI_TOUCH] && board::touch.isPressed();
+        bool touch_pressed = false;
+        if (board::peri_status[E_PERI_TOUCH]) {
+            touch_pressed = board::touch.isPressed();
+        }
+#ifdef BOARD_TDECK
+        // On T-Deck, also treat trackball click as activity
+        board::TrackballState tb = board::trackball_read();
+        if (tb.clicked) {
+            touch_pressed = true;
+        }
+#endif
 
         bool was_locked = (ui::screen_mgr::top_id() == SCREEN_LOCK);
         bool lock_touched = was_locked && touch_pressed;
@@ -270,26 +291,26 @@ void start(int core) {
         lv_screen_load(splash);
 
         lv_obj_t *title = lv_label_create(splash);
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_bold_80, LV_PART_MAIN);
+        lv_obj_set_style_text_font(title, UI_FONT_CLOCK_SM, LV_PART_MAIN);
         lv_obj_set_style_text_color(title, lv_color_hex(0x000000), LV_PART_MAIN);
         lv_label_set_text(title, "MeshCore");
         lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
 
         lv_obj_t *sub = lv_label_create(splash);
-        lv_obj_set_style_text_font(sub, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_font(sub, UI_FONT_TITLE, LV_PART_MAIN);
         lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
-        lv_label_set_text(sub, "T5 ePaper S3 Pro");
+        lv_label_set_text(sub, T_PAPER_HW_VERSION);
         lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
 
         lv_obj_t *ver = lv_label_create(splash);
-        lv_obj_set_style_text_font(ver, &lv_font_noto_28, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ver, UI_FONT_BODY, LV_PART_MAIN);
         lv_obj_set_style_text_color(ver, lv_color_hex(0x000000), LV_PART_MAIN);
         lv_label_set_text(ver, T_PAPER_SW_VERSION);
         lv_obj_align(ver, LV_ALIGN_CENTER, 0, 100);
 
         lv_obj_t *status = lv_label_create(splash);
-        lv_obj_set_style_text_font(status, &lv_font_noto_24, LV_PART_MAIN);
+        lv_obj_set_style_text_font(status, UI_FONT_SMALL, LV_PART_MAIN);
         lv_obj_set_style_text_color(status, lv_color_hex(0x000000), LV_PART_MAIN);
         lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_set_width(status, lv_pct(80));
@@ -328,8 +349,7 @@ void start(int core) {
 
         lv_label_set_text(status, "Setting clock...");
         lv_timer_handler();
-        // Re-seed system clock from hardware RTC — MeshCore's begin() may have
-        // overwritten it with an old contact timestamp via bootstrapRTCfromContacts()
+        // Re-seed system clock from hardware RTC (no-op on T-Deck)
         board::seed_clock_from_rtc();
         model::update_clock();
 

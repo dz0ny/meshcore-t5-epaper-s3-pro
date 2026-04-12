@@ -11,7 +11,9 @@
 #include "../../sd_log.h"
 #include <SPIFFS.h>
 #include <SD.h>
+#ifdef BOARD_EPAPER
 #include <epdiy.h>
+#endif
 
 namespace ui::screen::set_storage {
 
@@ -40,11 +42,13 @@ static void on_factory_reset(lv_event_t* e) {
 
     // Shut down peripherals
     mesh::task::ble_disable();
+    ui::port::set_backlight(2);  // Off
+#ifdef BOARD_EPAPER
     board::touch.sleep();
     digitalWrite(BOARD_TOUCH_RST, LOW);
     digitalWrite(BOARD_LORA_RST, LOW);
-    ui::port::set_backlight(2);  // Off
     epd_poweroff();
+#endif
 
     // Wipe storage
     SPIFFS.format();

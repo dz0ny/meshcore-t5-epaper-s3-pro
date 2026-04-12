@@ -318,7 +318,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_clear_flag(tap_layer, LV_OBJ_FLAG_SCROLLABLE);
 
     grid_label = lv_label_create(tap_layer);
-    lv_obj_set_style_text_font(grid_label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(grid_label, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(grid_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_bg_color(grid_label, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(grid_label, LV_OPA_COVER, LV_PART_MAIN);
@@ -326,7 +326,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_pos(grid_label, 5, 5);
 
     no_fix_label = lv_label_create(tap_layer);
-    lv_obj_set_style_text_font(no_fix_label, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(no_fix_label, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(no_fix_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_bg_color(no_fix_label, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(no_fix_label, LV_OPA_COVER, LV_PART_MAIN);
@@ -347,7 +347,7 @@ static void create(lv_obj_t* parent) {
         lv_obj_add_flag(contact_taps[i], LV_OBJ_FLAG_HIDDEN);
 
         contact_name_labels[i] = lv_label_create(tap_layer);
-        lv_obj_set_style_text_font(contact_name_labels[i], &lv_font_noto_24, LV_PART_MAIN);
+        lv_obj_set_style_text_font(contact_name_labels[i], UI_FONT_SMALL, LV_PART_MAIN);
         lv_obj_set_style_text_color(contact_name_labels[i], lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_obj_set_style_bg_color(contact_name_labels[i], lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(contact_name_labels[i], LV_OPA_COVER, LV_PART_MAIN);
@@ -360,7 +360,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(btn_in, LV_ALIGN_BOTTOM_LEFT, 20, -20);
 
     lbl_zoom = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_zoom, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_zoom, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_zoom, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_zoom, LV_ALIGN_BOTTOM_MID, 0, -35);
     lv_label_set_text(lbl_zoom, "5km");
@@ -370,7 +370,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(btn_out, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
 
     lbl_dist_info = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_dist_info, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_dist_info, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_dist_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_bg_color(lbl_dist_info, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(lbl_dist_info, LV_OPA_COVER, LV_PART_MAIN);

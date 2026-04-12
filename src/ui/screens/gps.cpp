@@ -27,12 +27,12 @@ static lv_obj_t* info_row(lv_obj_t* parent, const char* label) {
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* lbl = lv_label_create(row);
-    lv_obj_set_style_text_font(lbl, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl, label);
 
     lv_obj_t* val = lv_label_create(row);
-    lv_obj_set_style_text_font(val, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(val, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(val, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(val, "--");
     return val;

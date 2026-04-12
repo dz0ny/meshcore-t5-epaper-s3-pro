@@ -67,7 +67,7 @@ static lv_obj_t* create_card(lv_obj_t* parent, lv_coord_t height) {
 
 static lv_obj_t* create_meta_label(lv_obj_t* parent, const char* text) {
     lv_obj_t* label = lv_label_create(parent);
-    lv_obj_set_style_text_font(label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(label, text);
     return label;
@@ -75,7 +75,7 @@ static lv_obj_t* create_meta_label(lv_obj_t* parent, const char* text) {
 
 static lv_obj_t* create_value_label(lv_obj_t* parent, const char* text) {
     lv_obj_t* label = lv_label_create(parent);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_width(label, lv_pct(100));
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
@@ -97,13 +97,13 @@ static void create_detail_row(lv_obj_t* parent, const char* title, const char* v
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* title_label = lv_label_create(row);
-    lv_obj_set_style_text_font(title_label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(title_label, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(title_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(title_label, title);
 
     lv_obj_t* value_label = lv_label_create(row);
     lv_obj_set_width(value_label, 250);
-    lv_obj_set_style_text_font(value_label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(value_label, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(value_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(value_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_label_set_long_mode(value_label, LV_LABEL_LONG_WRAP);
@@ -171,7 +171,7 @@ static void draw_compass(lv_obj_t* parent, double bearing_deg) {
     int dy[] = {-1, 0, 1, 0};
     for (int i = 0; i < 4; i++) {
         lv_obj_t* lbl = lv_label_create(compass);
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl, UI_FONT_TITLE, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(lbl, dirs[i]);
         lv_obj_align(lbl, LV_ALIGN_CENTER, dx[i] * (r - 15), dy[i] * (r - 15));
@@ -303,14 +303,14 @@ static void create(lv_obj_t* parent) {
     char initial_buf[3];
     contact_avatar_text(initial_buf, sizeof(initial_buf), contact_name);
     lv_obj_t* hero_initial = lv_label_create(hero_badge);
-    lv_obj_set_style_text_font(hero_initial, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(hero_initial, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(hero_initial, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_label_set_text(hero_initial, initial_buf);
     lv_obj_center(hero_initial);
 
     lv_obj_t* lbl_name = lv_label_create(hero_card);
     lv_obj_set_width(lbl_name, 360);
-    lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_long_mode(lbl_name, LV_LABEL_LONG_WRAP);
     lv_obj_align(lbl_name, LV_ALIGN_TOP_LEFT, 108, 2);

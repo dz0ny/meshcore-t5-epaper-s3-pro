@@ -1,3 +1,5 @@
+#ifdef BOARD_EPAPER
+
 #include "epdiy.h"
 #include <driver/gpio.h>
 #include "board/pca9555.h"
@@ -62,4 +64,6 @@ void set_config(i2c_port_t port, uint8_t config_value, int high_port)
 {
     pca9555_set_config(port, config_value, high_port);
 }
+
+#endif // BOARD_EPAPER
 

@@ -54,8 +54,8 @@ void update_gps() {
         gps.status_text = "No Module";
     }
 
-    // MicroNMEALocationProvider syncs ESP32 system clock via rtc_clock.setCurrentTime().
-    // Also sync hardware RTC so it persists across reboots.
+    // Sync hardware RTC so it persists across reboots (e-paper board only).
+#ifdef BOARD_EPAPER
     static bool hw_rtc_synced = false;
     if (gps.has_fix && !hw_rtc_synced && board::peri_status[E_PERI_RTC]) {
         time_t now;
@@ -67,6 +67,7 @@ void update_gps() {
         hw_rtc_synced = true;
         Serial.println("GPS: hardware RTC synced");
     }
+#endif
 
     if (gps.has_fix != prev_has_fix || gps.module_ok != prev_module_ok) {
         mark_dirty(DIRTY_GPS);

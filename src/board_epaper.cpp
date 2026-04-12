@@ -1,3 +1,5 @@
+#ifdef BOARD_EPAPER
+
 #include "board.h"
 #include "model.h"
 #include "nvs_param.h"
@@ -278,3 +280,5 @@ void rtc_get_date(uint8_t* year, uint8_t* month, uint8_t* day, uint8_t* week) {
 }
 
 } // namespace board
+
+#endif // BOARD_EPAPER

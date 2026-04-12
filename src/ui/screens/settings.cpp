@@ -39,7 +39,7 @@ static void on_reboot(lv_event_t* e) {
 static void add_section_label(lv_obj_t* parent, const char* text) {
     lv_obj_t* label = lv_label_create(parent);
     lv_obj_set_width(label, lv_pct(100));
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_pad_top(label, 18, LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(label, 6, LV_PART_MAIN);
@@ -71,7 +71,7 @@ static void create(lv_obj_t* parent) {
 
     // Version info at bottom
     lv_obj_t* ver = lv_label_create(menu);
-    lv_obj_set_style_text_font(ver, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ver, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(ver, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(ver, "FW: %s  HW: %s", T_PAPER_SW_VERSION, T_PAPER_HW_VERSION);
     lv_obj_set_style_pad_top(ver, 20, LV_PART_MAIN);

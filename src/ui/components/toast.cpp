@@ -42,7 +42,7 @@ void show(const char* text, uint32_t timeout_ms) {
     lv_obj_clear_flag(toast_obj, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* lbl = lv_label_create(toast_obj);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(lbl, lv_pct(100));

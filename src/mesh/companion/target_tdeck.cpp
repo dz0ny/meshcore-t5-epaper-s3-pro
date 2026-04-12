@@ -1,35 +1,43 @@
-#ifdef BOARD_EPAPER
+#ifdef BOARD_TDECK
 
 #include <Arduino.h>
 #include "target.h"
 #include "../../board.h"
 
-T5ePaperBoard mc_board;
+// T-Deck board for MeshCore — battery from ADC
+class TDeckMCBoard : public ESP32Board {
+public:
+    uint16_t getBattMilliVolts() override {
+        return board::battery_voltage_mv();
+    }
+    const char* getManufacturerName() const override { return "LilyGo T-Deck"; }
+};
+
+static TDeckMCBoard tdeck_mc_board;
+
+// Expose as the global mc_board expected by MeshCore
+T5ePaperBoard mc_board;  // Use the base type from target.h
 
 uint16_t T5ePaperBoard::getBattMilliVolts() {
     return board::battery_voltage_mv();
 }
 
-// Use the global SPI bus — already initialized by board::init()
-// Do NOT create a separate SPIClass, it conflicts with SD card on shared bus.
+// Radio on T-Deck SPI bus (shared with display and SD)
 RADIO_CLASS radio = new Module(P_LORA_NSS, P_LORA_DIO_1, P_LORA_RESET, P_LORA_BUSY, SPI);
 WRAPPER_CLASS radio_driver(radio, mc_board);
 
-// Use software-only RTC for mesh — no I2C, avoids cross-core bus conflict with epdiy.
-// Time is synced from PCF8563 hardware RTC by model::update_clock() on Core 1.
+// Software RTC (no hardware RTC on T-Deck)
 ESP32RTCClock rtc_clock;
 
-// GPS via MeshCore's MicroNMEA provider — uses Serial1 (mapped to PIN_GPS_TX/RX)
+// GPS via MeshCore's MicroNMEA provider
 MicroNMEALocationProvider gps_provider(Serial1);
 EnvironmentSensorManager sensors(gps_provider);
 
 void rtc_init() {
-    // Skip rtc_clock.begin() — it overwrites settimeofday() with a hardcoded 2024 date.
-    // System clock is already seeded from hardware RTC in board::init().
+    // No hardware RTC on T-Deck — skip rtc_clock.begin()
 }
 
 bool radio_init() {
-    // SPI already initialized by board::init(), pass NULL to skip re-init
     return radio.std_init(NULL);
 }
 
@@ -53,4 +61,4 @@ mesh::LocalIdentity radio_new_identity() {
     return mesh::LocalIdentity(&rng);
 }
 
-#endif // BOARD_EPAPER
+#endif // BOARD_TDECK

@@ -3,6 +3,7 @@
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
+#include "../../board.h"
 
 namespace ui::screen::battery {
 
@@ -37,12 +38,12 @@ static lv_obj_t* info_row(lv_obj_t* parent, const char* label) {
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* lbl = lv_label_create(row);
-    lv_obj_set_style_text_font(lbl, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl, label);
 
     lv_obj_t* val = lv_label_create(row);
-    lv_obj_set_style_text_font(val, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(val, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(val, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(val, "--");
     return val;
@@ -50,7 +51,7 @@ static lv_obj_t* info_row(lv_obj_t* parent, const char* label) {
 
 static lv_obj_t* section_header(lv_obj_t* parent, const char* text) {
     lv_obj_t* lbl = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_pad_top(lbl, 10, LV_PART_MAIN);
     lv_label_set_text(lbl, text);
@@ -64,13 +65,13 @@ static void update_cb(lv_timer_t* t) {
     lv_label_set_text_fmt(lbl_percent, "%d%%", b.percent);
     lv_label_set_text_fmt(lbl_voltage, "%d mV", b.voltage_mv);
     lv_label_set_text_fmt(lbl_current, "%d mA", b.current_ma);
-    lv_label_set_text_fmt(lbl_temp, "%.1f C", b.temperature_c);
-    lv_label_set_text_fmt(lbl_remain, "%d mAh", b.remain_mah);
-    lv_label_set_text_fmt(lbl_full, "%d mAh", b.full_mah);
-    lv_label_set_text_fmt(lbl_design, "%d mAh", b.design_mah);
-    lv_label_set_text_fmt(lbl_health, "%d%%", b.health_pct);
+    if (lbl_temp) lv_label_set_text_fmt(lbl_temp, "%.1f C", b.temperature_c);
+    if (lbl_remain) lv_label_set_text_fmt(lbl_remain, "%d mAh", b.remain_mah);
+    if (lbl_full) lv_label_set_text_fmt(lbl_full, "%d mAh", b.full_mah);
+    if (lbl_design) lv_label_set_text_fmt(lbl_design, "%d mAh", b.design_mah);
+    if (lbl_health) lv_label_set_text_fmt(lbl_health, "%d%%", b.health_pct);
 
-    if (b.charger_ok) {
+    if (b.charger_ok && lbl_chg_status) {
         lv_label_set_text(lbl_chg_status, b.charge_status ? b.charge_status : "--");
         lv_label_set_text(lbl_bus_status, b.bus_status ? b.bus_status : "--");
         lv_label_set_text(lbl_ntc, b.ntc_status ? b.ntc_status : "--");
@@ -87,24 +88,28 @@ static void create(lv_obj_t* parent) {
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 
-    section_header(list, "Gauge");
+    section_header(list, "Battery");
     lbl_percent  = info_row(list, "Charge");
     lbl_voltage  = info_row(list, "Voltage");
     lbl_current  = info_row(list, "Current");
-    lbl_temp     = info_row(list, "Temp");
-    lbl_remain   = info_row(list, "Remain");
-    lbl_full     = info_row(list, "Full Cap");
-    lbl_design   = info_row(list, "Design");
-    lbl_health   = info_row(list, "Health");
+    if (board::peri_status[E_PERI_BQ27220]) {
+        lbl_temp     = info_row(list, "Temp");
+        lbl_remain   = info_row(list, "Remain");
+        lbl_full     = info_row(list, "Full Cap");
+        lbl_design   = info_row(list, "Design");
+        lbl_health   = info_row(list, "Health");
+    }
 
-    section_header(list, "Charger");
-    lbl_chg_status = info_row(list, "Status");
-    lbl_bus_status = info_row(list, "Bus");
-    lbl_ntc        = info_row(list, "NTC");
-    lbl_vbus       = info_row(list, "VBUS");
-    lbl_vsys       = info_row(list, "VSYS");
-    lbl_vbat       = info_row(list, "VBAT");
-    lbl_chg_curr   = info_row(list, "Chg Curr");
+    if (board::peri_status[E_PERI_BQ25896]) {
+        section_header(list, "Charger");
+        lbl_chg_status = info_row(list, "Status");
+        lbl_bus_status = info_row(list, "Bus");
+        lbl_ntc        = info_row(list, "NTC");
+        lbl_vbus       = info_row(list, "VBUS");
+        lbl_vsys       = info_row(list, "VSYS");
+        lbl_vbat       = info_row(list, "VBAT");
+        lbl_chg_curr   = info_row(list, "Chg Curr");
+    }
 }
 
 static void entry() {

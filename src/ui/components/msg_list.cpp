@@ -73,7 +73,7 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     // Sender name
     if (clean_sender[0]) {
         lv_obj_t* lbl_name = lv_label_create(bubble);
-        lv_obj_set_style_text_font(lbl_name, &lv_font_noto_24, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl_name, UI_FONT_SMALL, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(lbl_name, clean_sender);
     }
@@ -82,13 +82,13 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     lv_obj_t* lbl_text = lv_label_create(bubble);
     lv_obj_set_width(lbl_text, lv_pct(100));
     lv_label_set_long_mode(lbl_text, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(lbl_text, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_text, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_text, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_text, clean_text);
 
     // Time inside bubble, bottom-right
     lv_obj_t* lbl_time = lv_label_create(bubble);
-    lv_obj_set_style_text_font(lbl_time, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_time, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_time, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(lbl_time, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_width(lbl_time, lv_pct(100));

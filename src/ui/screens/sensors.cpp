@@ -830,7 +830,7 @@ static void ensure_row(int idx) {
     lv_obj_set_flex_align(header, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* name = lv_label_create(header);
-    lv_obj_set_style_text_font(name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_width(name, lv_pct(72));
     lv_label_set_long_mode(name, LV_LABEL_LONG_WRAP);
@@ -847,12 +847,12 @@ static void ensure_row(int idx) {
     lv_obj_clear_flag(pill, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* state = lv_label_create(pill);
-    lv_obj_set_style_text_font(state, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(state, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(state, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(state, "READY");
 
     lv_obj_t* body = lv_label_create(row);
-    lv_obj_set_style_text_font(body, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(body, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(body, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_width(body, lv_pct(100));
     lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
@@ -946,7 +946,7 @@ static void create(lv_obj_t* parent) {
     empty_label = lv_label_create(sensor_list);
     lv_obj_set_width(empty_label, lv_pct(100));
     lv_obj_set_flex_grow(empty_label, 1);
-    lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(empty_label, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(empty_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(empty_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_label_set_text(empty_label, "\n\nNo favorite nodes yet");

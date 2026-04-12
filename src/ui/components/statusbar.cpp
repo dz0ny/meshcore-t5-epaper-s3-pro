@@ -122,17 +122,17 @@ lv_obj_t* create() {
     memory_enabled_state = nvs_param_get_u8(NVS_ID_STATUSBAR_MEMORY) != 0;
 
     bar_obj = lv_obj_create(layer);
-    lv_obj_set_size(bar_obj, lv_pct(98), 50);
-    lv_obj_set_pos(bar_obj, 5, 5);
+    lv_obj_set_size(bar_obj, lv_pct(98), UI_STATUSBAR_HEIGHT);
+    lv_obj_set_pos(bar_obj, UI_STATUSBAR_Y, UI_STATUSBAR_Y);
     lv_obj_set_style_bg_color(bar_obj, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(bar_obj, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(bar_obj, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(bar_obj, UI_STATUSBAR_PAD, LV_PART_MAIN);
     lv_obj_clear_flag(bar_obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(bar_obj, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(bar_obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(bar_obj, 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(bar_obj, UI_STATUSBAR_COL_PAD, LV_PART_MAIN);
 
-    const lv_font_t *sb_font = &lv_font_noto_24;
+    const lv_font_t *sb_font = UI_FONT_SMALL;
 
     // Left side: time, BLE, GPS
     lbl_time = lv_label_create(bar_obj);

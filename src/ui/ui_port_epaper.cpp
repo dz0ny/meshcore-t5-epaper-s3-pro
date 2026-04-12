@@ -1,3 +1,5 @@
+#ifdef BOARD_EPAPER
+
 #include "ui_port.h"
 #include "../board.h"
 #include "../model.h"
@@ -350,3 +352,5 @@ const char* get_brightness_name() { return bright_names[brightness]; }
 int get_brightness_pwm() { return bright_pwm[brightness]; }
 
 } // namespace ui::port
+
+#endif // BOARD_EPAPER

@@ -57,7 +57,9 @@ static void create(lv_obj_t* parent) {
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 
+#ifdef BOARD_EPAPER
     lbl_refresh_val = ui::nav::toggle_item(list, "Refresh", mode_names[ui::port::get_refresh_mode()], on_refresh_mode, NULL);
+#endif
     lbl_backlight_val = ui::nav::toggle_item(list, "Light", ui::port::get_backlight_name(), on_backlight_cycle, NULL);
     lbl_brightness_val = ui::nav::toggle_item(list, "Brightness", ui::port::get_brightness_name(), on_brightness_cycle, NULL);
     lbl_sleep_val = ui::nav::toggle_item(list, "Sleep", sleep_names[model::sleep_cfg.timeout_idx], on_sleep_cycle, NULL);

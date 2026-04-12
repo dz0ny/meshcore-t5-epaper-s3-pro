@@ -237,7 +237,7 @@ static void rebuild_history() {
             history_labels[i] = lv_label_create(history_rows[i]);
             lv_obj_set_width(history_labels[i], lv_pct(100));
             lv_label_set_long_mode(history_labels[i], LV_LABEL_LONG_WRAP);
-            lv_obj_set_style_text_font(history_labels[i], &lv_font_noto_24, LV_PART_MAIN);
+            lv_obj_set_style_text_font(history_labels[i], UI_FONT_SMALL, LV_PART_MAIN);
             lv_obj_set_style_text_color(history_labels[i], lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
             lv_obj_add_flag(history_rows[i], LV_OBJ_FLAG_HIDDEN);
         }
@@ -486,7 +486,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, 130);
 
     lv_obj_t* name_label = lv_label_create(summary_card);
-    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(name_label, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(name_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_width(name_label, lv_pct(100));
     lv_label_set_long_mode(name_label, LV_LABEL_LONG_WRAP);
@@ -495,13 +495,13 @@ static void create(lv_obj_t* parent) {
     lbl_status = lv_label_create(summary_card);
     lv_obj_set_width(lbl_status, lv_pct(100));
     lv_label_set_long_mode(lbl_status, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(lbl_status, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_status, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_status, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
 
     lbl_route = lv_label_create(summary_card);
     lv_obj_set_width(lbl_route, lv_pct(100));
     lv_label_set_long_mode(lbl_route, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(lbl_route, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_route, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_route, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
 
     lv_obj_t* button_row = lv_obj_create(parent);

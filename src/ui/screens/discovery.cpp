@@ -146,7 +146,7 @@ static void create(lv_obj_t* parent) {
     empty_label = lv_label_create(node_list);
     lv_obj_set_width(empty_label, lv_pct(100));
     lv_obj_set_flex_grow(empty_label, 1);
-    lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(empty_label, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(empty_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(empty_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_label_set_text(empty_label, "\n\n\nListening...");

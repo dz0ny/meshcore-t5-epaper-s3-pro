@@ -215,27 +215,27 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_ext_click_area(recipient_card, 15);
 
     lv_obj_t* recipient_title = lv_label_create(recipient_card);
-    lv_obj_set_style_text_font(recipient_title, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(recipient_title, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(recipient_title, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(recipient_title, "Recipient");
     lv_obj_align(recipient_title, LV_ALIGN_TOP_LEFT, 0, 0);
 
     lv_obj_t* recipient_arrow = lv_label_create(recipient_card);
-    lv_obj_set_style_text_font(recipient_arrow, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(recipient_arrow, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(recipient_arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(recipient_arrow, LV_SYMBOL_RIGHT);
     lv_obj_align(recipient_arrow, LV_ALIGN_TOP_RIGHT, 0, 0);
 
     lbl_to = lv_label_create(recipient_card);
     lv_obj_set_width(lbl_to, lv_pct(100));
-    lv_obj_set_style_text_font(lbl_to, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_to, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_to, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_long_mode(lbl_to, LV_LABEL_LONG_DOT);
     lv_obj_align(lbl_to, LV_ALIGN_TOP_LEFT, 0, 30);
 
     lbl_hint = lv_label_create(recipient_card);
     lv_obj_set_width(lbl_hint, lv_pct(92));
-    lv_obj_set_style_text_font(lbl_hint, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_hint, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_hint, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_long_mode(lbl_hint, LV_LABEL_LONG_DOT);
     lv_obj_add_flag(lbl_hint, LV_OBJ_FLAG_HIDDEN);
@@ -250,7 +250,7 @@ static void create(lv_obj_t* parent) {
         lv_obj_t* empty = lv_label_create(recipient_list);
         lv_obj_set_width(empty, lv_pct(100));
         lv_obj_set_flex_grow(empty, 1);
-        lv_obj_set_style_text_font(empty, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_font(empty, UI_FONT_TITLE, LV_PART_MAIN);
         lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_label_set_text(empty, "\n\nNo contacts yet");
@@ -272,13 +272,13 @@ static void create(lv_obj_t* parent) {
     lv_obj_clear_flag(editor_card, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* msg_title = lv_label_create(editor_card);
-    lv_obj_set_style_text_font(msg_title, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(msg_title, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(msg_title, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(msg_title, "Message");
     lv_obj_align(msg_title, LV_ALIGN_TOP_LEFT, 0, 0);
 
     char_count = lv_label_create(editor_card);
-    lv_obj_set_style_text_font(char_count, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(char_count, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(char_count, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(char_count, "0/150");
     lv_obj_align(char_count, LV_ALIGN_TOP_RIGHT, 0, 0);
@@ -289,7 +289,7 @@ static void create(lv_obj_t* parent) {
     lv_textarea_set_placeholder_text(ta, "Write a short message");
     lv_textarea_set_max_length(ta, 150);
     lv_textarea_set_one_line(ta, false);
-    lv_obj_set_style_text_font(ta, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ta, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(ta, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_bg_color(ta, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_color(ta, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -308,7 +308,7 @@ static void create(lv_obj_t* parent) {
     lv_buttonmatrix_set_button_ctrl_all(kb, LV_BUTTONMATRIX_CTRL_NO_REPEAT);
     lv_obj_set_size(kb, lv_pct(100), 320);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_text_font(kb, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_font(kb, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_text_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_anim_duration(kb, 0, LV_PART_MAIN);

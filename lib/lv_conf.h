@@ -1,6 +1,6 @@
 /**
  * @file lv_conf.h
- * Configuration file for LVGL v9.5 — t-paper e-ink device
+ * Configuration file for LVGL v9.5 — t-paper (e-ink + TFT support)
  */
 
 #if 1 /*Set it to "1" to enable content*/
@@ -12,8 +12,13 @@
    COLOR SETTINGS
  *====================*/
 
+#if defined(BOARD_TDECK)
+/** Color depth: 16 — RGB565 for TFT */
+#define LV_COLOR_DEPTH 16
+#else
 /** Color depth: 8 — matches LV_COLOR_FORMAT_L8 for e-ink grayscale */
 #define LV_COLOR_DEPTH 8
+#endif
 
 /*=========================
    STDLIB WRAPPER SETTINGS
@@ -28,9 +33,13 @@
    HAL SETTINGS
  *====================*/
 
-#define LV_DEF_REFR_PERIOD 33     /**< [ms] — test e-ink refresh period (~30 FPS) */
+#if defined(BOARD_TDECK)
+#define LV_DEF_REFR_PERIOD 16     /**< [ms] — ~60 FPS for TFT */
+#else
+#define LV_DEF_REFR_PERIOD 33     /**< [ms] — ~30 FPS for e-ink */
+#endif
 
-/* Tick provided via lv_tick_set_cb() in ui_port.cpp */
+/* Tick provided via lv_tick_set_cb() in ui_port*.cpp */
 
 /*====================
    OPERATING SYSTEM
@@ -42,9 +51,15 @@
    FEATURE CONFIG
  *====================*/
 
+#if defined(BOARD_TDECK)
+/** TFT can handle animations */
+#define LV_ANIM_DEF_TIME 200
+#define LV_USE_ANIM 1
+#else
 /** Disable animations entirely for e-paper */
 #define LV_ANIM_DEF_TIME 0
 #define LV_USE_ANIM 0
+#endif
 
 #define LV_USE_ASSERT_NULL          0
 #define LV_USE_ASSERT_MALLOC        0
@@ -52,17 +67,21 @@
 
 #define LV_DRAW_BUF_ALIGN 4
 
-/** Reduce widget style cache — e-ink UI is simple */
+/** Reduce widget style cache — simple UI */
 #define LV_STYLE_PROP_MATRIX_FLAT_SIZE 0
 
 /** Disable label text selection (saves RAM per label) */
 #define LV_LABEL_TEXT_SELECTION 0
 
-/** Disable long label scrolling — e-ink can't animate */
+/** Disable long label scrolling — e-ink can't animate, TFT doesn't need it */
 #define LV_LABEL_LONG_TXT_HINT 0
 
+#if defined(BOARD_TDECK)
+#define LV_OPA_MIX_MAX_SPEED 256
+#else
 /** No opacity/blending needed on e-ink */
 #define LV_OPA_MIX_MAX_SPEED 0
+#endif
 
 /** Reduce draw unit count */
 #define LV_DRAW_SW_DRAW_UNIT_CNT 1
@@ -72,11 +91,22 @@
  *====================*/
 
 #define LV_FONT_MONTSERRAT_14 1   /* Default font (required by LVGL internals) */
+
+#if defined(BOARD_TDECK)
+#define LV_FONT_MONTSERRAT_16 1   /* Title font for T-Deck scaled UI */
 #define LV_FONT_MONTSERRAT_18 0
 #define LV_FONT_MONTSERRAT_20 0
 #define LV_FONT_MONTSERRAT_22 0
 #define LV_FONT_MONTSERRAT_24 0
 #define LV_FONT_MONTSERRAT_28 0
+#else
+#define LV_FONT_MONTSERRAT_16 0
+#define LV_FONT_MONTSERRAT_18 0
+#define LV_FONT_MONTSERRAT_20 0
+#define LV_FONT_MONTSERRAT_22 0
+#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_28 0
+#endif
 
 /** Default font */
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
@@ -135,16 +165,21 @@
    DRAWING / RENDERING
  *====================*/
 
+#if defined(BOARD_TDECK)
+/** TFT can use complex drawing features */
+#define LV_USE_DRAW_SW_COMPLEX 1
+#else
 /** Disable complex drawing features not needed on e-ink (shadows, gradients, etc.) */
 #define LV_USE_DRAW_SW_COMPLEX 0
+#endif
 
-/** Disable image caching — e-ink redraws infrequently */
+/** Disable image caching — redraws infrequently */
 #define LV_IMAGE_CACHE_DEF_SIZE 0
 
 /** Disable layer caching */
 #define LV_LAYER_SIMPLE_BUF_SIZE 0
 
-/** Disable vector graphics engines — not needed for e-ink UI */
+/** Disable vector graphics engines */
 #define LV_USE_VECTOR_GRAPHIC 0
 #define LV_USE_THORVG 0
 #define LV_USE_DRAW_VG_LITE 0
