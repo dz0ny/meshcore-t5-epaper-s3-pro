@@ -32,9 +32,8 @@ static lv_obj_t* lbl_distance = NULL;
 static lv_obj_t* lbl_bearing_text = NULL;
 static lv_obj_t* compass_canvas = NULL;
 static lv_obj_t* lbl_nav_action = NULL;
-#define LV_SYMBOL_STAR       "\xEF\x80\x85" /*61445, 0xF005*/
-#define LV_SYMBOL_STAR_O     "\xEF\x80\x86" /*61446, 0xF006*/
-static const char* favorite_action_label(bool is_favorite) { return is_favorite ? LV_SYMBOL_STAR : LV_SYMBOL_STAR_O; }
+#define LV_SYMBOL_STAR       "\xEF\x80\x85" /*61445, 0xF005 — FA5 solid star*/
+static const char* favorite_action_label(bool is_favorite) { return is_favorite ? LV_SYMBOL_STAR " Fav" : "+ Fav"; }
 
 void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t type, bool has_path,
                  const uint8_t* pubkey_prefix) {

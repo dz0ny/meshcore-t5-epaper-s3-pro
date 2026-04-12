@@ -1,6 +1,9 @@
 /**
  * Custom LVGL memory allocator — routes all LVGL allocations to PSRAM
  * to avoid exhausting internal RAM and crashing under LVGL load.
+ *
+ * Uses MALLOC_CAP_8BIT which prefers PSRAM on ESP32-S3 with PSRAM enabled,
+ * and heap_caps_free which handles pointers from any heap region.
  */
 #include "lvgl.h"
 #if LV_USE_STDLIB_MALLOC == LV_STDLIB_CUSTOM

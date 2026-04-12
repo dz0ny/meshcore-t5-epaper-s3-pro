@@ -19,8 +19,7 @@
    STDLIB WRAPPER SETTINGS
  *=========================*/
 
-/* Custom malloc uses a hybrid allocator: small LVGL objects in internal RAM,
- * larger allocations in PSRAM. */
+/* Custom malloc routes to PSRAM via heap_caps */
 #define LV_USE_STDLIB_MALLOC    LV_STDLIB_CUSTOM
 #define LV_USE_STDLIB_STRING    LV_STDLIB_CLIB
 #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_CLIB

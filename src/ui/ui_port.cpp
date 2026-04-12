@@ -8,23 +8,16 @@ namespace ui::port {
 
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
-static uint8_t* prev_frame = NULL;  // previous frame for change detection
 static const int32_t CHANGE_DETECT_MAX_PIXELS = 4096;
 static uint8_t gray_to_lo[256];
 static uint8_t gray_to_hi[256];
 static bool gray_tables_ready = false;
+static uint8_t* packed_prev_frame = NULL;  // packed 4-bit rotated framebuffer shadow
+static int32_t* rotated_row_offsets = NULL;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
         Serial.printf("EPD draw error: %X\n", err);
-    }
-}
-
-static void copy_dirty_area(uint8_t *dst, const uint8_t *src, const lv_area_t *area, int32_t disp_w) {
-    for (int32_t ry = area->y1; ry <= area->y2; ry++) {
-        int32_t offset = ry * disp_w + area->x1;
-        int32_t len = area->x2 - area->x1 + 1;
-        memcpy(&dst[offset], &src[offset], len);
     }
 }
 
@@ -39,33 +32,66 @@ static void init_gray_tables() {
     gray_tables_ready = true;
 }
 
-static inline void pack_single_row(uint8_t *fb, const uint8_t *src_row, int32_t phys_h, int32_t half_w,
-                                   int32_t ry, int32_t x1, int32_t x2) {
+static void init_rotated_row_offsets(int32_t phys_h, int32_t half_w) {
+    if (rotated_row_offsets) {
+        return;
+    }
+    rotated_row_offsets = (int32_t *)ps_malloc(sizeof(int32_t) * phys_h);
+    if (!rotated_row_offsets) {
+        return;
+    }
+    for (int32_t rx = 0; rx < phys_h; rx++) {
+        rotated_row_offsets[rx] = (phys_h - 1 - rx) * half_w;
+    }
+}
+
+static inline int32_t rotated_offset(int32_t rx, int32_t phys_h, int32_t half_w) {
+    if (rotated_row_offsets) {
+        return rotated_row_offsets[rx];
+    }
+    return (phys_h - 1 - rx) * half_w;
+}
+
+static inline void pack_single_row(uint8_t *fb, const uint8_t *prev_fb, const uint8_t *src_row,
+                                   int32_t phys_h, int32_t half_w, int32_t ry, int32_t x1, int32_t x2,
+                                   bool track_dirty_area, bool *changed) {
     int32_t px_x = ry;
     int32_t byte_x = px_x / 2;
     bool is_odd = px_x & 1;
 
     if (is_odd) {
         for (int32_t rx = x1; rx <= x2; rx++) {
-            int32_t px_y = phys_h - 1 - rx;
-            uint8_t *bp = &fb[px_y * half_w + byte_x];
-            *bp = (uint8_t)((*bp & 0x0F) | gray_to_hi[src_row[rx]]);
+            int32_t offset = rotated_offset(rx, phys_h, half_w) + byte_x;
+            uint8_t packed = (uint8_t)((prev_fb[offset] & 0x0F) | gray_to_hi[src_row[rx]]);
+            if (track_dirty_area && packed != prev_fb[offset]) {
+                *changed = true;
+            }
+            fb[offset] = packed;
         }
     } else {
         for (int32_t rx = x1; rx <= x2; rx++) {
-            int32_t px_y = phys_h - 1 - rx;
-            uint8_t *bp = &fb[px_y * half_w + byte_x];
-            *bp = (uint8_t)((*bp & 0xF0) | gray_to_lo[src_row[rx]]);
+            int32_t offset = rotated_offset(rx, phys_h, half_w) + byte_x;
+            uint8_t packed = (uint8_t)((prev_fb[offset] & 0xF0) | gray_to_lo[src_row[rx]]);
+            if (track_dirty_area && packed != prev_fb[offset]) {
+                *changed = true;
+            }
+            fb[offset] = packed;
         }
     }
 }
 
-static inline void pack_row_pair(uint8_t *fb, const uint8_t *src_even, const uint8_t *src_odd,
-                                 int32_t phys_h, int32_t half_w, int32_t even_ry, int32_t x1, int32_t x2) {
+static inline void pack_row_pair(uint8_t *fb, const uint8_t *prev_fb, const uint8_t *src_even,
+                                 const uint8_t *src_odd, int32_t phys_h, int32_t half_w, int32_t even_ry,
+                                 int32_t x1, int32_t x2,
+                                 bool track_dirty_area, bool *changed) {
     int32_t byte_x = even_ry / 2;
     for (int32_t rx = x1; rx <= x2; rx++) {
-        int32_t px_y = phys_h - 1 - rx;
-        fb[px_y * half_w + byte_x] = (uint8_t)(gray_to_hi[src_odd[rx]] | gray_to_lo[src_even[rx]]);
+        int32_t offset = rotated_offset(rx, phys_h, half_w) + byte_x;
+        uint8_t packed = (uint8_t)(gray_to_hi[src_odd[rx]] | gray_to_lo[src_even[rx]]);
+        if (track_dirty_area && packed != prev_fb[offset]) {
+            *changed = true;
+        }
+        fb[offset] = packed;
     }
 }
 
@@ -80,51 +106,63 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
 {
     init_gray_tables();
 
-    int32_t disp_w = epd_rotated_display_width();
     int32_t area_w = lv_area_get_width(area);
     int32_t area_h = lv_area_get_height(area);
     int32_t area_px = area_w * area_h;
 
-    // Skip e-paper update if a small dirty area pixels haven't actually changed.
-    // For large invalidations, the extra PSRAM scan costs more than it saves.
-    bool track_dirty_area = prev_frame && area_px <= CHANGE_DETECT_MAX_PIXELS;
-    if (track_dirty_area) {
-        bool changed = false;
-        for (int32_t ry = area->y1; ry <= area->y2 && !changed; ry++) {
-            int32_t offset = ry * disp_w + area->x1;
-            int32_t len = area->x2 - area->x1 + 1;
-            if (memcmp(&px_map[offset], &prev_frame[offset], len) != 0) {
-                changed = true;
-            }
-        }
-        if (!changed) {
-            lv_display_flush_ready(disp);
-            return;
-        }
-    }
-
     uint8_t *fb = epd_hl_get_framebuffer(&board::hl);
     int32_t phys_w = epd_width();
     int32_t phys_h = epd_height();
+    int32_t disp_w = epd_rotated_display_width();
 
     // Pack L8 (8-bit gray) → 4-bit nibbles in epdiy framebuffer with inline rotation.
     // Two adjacent source rows map to the same destination byte, so pack row pairs together
     // to avoid the read-modify-write on every pixel.
     int32_t half_w = phys_w / 2;
+    init_rotated_row_offsets(phys_h, half_w);
+    if (!packed_prev_frame) {
+        packed_prev_frame = (uint8_t *)ps_malloc((size_t)half_w * phys_h);
+        if (packed_prev_frame) {
+            memcpy(packed_prev_frame, fb, (size_t)half_w * phys_h);
+        }
+    }
+
+    bool changed = false;
+    bool track_dirty_area = packed_prev_frame && rotated_row_offsets && area_px <= CHANGE_DETECT_MAX_PIXELS;
     int32_t ry = area->y1;
     if (ry & 1) {
         const uint8_t *src_row = &px_map[ry * disp_w];
-        pack_single_row(fb, src_row, phys_h, half_w, ry, area->x1, area->x2);
+        pack_single_row(fb, packed_prev_frame ? packed_prev_frame : fb, src_row, phys_h, half_w, ry,
+                        area->x1, area->x2, track_dirty_area, &changed);
         ry++;
     }
     for (; ry < area->y2; ry += 2) {
         const uint8_t *src_even = &px_map[ry * disp_w];
         const uint8_t *src_odd = &px_map[(ry + 1) * disp_w];
-        pack_row_pair(fb, src_even, src_odd, phys_h, half_w, ry, area->x1, area->x2);
+        pack_row_pair(fb, packed_prev_frame ? packed_prev_frame : fb, src_even, src_odd, phys_h, half_w, ry,
+                      area->x1, area->x2, track_dirty_area, &changed);
     }
     if (ry == area->y2) {
         const uint8_t *src_row = &px_map[ry * disp_w];
-        pack_single_row(fb, src_row, phys_h, half_w, ry, area->x1, area->x2);
+        pack_single_row(fb, packed_prev_frame ? packed_prev_frame : fb, src_row, phys_h, half_w, ry,
+                        area->x1, area->x2, track_dirty_area, &changed);
+    }
+
+    if (packed_prev_frame) {
+        int32_t packed_y1 = phys_h - 1 - area->x2;
+        int32_t packed_y2 = phys_h - 1 - area->x1;
+        int32_t packed_x1 = area->y1 / 2;
+        int32_t packed_x2 = area->y2 / 2;
+        int32_t packed_len = packed_x2 - packed_x1 + 1;
+        for (int32_t py = packed_y1; py <= packed_y2; py++) {
+            int32_t offset = py * half_w + packed_x1;
+            memcpy(&packed_prev_frame[offset], &fb[offset], packed_len);
+        }
+    }
+
+    if (track_dirty_area && !changed) {
+        lv_display_flush_ready(disp);
+        return;
     }
 
     // Partial area rect in rotated coordinates — epdiy handles rotation internally
@@ -143,10 +181,6 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         epd_poweron();
         checkError(epd_hl_update_area(&board::hl, MODE_GL16, epd_ambient_temperature(), update_rect));
         epd_poweroff();
-    }
-
-    if (prev_frame) {
-        copy_dirty_area(prev_frame, px_map, area, disp_w);
     }
 
     lv_display_flush_ready(disp);
@@ -201,7 +235,6 @@ void init() {
     size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
     void *buf2 = ps_calloc(1, buf_size);
-    prev_frame = (uint8_t *)ps_calloc(1, buf_size);  // for change detection
     lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();

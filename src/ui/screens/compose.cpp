@@ -111,25 +111,6 @@ static void on_kb_event(lv_event_t* e) {
     }
 }
 
-static void on_kb_draw(lv_event_t* e) {
-    lv_draw_task_t* draw_task = lv_event_get_draw_task(e);
-    if (!draw_task) return;
-
-    lv_draw_dsc_base_t* base_dsc = (lv_draw_dsc_base_t*)lv_draw_task_get_draw_dsc(draw_task);
-    if (!base_dsc || base_dsc->part != LV_PART_ITEMS) return;
-
-    lv_draw_label_dsc_t* label_draw_dsc = lv_draw_task_get_label_dsc(draw_task);
-    if (!label_draw_dsc || !label_draw_dsc->text) return;
-
-    if (lv_strcmp(label_draw_dsc->text, LV_SYMBOL_BACKSPACE) == 0) {
-        label_draw_dsc->text = "Bksp";
-    } else if (lv_strcmp(label_draw_dsc->text, LV_SYMBOL_KEYBOARD) == 0 ||
-               lv_strcmp(label_draw_dsc->text, LV_SYMBOL_CLOSE) == 0) {
-        label_draw_dsc->text = "";
-    } else if (lv_strcmp(label_draw_dsc->text, LV_SYMBOL_OK) == 0) {
-        label_draw_dsc->text = "Send";
-    }
-}
 
 static void on_ta_focus(lv_event_t* e) {
     lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
@@ -315,8 +296,6 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_border_width(kb, 2, LV_PART_ITEMS);
     lv_obj_set_style_radius(kb, 10, LV_PART_ITEMS);
     lv_obj_add_event_cb(kb, on_kb_event, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(kb, on_kb_draw, LV_EVENT_DRAW_TASK_ADDED, NULL);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
 
     send_btn = ui::nav::text_button(parent, "Send", on_send, NULL);
     lv_obj_align(send_btn, LV_ALIGN_BOTTOM_MID, 0, -335);

@@ -9,6 +9,11 @@
 
 namespace ui::screen::home {
 
+static constexpr lv_coord_t HOME_NODE_NAME_Y = 55;
+static constexpr lv_coord_t HOME_CLOCK_Y = 100;
+static constexpr lv_coord_t HOME_DATE_Y = 225;
+static constexpr lv_coord_t HOME_MENU_Y = 340;
+
 static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
 static lv_obj_t* lbl_clock = NULL;
@@ -53,21 +58,21 @@ static void create(lv_obj_t* parent) {
 
     // Node name (mesh identity)
     lbl_node_name = lv_label_create(parent);
-    lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, 55);
+    lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, HOME_NODE_NAME_Y);
     lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "T-Paper");
 
     // Big clock
     lbl_clock = lv_label_create(parent);
-    lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, HOME_CLOCK_Y);
     lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_bold_120, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_clock, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
 
     // Date below clock
     lbl_date = lv_label_create(parent);
-    lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 210);
+    lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, HOME_DATE_Y);
     lv_obj_set_style_text_font(lbl_date, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
@@ -76,7 +81,7 @@ static void create(lv_obj_t* parent) {
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
     lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);
-    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, 255);
+    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y);
     lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);

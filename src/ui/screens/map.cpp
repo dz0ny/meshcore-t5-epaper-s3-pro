@@ -25,8 +25,8 @@ static lv_obj_t* no_fix_label = NULL;
 static lv_obj_t* contact_taps[32] = {};
 static lv_obj_t* contact_name_labels[32] = {};
 
-static const uint8_t MAP_GRID_COLOR = 0x90;
-static const uint8_t MAP_AXIS_COLOR = 0x50;
+static const uint8_t MAP_GRID_COLOR = 0x40;
+static const uint8_t MAP_AXIS_COLOR = 0x00;
 static const uint8_t MAP_MARKER_COLOR = 0x00;
 
 // Zoom levels in km radius
@@ -142,6 +142,34 @@ static void draw_vline(int x, uint8_t color) {
     }
 }
 
+static void draw_hline_dashed_thick(int y, int thickness, uint8_t color) {
+    int half = thickness / 2;
+    for (int dy = -half; dy <= half; dy++) {
+        draw_hline_dashed(y + dy, color);
+    }
+}
+
+static void draw_vline_dashed_thick(int x, int thickness, uint8_t color) {
+    int half = thickness / 2;
+    for (int dx = -half; dx <= half; dx++) {
+        draw_vline_dashed(x + dx, color);
+    }
+}
+
+static void draw_hline_thick(int y, int thickness, uint8_t color) {
+    int half = thickness / 2;
+    for (int dy = -half; dy <= half; dy++) {
+        draw_hline(y + dy, color);
+    }
+}
+
+static void draw_vline_thick(int x, int thickness, uint8_t color) {
+    int half = thickness / 2;
+    for (int dx = -half; dx <= half; dx++) {
+        draw_vline(x + dx, color);
+    }
+}
+
 static void hide_contact_overlays() {
     for (int i = 0; i < 32; i++) {
         if (contact_taps[i]) lv_obj_add_flag(contact_taps[i], LV_OBJ_FLAG_HIDDEN);
@@ -183,12 +211,12 @@ static void rebuild_map() {
     int grid_px_x = (int)(grid_km * scale_x);
     if (grid_px_y > 20 && grid_px_x > 20) {
         for (int gy = grid_px_y; MAP_CY + gy < MAP_H; gy += grid_px_y) {
-            draw_hline_dashed(MAP_CY + gy, MAP_GRID_COLOR);
-            draw_hline_dashed(MAP_CY - gy, MAP_GRID_COLOR);
+            draw_hline_dashed_thick(MAP_CY + gy, 3, MAP_GRID_COLOR);
+            draw_hline_dashed_thick(MAP_CY - gy, 3, MAP_GRID_COLOR);
         }
         for (int gx = grid_px_x; MAP_CX + gx < MAP_W; gx += grid_px_x) {
-            draw_vline_dashed(MAP_CX + gx, MAP_GRID_COLOR);
-            draw_vline_dashed(MAP_CX - gx, MAP_GRID_COLOR);
+            draw_vline_dashed_thick(MAP_CX + gx, 3, MAP_GRID_COLOR);
+            draw_vline_dashed_thick(MAP_CX - gx, 3, MAP_GRID_COLOR);
         }
     }
 
