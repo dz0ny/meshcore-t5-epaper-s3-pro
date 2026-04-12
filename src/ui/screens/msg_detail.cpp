@@ -44,7 +44,7 @@ static void create(lv_obj_t* parent) {
     // Reuse the bubble component for the message
     lv_obj_t* bubble_list = ui::msg_list::create(parent);
     lv_obj_set_size(bubble_list, lv_pct(95), lv_pct(45));
-    lv_obj_align(bubble_list, LV_ALIGN_TOP_MID, 0, 130);
+    lv_obj_align(bubble_list, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
     ui::msg_list::append(bubble_list, msg.sender, msg.text, 0, msg.is_self);
 
     // Reply button (only for received messages)

@@ -5,6 +5,7 @@
 #include "../ui_port.h"
 #include "../components/statusbar.h"
 #include "../../model.h"
+#include "../../board.h"
 
 namespace ui::screen::lock {
 
@@ -41,19 +42,31 @@ static void create(lv_obj_t* parent) {
     lbl_node_name = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_node_name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+#if defined(BOARD_TDECK)
+    lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, 26);
+#else
     lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, 55);
-    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "LilyGo T5 ePaper S3 Pro");
+#endif
+    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : T_PAPER_HW_VERSION);
 
     lbl_time = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_time, UI_FONT_CLOCK_LG, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_time, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+#if defined(BOARD_TDECK)
+    lv_obj_align(lbl_time, LV_ALIGN_TOP_MID, 0, 40);
+#else
     lv_obj_align(lbl_time, LV_ALIGN_TOP_MID, 0, 100);
+#endif
     lv_label_set_text(lbl_time, "");
 
     lbl_date = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_date, UI_FONT_BODY, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_date, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+#if defined(BOARD_TDECK)
+    lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 72);
+#else
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 210);
+#endif
     lv_label_set_text(lbl_date, "");
 
     // Unread messages — tappable, jumps directly to chat

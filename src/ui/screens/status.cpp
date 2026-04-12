@@ -30,7 +30,7 @@ static void create(lv_obj_t* parent) {
 
     lv_obj_t* menu = lv_obj_create(parent);
     lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);
-    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, 110);
+    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
     lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);

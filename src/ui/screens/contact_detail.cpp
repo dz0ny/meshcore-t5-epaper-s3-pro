@@ -290,8 +290,13 @@ static void create(lv_obj_t* parent) {
     const char* type_text = contact_type_label(contact_type);
 
     lv_obj_t* hero_card = create_card(parent, 150);
+#if defined(BOARD_TDECK)
+    lv_obj_set_size(hero_card, lv_pct(95), 65);
+    lv_obj_align(hero_card, LV_ALIGN_TOP_MID, 0, 60);
+#else
     lv_obj_set_size(hero_card, lv_pct(95), 150);
     lv_obj_align(hero_card, LV_ALIGN_TOP_MID, 0, 130);
+#endif
     lv_obj_t* hero_badge = lv_obj_create(hero_card);
     lv_obj_set_size(hero_badge, 84, 84);
     lv_obj_align(hero_badge, LV_ALIGN_LEFT_MID, 0, 0);
@@ -320,8 +325,13 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(lbl_type, LV_ALIGN_TOP_LEFT, 108, 58);
 
     lv_obj_t* details_card = create_card(parent, 230);
+#if defined(BOARD_TDECK)
+    lv_obj_set_size(details_card, lv_pct(95), 100);
+    lv_obj_align(details_card, LV_ALIGN_TOP_MID, 0, 130);
+#else
     lv_obj_set_size(details_card, lv_pct(95), 230);
     lv_obj_align(details_card, LV_ALIGN_TOP_MID, 0, 295);
+#endif
     lv_obj_set_style_pad_row(details_card, 8, LV_PART_MAIN);
     lv_obj_set_flex_flow(details_card, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(details_card, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);

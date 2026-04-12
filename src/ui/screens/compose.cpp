@@ -13,6 +13,29 @@
 
 namespace ui::screen::compose {
 
+// Layout Y positions — board-conditional
+#if defined(BOARD_TDECK)
+static constexpr int COMPOSE_RECIPIENT_Y = 60;
+static constexpr int COMPOSE_RECIPIENT_H = 55;
+static constexpr int COMPOSE_LIST_Y = 120;
+static constexpr int COMPOSE_LIST_H = 115;
+static constexpr int COMPOSE_EDITOR_Y = 120;
+static constexpr int COMPOSE_EDITOR_H = 45;
+static constexpr int COMPOSE_TA_Y = 125;
+static constexpr int COMPOSE_TA_H = 70;
+static constexpr int COMPOSE_SEND_BOTTOM = -5;
+#else
+static constexpr int COMPOSE_RECIPIENT_Y = 130;
+static constexpr int COMPOSE_RECIPIENT_H = 110;
+static constexpr int COMPOSE_LIST_Y = 255;
+static constexpr int COMPOSE_LIST_H = 630;
+static constexpr int COMPOSE_EDITOR_Y = 255;
+static constexpr int COMPOSE_EDITOR_H = 260;
+static constexpr int COMPOSE_TA_Y = 305;
+static constexpr int COMPOSE_TA_H = 180;
+static constexpr int COMPOSE_SEND_BOTTOM = -335;
+#endif
+
 static lv_obj_t* scr = NULL;
 static lv_obj_t* recipient_list = NULL;
 static lv_obj_t* recipient_card = NULL;
@@ -131,8 +154,8 @@ static void on_kb_event(lv_event_t* e) {
 
 static void on_ta_focus(lv_event_t* e) {
     enable_typing_refresh_mode();
-    lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
+    if (kb) lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    if (send_btn) lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
     model::touch_activity();
 }
 
@@ -202,8 +225,8 @@ static void create(lv_obj_t* parent) {
     ui::nav::back_button(parent, "Compose", on_back);
 
     recipient_card = lv_obj_create(parent);
-    lv_obj_set_size(recipient_card, lv_pct(95), 110);
-    lv_obj_align(recipient_card, LV_ALIGN_TOP_MID, 0, 130);
+    lv_obj_set_size(recipient_card, lv_pct(95), COMPOSE_RECIPIENT_H);
+    lv_obj_align(recipient_card, LV_ALIGN_TOP_MID, 0, COMPOSE_RECIPIENT_Y);
     lv_obj_set_style_bg_color(recipient_card, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(recipient_card, 3, LV_PART_MAIN);
     lv_obj_set_style_border_color(recipient_card, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -242,8 +265,8 @@ static void create(lv_obj_t* parent) {
     update_recipient_card();
 
     recipient_list = ui::nav::scroll_list(parent);
-    lv_obj_set_size(recipient_list, lv_pct(95), 630);
-    lv_obj_align(recipient_list, LV_ALIGN_TOP_MID, 0, 255);
+    lv_obj_set_size(recipient_list, lv_pct(95), COMPOSE_LIST_H);
+    lv_obj_align(recipient_list, LV_ALIGN_TOP_MID, 0, COMPOSE_LIST_Y);
 
     load_entries();
     if (pick_count == 0) {
@@ -262,8 +285,8 @@ static void create(lv_obj_t* parent) {
     }
 
     editor_card = lv_obj_create(parent);
-    lv_obj_set_size(editor_card, lv_pct(95), 260);
-    lv_obj_align(editor_card, LV_ALIGN_TOP_MID, 0, 255);
+    lv_obj_set_size(editor_card, lv_pct(95), COMPOSE_EDITOR_H);
+    lv_obj_align(editor_card, LV_ALIGN_TOP_MID, 0, COMPOSE_EDITOR_Y);
     lv_obj_set_style_bg_color(editor_card, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(editor_card, 3, LV_PART_MAIN);
     lv_obj_set_style_border_color(editor_card, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -284,8 +307,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(char_count, LV_ALIGN_TOP_RIGHT, 0, 0);
 
     ta = lv_textarea_create(parent);
-    lv_obj_set_size(ta, lv_pct(89), 180);
-    lv_obj_align(ta, LV_ALIGN_TOP_MID, 0, 305);
+    lv_obj_set_size(ta, lv_pct(89), COMPOSE_TA_H);
+    lv_obj_align(ta, LV_ALIGN_TOP_MID, 0, COMPOSE_TA_Y);
     lv_textarea_set_placeholder_text(ta, "Write a short message");
     lv_textarea_set_max_length(ta, 150);
     lv_textarea_set_one_line(ta, false);
@@ -302,6 +325,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_add_event_cb(ta, on_ta_change, LV_EVENT_VALUE_CHANGED, NULL);
     update_char_count();
 
+#ifndef BOARD_TDECK
+    // On-screen keyboard — not needed on T-Deck which has a physical keyboard
     kb = lv_keyboard_create(parent);
     lv_keyboard_set_textarea(kb, ta);
     lv_buttonmatrix_clear_button_ctrl_all(kb, LV_BUTTONMATRIX_CTRL_CLICK_TRIG);
@@ -319,9 +344,10 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_radius(kb, 10, LV_PART_ITEMS);
     lv_obj_set_style_anim_duration(kb, 0, LV_PART_ITEMS);
     lv_obj_add_event_cb(kb, on_kb_event, LV_EVENT_ALL, NULL);
+#endif
 
     send_btn = ui::nav::text_button(parent, "Send", on_send, NULL);
-    lv_obj_align(send_btn, LV_ALIGN_BOTTOM_MID, 0, -335);
+    lv_obj_align(send_btn, LV_ALIGN_BOTTOM_MID, 0, COMPOSE_SEND_BOTTOM);
 
     if (recipient_chosen) {
         lv_obj_add_flag(recipient_list, LV_OBJ_FLAG_HIDDEN);

@@ -13,8 +13,6 @@ BOOTLOADER_OFFSET = "0x0"
 PARTITIONS_OFFSET = "0x8000"
 BOOT_APP0_OFFSET = "0xe000"
 APP_OFFSET = "0x10000"
-SPIFFS_OFFSET = "0xc90000"
-SPIFFS_SIZE = 0x360000  # 3.375 MB — from default_16MB.csv
 FLASH_MODE = "dio"
 FLASH_FREQ = "80m"
 FLASH_SIZE = "16MB"
@@ -62,20 +60,6 @@ def parse_args() -> argparse.Namespace:
 
 def run(command: list[str]) -> None:
     subprocess.run(command, check=True)
-
-
-def make_empty_spiffs(output_path: Path, size: int) -> Path:
-    """Create a formatted empty SPIFFS image using mkspiffs or a blank image."""
-    # Try mkspiffs from PlatformIO packages
-    mkspiffs = Path.home() / ".platformio" / "packages" / "tool-mkspiffs" / "mkspiffs"
-    if mkspiffs.is_file():
-        run([str(mkspiffs), "-c", "/dev/null", "-b", "4096", "-p", "256", "-s", str(size), str(output_path)])
-        return output_path
-
-    # Fallback: write 0xFF-filled image (erased flash state).
-    # SPIFFS will format it on first mount.
-    output_path.write_bytes(b"\xff" * size)
-    return output_path
 
 
 def find_boot_app0(explicit_path: str | None) -> Path:
@@ -252,10 +236,6 @@ def main() -> None:
 
         merged_firmware = target_dir / "merged-firmware.bin"
 
-        # Create empty SPIFFS image so first boot can mount the partition
-        spiffs_bin = target_dir / "spiffs.bin"
-        make_empty_spiffs(spiffs_bin, SPIFFS_SIZE)
-
         run(
             [
                 "python",
@@ -280,8 +260,6 @@ def main() -> None:
                 str(boot_app0),
                 APP_OFFSET,
                 str(firmware),
-                SPIFFS_OFFSET,
-                str(spiffs_bin),
             ]
         )
 

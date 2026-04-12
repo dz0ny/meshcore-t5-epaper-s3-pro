@@ -483,7 +483,7 @@ static void create(lv_obj_t* parent) {
     lbl_auto_action = ui::nav::back_button_action(parent, "Ping", on_back, auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL);
     lv_obj_t* summary_card = create_card(parent);
     lv_obj_set_size(summary_card, lv_pct(95), LV_SIZE_CONTENT);
-    lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, 130);
+    lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
 
     lv_obj_t* name_label = lv_label_create(summary_card);
     lv_obj_set_style_text_font(name_label, UI_FONT_TITLE, LV_PART_MAIN);
@@ -505,8 +505,13 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(lbl_route, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
 
     lv_obj_t* button_row = lv_obj_create(parent);
+#if defined(BOARD_TDECK)
+    lv_obj_set_size(button_row, lv_pct(95), 45);
+    lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, 160);
+#else
     lv_obj_set_size(button_row, lv_pct(95), 90);
     lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, 360);
+#endif
     lv_obj_set_style_bg_opa(button_row, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(button_row, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(button_row, 0, LV_PART_MAIN);

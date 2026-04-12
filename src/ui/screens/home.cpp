@@ -9,10 +9,17 @@
 
 namespace ui::screen::home {
 
+#if defined(BOARD_TDECK)
+static constexpr lv_coord_t HOME_NODE_NAME_Y = 26;
+static constexpr lv_coord_t HOME_CLOCK_Y = 38;
+static constexpr lv_coord_t HOME_DATE_Y = 68;
+static constexpr lv_coord_t HOME_MENU_Y = 85;
+#else
 static constexpr lv_coord_t HOME_NODE_NAME_Y = 55;
 static constexpr lv_coord_t HOME_CLOCK_Y = 100;
 static constexpr lv_coord_t HOME_DATE_Y = 225;
 static constexpr lv_coord_t HOME_MENU_Y = 340;
+#endif
 
 static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
@@ -73,19 +80,27 @@ static void create(lv_obj_t* parent) {
     // Date below clock
     lbl_date = lv_label_create(parent);
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, HOME_DATE_Y);
-    lv_obj_set_style_text_font(lbl_date, UI_FONT_BODY, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lbl_date, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
         model::clock.day, model::clock.month, model::clock.year);
 
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
+#if defined(BOARD_TDECK)
+    // On T-Deck, menu needs to scroll — screen is only 240px tall
+    lv_obj_set_size(menu, lv_pct(95), SCREEN_HEIGHT - HOME_MENU_Y);
+    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y);
+    lv_obj_set_scrollbar_mode(menu, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(menu, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
+#else
     lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);
     lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y);
+    lv_obj_clear_flag(menu, LV_OBJ_FLAG_SCROLLABLE);
+#endif
     lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(menu, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
