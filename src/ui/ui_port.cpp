@@ -10,6 +10,9 @@ static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
 static uint8_t* prev_frame = NULL;  // previous frame for change detection
 static const int32_t CHANGE_DETECT_MAX_PIXELS = 4096;
+static uint8_t gray_to_lo[256];
+static uint8_t gray_to_hi[256];
+static bool gray_tables_ready = false;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -25,6 +28,47 @@ static void copy_dirty_area(uint8_t *dst, const uint8_t *src, const lv_area_t *a
     }
 }
 
+static void init_gray_tables() {
+    if (gray_tables_ready) {
+        return;
+    }
+    for (int i = 0; i < 256; i++) {
+        gray_to_lo[i] = (uint8_t)(i >> 4);
+        gray_to_hi[i] = (uint8_t)(i & 0xF0);
+    }
+    gray_tables_ready = true;
+}
+
+static inline void pack_single_row(uint8_t *fb, const uint8_t *src_row, int32_t phys_h, int32_t half_w,
+                                   int32_t ry, int32_t x1, int32_t x2) {
+    int32_t px_x = ry;
+    int32_t byte_x = px_x / 2;
+    bool is_odd = px_x & 1;
+
+    if (is_odd) {
+        for (int32_t rx = x1; rx <= x2; rx++) {
+            int32_t px_y = phys_h - 1 - rx;
+            uint8_t *bp = &fb[px_y * half_w + byte_x];
+            *bp = (uint8_t)((*bp & 0x0F) | gray_to_hi[src_row[rx]]);
+        }
+    } else {
+        for (int32_t rx = x1; rx <= x2; rx++) {
+            int32_t px_y = phys_h - 1 - rx;
+            uint8_t *bp = &fb[px_y * half_w + byte_x];
+            *bp = (uint8_t)((*bp & 0xF0) | gray_to_lo[src_row[rx]]);
+        }
+    }
+}
+
+static inline void pack_row_pair(uint8_t *fb, const uint8_t *src_even, const uint8_t *src_odd,
+                                 int32_t phys_h, int32_t half_w, int32_t even_ry, int32_t x1, int32_t x2) {
+    int32_t byte_x = even_ry / 2;
+    for (int32_t rx = x1; rx <= x2; rx++) {
+        int32_t px_y = phys_h - 1 - rx;
+        fb[px_y * half_w + byte_x] = (uint8_t)(gray_to_hi[src_odd[rx]] | gray_to_lo[src_even[rx]]);
+    }
+}
+
 // RENDER_MODE_DIRECT flush: px_map is the persistent full-screen L8 buffer,
 // area identifies only the dirty region. L8 format means each pixel is already
 // 8-bit grayscale — we just pack into 4-bit nibbles for epdiy.
@@ -34,6 +78,8 @@ static void copy_dirty_area(uint8_t *dst, const uint8_t *src, const lv_area_t *a
 //   physical_y = epd_height() - 1 - rotated_x
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
+    init_gray_tables();
+
     int32_t disp_w = epd_rotated_display_width();
     int32_t area_w = lv_area_get_width(area);
     int32_t area_h = lv_area_get_height(area);
@@ -61,30 +107,24 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     int32_t phys_w = epd_width();
     int32_t phys_h = epd_height();
 
-    // Pack L8 (8-bit gray) → 4-bit nibbles in epdiy framebuffer with inline rotation
-    // Optimized: for each row ry, px_x is constant (=ry), so precompute nibble mask/shift
+    // Pack L8 (8-bit gray) → 4-bit nibbles in epdiy framebuffer with inline rotation.
+    // Two adjacent source rows map to the same destination byte, so pack row pairs together
+    // to avoid the read-modify-write on every pixel.
     int32_t half_w = phys_w / 2;
-    for (int32_t ry = area->y1; ry <= area->y2; ry++) {
-        int32_t px_x = ry;
-        int32_t byte_x = px_x / 2;
-        bool is_odd = px_x & 1;
+    int32_t ry = area->y1;
+    if (ry & 1) {
         const uint8_t *src_row = &px_map[ry * disp_w];
-
-        if (is_odd) {
-            for (int32_t rx = area->x1; rx <= area->x2; rx++) {
-                uint8_t gray = src_row[rx];
-                int32_t px_y = phys_h - 1 - rx;
-                uint8_t *bp = &fb[px_y * half_w + byte_x];
-                *bp = (*bp & 0x0F) | (gray & 0xF0);
-            }
-        } else {
-            for (int32_t rx = area->x1; rx <= area->x2; rx++) {
-                uint8_t gray = src_row[rx];
-                int32_t px_y = phys_h - 1 - rx;
-                uint8_t *bp = &fb[px_y * half_w + byte_x];
-                *bp = (*bp & 0xF0) | (gray >> 4);
-            }
-        }
+        pack_single_row(fb, src_row, phys_h, half_w, ry, area->x1, area->x2);
+        ry++;
+    }
+    for (; ry < area->y2; ry += 2) {
+        const uint8_t *src_even = &px_map[ry * disp_w];
+        const uint8_t *src_odd = &px_map[(ry + 1) * disp_w];
+        pack_row_pair(fb, src_even, src_odd, phys_h, half_w, ry, area->x1, area->x2);
+    }
+    if (ry == area->y2) {
+        const uint8_t *src_row = &px_map[ry * disp_w];
+        pack_single_row(fb, src_row, phys_h, half_w, ry, area->x1, area->x2);
     }
 
     // Partial area rect in rotated coordinates — epdiy handles rotation internally

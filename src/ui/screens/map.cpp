@@ -25,6 +25,10 @@ static lv_obj_t* no_fix_label = NULL;
 static lv_obj_t* contact_taps[32] = {};
 static lv_obj_t* contact_name_labels[32] = {};
 
+static const uint8_t MAP_GRID_COLOR = 0x90;
+static const uint8_t MAP_AXIS_COLOR = 0x50;
+static const uint8_t MAP_MARKER_COLOR = 0x00;
+
 // Zoom levels in km radius
 static const double zoom_levels[] = {0.5, 1.0, 5.0, 20.0, 50.0};
 static const int n_zoom = 5;
@@ -179,18 +183,18 @@ static void rebuild_map() {
     int grid_px_x = (int)(grid_km * scale_x);
     if (grid_px_y > 20 && grid_px_x > 20) {
         for (int gy = grid_px_y; MAP_CY + gy < MAP_H; gy += grid_px_y) {
-            draw_hline_dashed(MAP_CY + gy, 0xC0);
-            draw_hline_dashed(MAP_CY - gy, 0xC0);
+            draw_hline_dashed(MAP_CY + gy, MAP_GRID_COLOR);
+            draw_hline_dashed(MAP_CY - gy, MAP_GRID_COLOR);
         }
         for (int gx = grid_px_x; MAP_CX + gx < MAP_W; gx += grid_px_x) {
-            draw_vline_dashed(MAP_CX + gx, 0xC0);
-            draw_vline_dashed(MAP_CX - gx, 0xC0);
+            draw_vline_dashed(MAP_CX + gx, MAP_GRID_COLOR);
+            draw_vline_dashed(MAP_CX - gx, MAP_GRID_COLOR);
         }
     }
 
-    draw_hline(MAP_CY, 0x80);
-    draw_vline(MAP_CX, 0x80);
-    draw_filled_circle(MAP_CX, MAP_CY, 6, 0x00);
+    draw_hline(MAP_CY, MAP_AXIS_COLOR);
+    draw_vline(MAP_CX, MAP_AXIS_COLOR);
+    draw_filled_circle(MAP_CX, MAP_CY, 6, MAP_MARKER_COLOR);
 
     hide_contact_overlays();
 
@@ -240,7 +244,7 @@ static void rebuild_map() {
         contacts[i].px = px;
         contacts[i].py = py;
 
-        draw_filled_circle(px, py, 8, 0x00);
+        draw_filled_circle(px, py, 8, MAP_MARKER_COLOR);
 
         char short_name[10];
         strncpy(short_name, contacts[i].name, 9);

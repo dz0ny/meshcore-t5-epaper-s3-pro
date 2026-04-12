@@ -42,10 +42,6 @@ static void on_map_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_MAP, true);
 }
 
-static void on_status_click(lv_event_t* e) {
-    ui::screen_mgr::push(SCREEN_STATUS, true);
-}
-
 static void on_settings_click(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_SETTINGS, true);
 }
@@ -93,7 +89,6 @@ static void create(lv_obj_t* parent) {
     ui::nav::menu_item(menu, NULL, "Contacts", on_contacts_click, NULL);
     ui::nav::menu_item(menu, NULL, "Discovery", on_discovery_click, NULL);
     ui::nav::menu_item(menu, NULL, "Map", on_map_click, NULL);
-    ui::nav::menu_item(menu, NULL, "Status", on_status_click, NULL);
     ui::nav::menu_item(menu, NULL, "Settings", on_settings_click, NULL);
 }
 
