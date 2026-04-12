@@ -22,6 +22,12 @@ DEVICE_NAME = "LilyGo T5 ePaper S3 Pro"
 PROJECT_NAME = "LilyGo T5 ePaper S3 Pro"
 PROJECT_SLUG = "lilygo-t5-epaper-pro"
 PRODUCT_IMAGE = "main.jpeg"
+SCREENSHOT_IMAGES = [
+    ("compose.jpeg", "Compose screen"),
+    ("contact.jpeg", "Contacts screen"),
+    ("map.jpeg", "Map screen"),
+    ("sensors.jpeg", "Sensors screen"),
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -133,6 +139,15 @@ def build_page(version: str, repo_url: str) -> str:
             />
           </div>
           <div class="grid gap-3 border border-paper-line bg-[#fcfcfa] p-4">
+            <p class="text-sm font-semibold uppercase tracking-[0.08em] text-paper-muted">Screens</p>
+            <div class="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+              <img src="compose.jpeg" alt="Compose screen" class="w-full border border-paper-line object-cover" />
+              <img src="contact.jpeg" alt="Contacts screen" class="w-full border border-paper-line object-cover" />
+              <img src="map.jpeg" alt="Map screen" class="w-full border border-paper-line object-cover" />
+              <img src="sensors.jpeg" alt="Sensors screen" class="w-full border border-paper-line object-cover" />
+            </div>
+          </div>
+          <div class="grid gap-3 border border-paper-line bg-[#fcfcfa] p-4">
             <p class="text-sm font-semibold uppercase tracking-[0.08em] text-paper-muted">What You Get</p>
             <ul class="grid gap-2 text-sm leading-6 text-paper-muted">
               <li>Home screen with clock, unread state, and device overview</li>
@@ -178,8 +193,9 @@ def main() -> None:
     firmware = build_dir / "firmware.bin"
     boot_app0 = find_boot_app0(args.boot_app0)
     product_image = Path(__file__).resolve().parent.parent / "assets" / PRODUCT_IMAGE
+    screenshot_images = [Path(__file__).resolve().parent.parent / "assets" / name for name, _ in SCREENSHOT_IMAGES]
 
-    for path in (bootloader, partitions, firmware, boot_app0, product_image):
+    for path in (bootloader, partitions, firmware, boot_app0, product_image, *screenshot_images):
         if not path.is_file():
             raise FileNotFoundError(path)
 
@@ -236,6 +252,8 @@ def main() -> None:
 
     shutil.copy2(merged_firmware, output_dir / f"{PROJECT_SLUG}-{args.version}.bin")
     shutil.copy2(product_image, output_dir / PRODUCT_IMAGE)
+    for image in screenshot_images:
+        shutil.copy2(image, output_dir / image.name)
 
 
 if __name__ == "__main__":
