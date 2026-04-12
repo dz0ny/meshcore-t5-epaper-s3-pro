@@ -24,6 +24,7 @@
 
 MeshCore T5 ePaper S3 Pro turns the LilyGo T5 ePaper S3 Pro into a dedicated long-range mesh messaging device with a calm, readable e-ink interface.
 It is built for people who want simple off-grid communication, strong battery-friendly readability, and a UI that feels more like paper than a phone.
+It can be used as a standalone mesh device or as a companion-connected MeshCore node.
 
 An SD card is required for normal use.
 
@@ -41,6 +42,7 @@ An SD card is required for normal use.
 - Discover nearby or recently heard nodes
 - Check battery, GPS, and radio status
 - Configure display, mesh, BLE, storage, and device settings directly on the device
+- Use it as a companion-connected device as well as a standalone handheld
 
 ## Screens
 
@@ -54,6 +56,7 @@ An SD card is required for normal use.
 ## Main Functions
 
 - 1:1 and device-to-device mesh messaging
+- Standalone operation or companion-connected MeshCore use
 - Contact management directly on the handheld
 - Node discovery and quick visibility into nearby mesh activity
 - On-device battery, radio, and location awareness

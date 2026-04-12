@@ -118,7 +118,7 @@ def build_page(version: str, repo_url: str) -> str:
         <div class="border-b border-paper-line p-7 max-sm:p-5">
           <p class="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-paper-muted">Browser Flasher</p>
           <h1 class="text-[clamp(2rem,6vw,3.2rem)] font-bold leading-none">{PROJECT_NAME}</h1>
-          <p class="mt-4 max-w-[34rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper S3 Pro directly from Chrome or Edge with ESP Web Tools.</p>
+          <p class="mt-4 max-w-[34rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper S3 Pro directly from Chrome or Edge with ESP Web Tools. It works as both a standalone mesh device and a companion-connected MeshCore node.</p>
         </div>
         <div class="grid gap-5 p-7 max-sm:p-5">
           <div class="flex flex-wrap gap-2">
@@ -161,6 +161,7 @@ def build_page(version: str, repo_url: str) -> str:
             <p class="text-sm font-semibold uppercase tracking-[0.08em] text-paper-muted">Core Functions</p>
             <ul class="grid gap-2 text-sm leading-6 text-paper-muted">
               <li>Off-grid LoRa mesh messaging with an e-paper-first interface</li>
+              <li>Standalone operation or companion-connected MeshCore use</li>
               <li>Explicit contact management and nearby node discovery</li>
               <li>Live battery, radio, and location status on-device</li>
               <li>Touch-driven navigation designed for calm, readable use outdoors</li>
