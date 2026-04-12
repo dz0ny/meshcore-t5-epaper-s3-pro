@@ -118,7 +118,7 @@ static void on_send(lv_event_t* e) {
         sd_log::mark_dirty();
     }
 
-    ui::screen_mgr::pop(true);
+    ui::screen_mgr::switch_to(SCREEN_CHAT, true);
 }
 
 static void on_kb_event(lv_event_t* e) {
