@@ -11,6 +11,10 @@
   <img alt="Install" src="https://img.shields.io/badge/install-browser%20flasher-2b2b28" />
 </p>
 
+<p align="center">
+  <img src="./assets/main.jpeg" alt="LilyGo T5 ePaper S3 Pro home screen" width="320" />
+</p>
+
 MeshCore T5 ePaper S3 Pro turns the LilyGo T5 ePaper S3 Pro into a dedicated long-range mesh messaging device with a calm, readable e-ink interface.
 It is built for people who want simple off-grid communication, strong battery-friendly readability, and a UI that feels more like paper than a phone.
 

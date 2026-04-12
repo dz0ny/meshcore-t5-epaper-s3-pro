@@ -21,6 +21,7 @@ CHIP_FAMILY = "ESP32-S3"
 DEVICE_NAME = "LilyGo T5 ePaper S3 Pro"
 PROJECT_NAME = "LilyGo T5 ePaper S3 Pro"
 PROJECT_SLUG = "lilygo-t5-epaper-pro"
+PRODUCT_IMAGE = "main.jpeg"
 
 
 def parse_args() -> argparse.Namespace:
@@ -124,6 +125,13 @@ def build_page(version: str, repo_url: str) -> str:
             <a class="text-paper-accent underline decoration-1 underline-offset-2" href="{safe_repo_url}">Repository</a>
             <a class="text-paper-accent underline decoration-1 underline-offset-2" href="https://lilygo.cc/en-us/products/t5-e-paper-s3-pro">Product Page</a>
           </div>
+          <div class="border border-paper-line bg-[#fcfcfa] p-4">
+            <img
+              src="{PRODUCT_IMAGE}"
+              alt="LilyGo T5 ePaper S3 Pro home screen"
+              class="mx-auto w-full max-w-[22rem] border border-paper-line object-cover"
+            />
+          </div>
           <div class="grid gap-3 border border-paper-line bg-[#fcfcfa] p-4">
             <p class="text-sm font-semibold uppercase tracking-[0.08em] text-paper-muted">What You Get</p>
             <ul class="grid gap-2 text-sm leading-6 text-paper-muted">
@@ -169,8 +177,9 @@ def main() -> None:
     partitions = build_dir / "partitions.bin"
     firmware = build_dir / "firmware.bin"
     boot_app0 = find_boot_app0(args.boot_app0)
+    product_image = Path(__file__).resolve().parent.parent / "assets" / PRODUCT_IMAGE
 
-    for path in (bootloader, partitions, firmware, boot_app0):
+    for path in (bootloader, partitions, firmware, boot_app0, product_image):
         if not path.is_file():
             raise FileNotFoundError(path)
 
@@ -226,6 +235,7 @@ def main() -> None:
     (output_dir / "index.html").write_text(build_page(args.version, args.repo_url), encoding="utf-8")
 
     shutil.copy2(merged_firmware, output_dir / f"{PROJECT_SLUG}-{args.version}.bin")
+    shutil.copy2(product_image, output_dir / PRODUCT_IMAGE)
 
 
 if __name__ == "__main__":
