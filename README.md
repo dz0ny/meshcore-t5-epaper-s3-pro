@@ -14,6 +14,8 @@
 MeshCore T5 ePaper S3 Pro turns the LilyGo T5 ePaper S3 Pro into a dedicated long-range mesh messaging device with a calm, readable e-ink interface.
 It is built for people who want simple off-grid communication, strong battery-friendly readability, and a UI that feels more like paper than a phone.
 
+An SD card is required for normal use.
+
 ## Why This Device
 
 - Readable in daylight with an always-on e-paper feel

@@ -279,7 +279,7 @@ void start(int core) {
         lv_obj_t *sub = lv_label_create(splash);
         lv_obj_set_style_text_font(sub, &lv_font_montserrat_bold_30, LV_PART_MAIN);
         lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
-        lv_label_set_text(sub, "T5-ePaper");
+        lv_label_set_text(sub, "T5 ePaper S3 Pro");
         lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
 
         lv_obj_t *ver = lv_label_create(splash);

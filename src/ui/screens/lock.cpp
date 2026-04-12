@@ -42,7 +42,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, 55);
-    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "T-Paper");
+    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "LilyGo T5 ePaper S3 Pro");
 
     lbl_time = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_bold_120, LV_PART_MAIN);
@@ -81,7 +81,7 @@ void update(uint32_t flags) {
             lbl_node_name,
             cached_node_name,
             sizeof(cached_node_name),
-            model::mesh.node_name ? model::mesh.node_name : "T-Paper"
+            model::mesh.node_name ? model::mesh.node_name : "LilyGo T5 ePaper S3 Pro"
         );
     }
 

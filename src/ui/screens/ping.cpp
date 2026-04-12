@@ -11,6 +11,7 @@
 #include "../components/nav_button.h"
 #include "../components/geo_utils.h"
 #include "../components/toast.h"
+#include "../../sd_log.h"
 #include "../../mesh/mesh_bridge.h"
 #include "../../mesh/mesh_task.h"
 #include "../../model.h"
@@ -19,7 +20,7 @@
 namespace ui::screen::ping {
 
 static lv_obj_t* scr = NULL;
-static lv_obj_t* ping_list = NULL;
+static lv_obj_t* history_list = NULL;
 static lv_obj_t* lbl_auto_action = NULL;
 static lv_obj_t* lbl_status = NULL;
 static lv_obj_t* lbl_route = NULL;
@@ -69,6 +70,58 @@ static bool is_relay_contact() {
     return contact_type == ADV_TYPE_REPEATER;
 }
 
+static sd_log::PingHistoryEntry to_store_entry(const PingEntry& entry) {
+    sd_log::PingHistoryEntry stored = {};
+    stored.success = entry.success;
+    stored.timed_out = entry.timed_out;
+    stored.relay = entry.relay;
+    stored.used_flood = entry.used_flood;
+    stored.retried_flood = entry.retried_flood;
+    stored.duration_ms = entry.duration_ms;
+    stored.hop_count = entry.hop_count;
+    stored.snr_there_q4 = entry.snr_there_q4;
+    stored.snr_back_q4 = entry.snr_back_q4;
+    stored.timestamp = entry.timestamp;
+    return stored;
+}
+
+static PingEntry from_store_entry(const sd_log::PingHistoryEntry& entry) {
+    PingEntry stored = {};
+    stored.success = entry.success;
+    stored.timed_out = entry.timed_out;
+    stored.relay = entry.relay;
+    stored.used_flood = entry.used_flood;
+    stored.retried_flood = entry.retried_flood;
+    stored.duration_ms = entry.duration_ms;
+    stored.hop_count = entry.hop_count;
+    stored.snr_there_q4 = entry.snr_there_q4;
+    stored.snr_back_q4 = entry.snr_back_q4;
+    stored.timestamp = entry.timestamp;
+    return stored;
+}
+
+static void persist_history() {
+    sd_log::PingHistoryEntry stored[24] = {};
+    for (int i = 0; i < history_count; i++) {
+        stored[i] = to_store_entry(history[i]);
+    }
+    sd_log::store_ping_history(contact_pubkey, stored, history_count);
+}
+
+static void load_history() {
+    sd_log::PingHistoryEntry stored[24] = {};
+    uint8_t count = 0;
+    history_count = 0;
+    memset(history, 0, sizeof(history));
+    if (!sd_log::get_ping_history(contact_pubkey, stored, &count, 24)) {
+        return;
+    }
+    history_count = count;
+    for (int i = 0; i < history_count; i++) {
+        history[i] = from_store_entry(stored[i]);
+    }
+}
+
 static lv_obj_t* create_card(lv_obj_t* parent) {
     lv_obj_t* card = lv_obj_create(parent);
     lv_obj_set_width(card, lv_pct(100));
@@ -83,6 +136,18 @@ static lv_obj_t* create_card(lv_obj_t* parent) {
     lv_obj_set_flex_align(card, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
     return card;
+}
+
+static lv_obj_t* create_scroll_area(lv_obj_t* parent) {
+    lv_obj_t* list = lv_obj_create(parent);
+    lv_obj_set_size(list, lv_pct(95), 420);
+    lv_obj_align(list, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
+    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+    lv_obj_clear_flag(list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
+    return list;
 }
 
 static void format_distance(char* out, size_t out_size) {
@@ -164,11 +229,11 @@ static void insert_history(const PingEntry& entry) {
 }
 
 static void rebuild_history() {
-    if (!ping_list) return;
+    if (!history_list) return;
 
     for (int i = 0; i < 24; i++) {
         if (!history_rows[i]) {
-            history_rows[i] = create_card(ping_list);
+            history_rows[i] = create_card(history_list);
             history_labels[i] = lv_label_create(history_rows[i]);
             lv_obj_set_width(history_labels[i], lv_pct(100));
             lv_label_set_long_mode(history_labels[i], LV_LABEL_LONG_WRAP);
@@ -245,6 +310,7 @@ static void finish_ping(const PingEntry& entry, const char* status_line) {
     pending_trace_tag = 0;
 
     insert_history(entry);
+    persist_history();
     rebuild_history();
     update_status_text(status_line);
     schedule_next_auto_ping(entry.timed_out, entry.duration_ms);
@@ -305,6 +371,14 @@ static void on_toggle_auto(lv_event_t* e) {
 
 static void on_ping_now(lv_event_t* e) {
     start_ping();
+}
+
+static void on_clear(lv_event_t* e) {
+    history_count = 0;
+    memset(history, 0, sizeof(history));
+    persist_history();
+    rebuild_history();
+    update_status_text("History cleared");
 }
 
 static void handle_telemetry_response(const mesh::bridge::TelemetryResponse& tr) {
@@ -407,9 +481,9 @@ void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t typ
 static void create(lv_obj_t* parent) {
     scr = parent;
     lbl_auto_action = ui::nav::back_button_action(parent, "Ping", on_back, auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL);
-    ping_list = ui::nav::scroll_list(parent);
-
-    lv_obj_t* summary_card = create_card(ping_list);
+    lv_obj_t* summary_card = create_card(parent);
+    lv_obj_set_size(summary_card, lv_pct(95), LV_SIZE_CONTENT);
+    lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, 130);
 
     lv_obj_t* name_label = lv_label_create(summary_card);
     lv_obj_set_style_text_font(name_label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
@@ -430,8 +504,24 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(lbl_route, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_route, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
 
-    lv_obj_t* ping_btn = ui::nav::text_button(ping_list, "Ping Again", on_ping_now, NULL);
-    lv_obj_set_width(ping_btn, lv_pct(100));
+    lv_obj_t* button_row = lv_obj_create(parent);
+    lv_obj_set_size(button_row, lv_pct(95), 90);
+    lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, 360);
+    lv_obj_set_style_bg_opa(button_row, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(button_row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(button_row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(button_row, 16, LV_PART_MAIN);
+    lv_obj_clear_flag(button_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(button_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(button_row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* ping_btn = ui::nav::text_button(button_row, "Ping", on_ping_now, NULL);
+    lv_obj_set_size(ping_btn, 245, 80);
+
+    lv_obj_t* clear_btn = ui::nav::text_button(button_row, "Clear", on_clear, NULL);
+    lv_obj_set_size(clear_btn, 245, 80);
+
+    history_list = create_scroll_area(parent);
 
     update_auto_action();
     update_status_text("Tap Ping Again");
@@ -439,7 +529,7 @@ static void create(lv_obj_t* parent) {
 }
 
 static void entry() {
-    history_count = 0;
+    load_history();
     ping_pending = false;
     pending_force_flood = false;
     pending_retried_flood = false;
@@ -463,7 +553,7 @@ static void exit_fn() {
 
 static void destroy() {
     scr = NULL;
-    ping_list = NULL;
+    history_list = NULL;
     lbl_auto_action = NULL;
     lbl_status = NULL;
     lbl_route = NULL;

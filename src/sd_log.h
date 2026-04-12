@@ -13,6 +13,19 @@
 
 namespace sd_log {
 
+struct PingHistoryEntry {
+    bool success;
+    bool timed_out;
+    bool relay;
+    bool used_flood;
+    bool retried_flood;
+    uint32_t duration_ms;
+    uint8_t hop_count;
+    int8_t snr_there_q4;
+    int8_t snr_back_q4;
+    uint32_t timestamp;
+};
+
 // Load messages from SD into model::messages[]. Call once at startup.
 void load();
 
@@ -35,5 +48,14 @@ bool get_telemetry(const uint8_t* pub_key_prefix, uint8_t* out, uint8_t* len, si
 
 // Remove persisted telemetry snapshots.
 void clear_telemetry();
+
+// Store the latest ping history for a contact.
+void store_ping_history(const uint8_t* pub_key_prefix, const PingHistoryEntry* entries, uint8_t count);
+
+// Load the latest ping history for a contact into out.
+bool get_ping_history(const uint8_t* pub_key_prefix, PingHistoryEntry* out, uint8_t* count, size_t max_entries);
+
+// Remove persisted ping history snapshots.
+void clear_ping_history();
 
 } // namespace sd_log

@@ -143,6 +143,10 @@ def build_page(version: str, repo_url: str) -> str:
               <li>Touch-driven navigation designed for calm, readable use outdoors</li>
             </ul>
           </div>
+          <div class="border border-paper-line bg-[#fcfcfa] p-4 text-sm leading-6 text-paper-muted">
+            <span class="font-semibold uppercase tracking-[0.08em]">Requirement</span>
+            <p class="mt-2">An SD card is required for normal device use.</p>
+          </div>
           <p class="text-sm leading-6 text-paper-muted">Use a USB data cable and open this page in a Web Serial capable browser.</p>
           <ol class="list-decimal space-y-1 pl-5 text-sm leading-6 text-paper-muted">
             <li>Put the board in bootloader mode if the browser cannot detect it.</li>

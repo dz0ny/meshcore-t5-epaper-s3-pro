@@ -12,6 +12,7 @@ static lv_obj_t* lbl_time = NULL;
 static lv_obj_t* lbl_battery = NULL;
 static lv_obj_t* lbl_gps = NULL;
 static lv_obj_t* lbl_ble = NULL;
+static lv_obj_t* spacer = NULL;
 static lv_obj_t* lbl_memory = NULL;
 static bool memory_enabled_state = false;
 static char cached_time[8] = {};
@@ -151,9 +152,15 @@ lv_obj_t* create() {
     lv_label_set_text(lbl_gps, LV_SYMBOL_GPS);
     lv_obj_add_flag(lbl_gps, LV_OBJ_FLAG_HIDDEN);
 
+    spacer = lv_obj_create(bar_obj);
+    lv_obj_set_size(spacer, 0, 0);
+    lv_obj_set_flex_grow(spacer, 1);
+    lv_obj_set_style_bg_opa(spacer, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(spacer, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(spacer, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(spacer, LV_OBJ_FLAG_SCROLLABLE);
+
     lbl_memory = lv_label_create(bar_obj);
-    lv_obj_set_flex_grow(lbl_memory, 1);
-    lv_obj_set_style_text_align(lbl_memory, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_style_text_font(lbl_memory, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_memory, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_memory, "D-- P--");

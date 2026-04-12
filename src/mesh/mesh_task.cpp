@@ -211,7 +211,7 @@ bool send_public(const char* text) {
 }
 
 const char* node_name() {
-    if (!the_mesh_ptr) return "T-Paper";
+    if (!the_mesh_ptr) return "LilyGo T5 ePaper S3 Pro";
     return the_mesh_ptr->getNodeName();
 }
 

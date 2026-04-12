@@ -61,7 +61,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, HOME_NODE_NAME_Y);
     lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "T-Paper");
+    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "LilyGo T5 ePaper S3 Pro");
 
     // Big clock
     lbl_clock = lv_label_create(parent);

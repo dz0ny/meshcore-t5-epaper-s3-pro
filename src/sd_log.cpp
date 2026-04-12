@@ -7,7 +7,10 @@
 
 static const char* MSG_FILE = "/messages.bin";
 static const char* TELEMETRY_FILE = "/telemetry.bin";
+static const char* PING_FILE = "/ping.bin";
 static const int MAX_TELEMETRY_RECORDS = 32;
+static const int MAX_PING_RECORDS = 32;
+static const int MAX_PING_HISTORY = 24;
 
 struct TelemetryRecord {
     uint8_t pub_key_prefix[7];
@@ -16,13 +19,22 @@ struct TelemetryRecord {
     uint32_t timestamp;
 };
 
+struct PingRecord {
+    uint8_t pub_key_prefix[7];
+    uint8_t count;
+    sd_log::PingHistoryEntry entries[MAX_PING_HISTORY];
+};
+
 // Track how many messages have been written to SD so we only append new ones.
 static int flushed_count = 0;
 static bool dirty = false;
 static bool telemetry_dirty = false;
+static bool ping_dirty = false;
 static bool sd_available = false;
 static TelemetryRecord* telemetry_records = nullptr;
 static int telemetry_count = 0;
+static PingRecord* ping_records = nullptr;
+static int ping_count = 0;
 
 static void ensure_telemetry_cache() {
     if (!telemetry_records) {
@@ -31,10 +43,18 @@ static void ensure_telemetry_cache() {
     }
 }
 
+static void ensure_ping_cache() {
+    if (!ping_records) {
+        ping_records = (PingRecord*)heap_caps_calloc(
+            MAX_PING_RECORDS, sizeof(PingRecord), MALLOC_CAP_SPIRAM);
+    }
+}
+
 namespace sd_log {
 
 void load() {
     ensure_telemetry_cache();
+    ensure_ping_cache();
 
     // Deselect LoRa, select SD
     digitalWrite(BOARD_LORA_CS, HIGH);
@@ -71,10 +91,29 @@ void load() {
     }
     telemetry_dirty = false;
 
+    ping_count = 0;
+    if (ping_records && SD.exists(PING_FILE)) {
+        File pf = SD.open(PING_FILE, FILE_READ);
+        if (pf) {
+            PingRecord record;
+            while (ping_count < MAX_PING_RECORDS &&
+                   pf.read((uint8_t*)&record, sizeof(record)) == sizeof(record)) {
+                ping_records[ping_count] = record;
+                if (ping_records[ping_count].count > MAX_PING_HISTORY) {
+                    ping_records[ping_count].count = MAX_PING_HISTORY;
+                }
+                ping_count++;
+            }
+            pf.close();
+        }
+    }
+    ping_dirty = false;
+
     // Deselect SD when done
     digitalWrite(BOARD_SD_CS, HIGH);
 
-    Serial.printf("SD_LOG: loaded %d messages and %d telemetry snapshots from SD\n", count, telemetry_count);
+    Serial.printf("SD_LOG: loaded %d messages, %d telemetry snapshots and %d ping histories from SD\n",
+                  count, telemetry_count, ping_count);
 }
 
 void mark_dirty() {
@@ -82,11 +121,11 @@ void mark_dirty() {
 }
 
 bool is_dirty() {
-    return dirty || telemetry_dirty;
+    return dirty || telemetry_dirty || ping_dirty;
 }
 
 void flush() {
-    if ((!dirty && !telemetry_dirty) || !sd_available) return;
+    if ((!dirty && !telemetry_dirty && !ping_dirty) || !sd_available) return;
 
     // Deselect LoRa before touching SD
     digitalWrite(BOARD_LORA_CS, HIGH);
@@ -150,6 +189,27 @@ void flush() {
         }
         tf.close();
         telemetry_dirty = false;
+    }
+
+    if (ping_dirty) {
+        SD.remove(PING_FILE);
+        File pf = SD.open(PING_FILE, FILE_WRITE);
+        if (!pf) {
+            sd_available = false;
+            digitalWrite(BOARD_SD_CS, HIGH);
+            Serial.println("SD_LOG: ping flush failed — SD not writable");
+            return;
+        }
+
+        for (int i = 0; i < ping_count; i++) {
+            size_t n = pf.write((const uint8_t*)&ping_records[i], sizeof(PingRecord));
+            if (n != sizeof(PingRecord)) {
+                Serial.println("SD_LOG: ping short write, stopping");
+                break;
+            }
+        }
+        pf.close();
+        ping_dirty = false;
     }
 
     // Deselect SD, bus is free for LoRa again
@@ -218,6 +278,74 @@ void clear_telemetry() {
     if (sd_available) {
         digitalWrite(BOARD_LORA_CS, HIGH);
         SD.remove(TELEMETRY_FILE);
+        digitalWrite(BOARD_SD_CS, HIGH);
+    }
+}
+
+void store_ping_history(const uint8_t* pub_key_prefix, const PingHistoryEntry* entries, uint8_t count) {
+    if (!pub_key_prefix) return;
+    ensure_ping_cache();
+    if (!ping_records) return;
+
+    uint8_t clamped_count = count > MAX_PING_HISTORY ? MAX_PING_HISTORY : count;
+    for (int i = 0; i < ping_count; i++) {
+        if (memcmp(ping_records[i].pub_key_prefix, pub_key_prefix, sizeof(ping_records[i].pub_key_prefix)) == 0) {
+            ping_records[i].count = clamped_count;
+            if (clamped_count > 0 && entries) {
+                memcpy(ping_records[i].entries, entries, sizeof(PingHistoryEntry) * clamped_count);
+            }
+            if (clamped_count < MAX_PING_HISTORY) {
+                memset(&ping_records[i].entries[clamped_count], 0,
+                       sizeof(PingHistoryEntry) * (MAX_PING_HISTORY - clamped_count));
+            }
+            ping_dirty = true;
+            return;
+        }
+    }
+
+    int idx = ping_count < MAX_PING_RECORDS ? ping_count : (MAX_PING_RECORDS - 1);
+    if (ping_count < MAX_PING_RECORDS) {
+        ping_count++;
+    }
+    memcpy(ping_records[idx].pub_key_prefix, pub_key_prefix, sizeof(ping_records[idx].pub_key_prefix));
+    ping_records[idx].count = clamped_count;
+    memset(ping_records[idx].entries, 0, sizeof(ping_records[idx].entries));
+    if (clamped_count > 0 && entries) {
+        memcpy(ping_records[idx].entries, entries, sizeof(PingHistoryEntry) * clamped_count);
+    }
+    ping_dirty = true;
+}
+
+bool get_ping_history(const uint8_t* pub_key_prefix, PingHistoryEntry* out, uint8_t* count, size_t max_entries) {
+    if (!pub_key_prefix || !out || !count || max_entries == 0) return false;
+    ensure_ping_cache();
+    if (!ping_records) {
+        *count = 0;
+        return false;
+    }
+
+    for (int i = 0; i < ping_count; i++) {
+        if (memcmp(ping_records[i].pub_key_prefix, pub_key_prefix, sizeof(ping_records[i].pub_key_prefix)) == 0) {
+            *count = ping_records[i].count > max_entries ? max_entries : ping_records[i].count;
+            memcpy(out, ping_records[i].entries, sizeof(PingHistoryEntry) * (*count));
+            return true;
+        }
+    }
+
+    *count = 0;
+    return false;
+}
+
+void clear_ping_history() {
+    ensure_ping_cache();
+    ping_count = 0;
+    ping_dirty = false;
+    if (ping_records) {
+        memset(ping_records, 0, sizeof(PingRecord) * MAX_PING_RECORDS);
+    }
+    if (sd_available) {
+        digitalWrite(BOARD_LORA_CS, HIGH);
+        SD.remove(PING_FILE);
         digitalWrite(BOARD_SD_CS, HIGH);
     }
 }
