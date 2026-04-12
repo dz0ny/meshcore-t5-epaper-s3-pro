@@ -1,5 +1,6 @@
 #include "ui_port.h"
 #include "../board.h"
+#include "../model.h"
 #include "../nvs_param.h"
 #include <epdiy.h>
 #include <Wire.h>
@@ -14,6 +15,14 @@ static uint8_t gray_to_hi[256];
 static bool gray_tables_ready = false;
 static uint8_t* packed_prev_frame = NULL;  // packed 4-bit rotated framebuffer shadow
 static int32_t* rotated_row_offsets = NULL;
+struct FullRefreshStamp {
+    uint8_t year;
+    uint8_t month;
+    uint8_t day;
+    uint8_t hour;
+    bool valid;
+};
+static FullRefreshStamp last_full_refresh = {};
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -50,6 +59,32 @@ static inline int32_t rotated_offset(int32_t rx, int32_t phys_h, int32_t half_w)
         return rotated_row_offsets[rx];
     }
     return (phys_h - 1 - rx) * half_w;
+}
+
+static FullRefreshStamp current_refresh_stamp() {
+    return {
+        .year = model::clock.year,
+        .month = model::clock.month,
+        .day = model::clock.day,
+        .hour = model::clock.hour,
+        .valid = true,
+    };
+}
+
+static bool should_do_hourly_full_refresh() {
+    FullRefreshStamp now = current_refresh_stamp();
+    if (!last_full_refresh.valid) {
+        last_full_refresh = now;
+        return false;
+    }
+    return now.year != last_full_refresh.year ||
+           now.month != last_full_refresh.month ||
+           now.day != last_full_refresh.day ||
+           now.hour != last_full_refresh.hour;
+}
+
+static void note_full_refresh_done() {
+    last_full_refresh = current_refresh_stamp();
 }
 
 static inline void pack_single_row(uint8_t *fb, const uint8_t *prev_fb, const uint8_t *src_row,
@@ -173,7 +208,14 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         .height = (int)lv_area_get_height(area),
     };
 
-    if (refresh_mode == UI_REFRESH_MODE_FAST) {
+    bool do_hourly_full_refresh = should_do_hourly_full_refresh();
+
+    if (do_hourly_full_refresh) {
+        epd_poweron();
+        checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
+        epd_poweroff();
+        note_full_refresh_done();
+    } else if (refresh_mode == UI_REFRESH_MODE_FAST) {
         epd_poweron();
         checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), update_rect));
         epd_poweroff();
@@ -255,6 +297,7 @@ void full_refresh() {
     epd_poweron();
     checkError(epd_hl_update_screen(&board::hl, MODE_GL16, epd_ambient_temperature()));
     epd_poweroff();
+    note_full_refresh_done();
 }
 
 void full_clean() {
