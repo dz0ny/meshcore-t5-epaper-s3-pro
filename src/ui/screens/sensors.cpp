@@ -44,7 +44,6 @@ static lv_obj_t* card_name_labels[MAX_CONTACTS] = {};
 static lv_obj_t* card_body_labels[MAX_CONTACTS] = {};
 static lv_obj_t* card_state_pills[MAX_CONTACTS] = {};
 static lv_obj_t* card_state_labels[MAX_CONTACTS] = {};
-static lv_obj_t* card_hint_labels[MAX_CONTACTS] = {};
 static bool row_visible[MAX_CONTACTS] = {};
 
 static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len, uint32_t timestamp = 0);
@@ -109,6 +108,12 @@ static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static uint32_t read_u32_be(const uint8_t* p) {
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+}
+
+static int32_t read_i24_be(const uint8_t* p) {
+    int32_t v = ((int32_t)p[0] << 16) | ((int32_t)p[1] << 8) | (int32_t)p[2];
+    if (v & 0x800000) v -= 0x1000000;
+    return v;
 }
 
 static int32_t read_i32_be(const uint8_t* p) {
@@ -197,22 +202,18 @@ static void update_card_row(int idx) {
     if (idx < 0 || idx >= card_count || !card_rows[idx]) return;
 
     const char* state_text = "READY";
-    const char* hint_text = "Hold to request";
     bool filled_pill = false;
 
     if (cards[idx].pending) {
         state_text = "WAITING";
-        hint_text = "Waiting for reply";
         filled_pill = true;
     } else if (cards[idx].telemetry_timestamp != 0) {
         state_text = "CACHED";
-        hint_text = "Hold to refresh";
     }
 
     lv_label_set_text(card_name_labels[idx], cards[idx].name);
     lv_label_set_text(card_body_labels[idx], cards[idx].telemetry);
     lv_label_set_text(card_state_labels[idx], state_text);
-    lv_label_set_text(card_hint_labels[idx], hint_text);
     lv_obj_set_style_bg_opa(card_state_pills[idx], filled_pill ? LV_OPA_COVER : LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_text_color(card_state_labels[idx],
                                 lv_color_hex(filled_pill ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -276,12 +277,14 @@ static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len,
     int used = 0;
     int lines = 0;
     bool saw_known = false;
+    bool saw_non_self_channel = false;
     LPPReader reader(data, len);
     uint8_t channel;
     uint8_t type;
     uint8_t pos = 0;
 
     while (reader.readHeader(channel, type) && used < (int)sizeof(out) - 1 && lines < 8) {
+        if (channel != 1) saw_non_self_channel = true;
         pos += 2;
         if (lines > 0 && has_zero_tail(data, len, pos - 2)) break;
         char line[48] = {};
@@ -304,7 +307,13 @@ static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len,
                 if (pos + 2 > len) { handled = false; break; }
                 float value = (int16_t)(((uint16_t)data[pos] << 8) | data[pos + 1]) / 100.0f;
                 pos += 2;
-                snprintf(line, sizeof(line), "Analog input %u: %.2f", channel, value);
+                if (channel == 0) {
+                    snprintf(line, sizeof(line), "Battery %.2f V", value);
+                } else if (channel == 1 && !saw_non_self_channel) {
+                    snprintf(line, sizeof(line), "Voltage %.2f V", value);
+                } else {
+                    snprintf(line, sizeof(line), "Analog input %u: %.2f", channel, value);
+                }
                 break;
             }
             case LPP_ANALOG_OUTPUT: {
@@ -318,28 +327,54 @@ static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len,
                 float value;
                 handled = reader.readVoltage(value);
                 pos += 2;
-                if (handled) snprintf(line, sizeof(line), "Battery %.2f V", value);
+                if (handled) {
+                    if (channel == 0) {
+                        snprintf(line, sizeof(line), "Battery %.2f V", value);
+                    } else if (channel == 1 && !saw_non_self_channel) {
+                        snprintf(line, sizeof(line), "Voltage %.2f V", value);
+                    } else {
+                        snprintf(line, sizeof(line), "Voltage %u: %.2f V", channel, value);
+                    }
+                }
                 break;
             }
             case LPP_TEMPERATURE: {
                 float value;
                 handled = reader.readTemperature(value);
                 pos += 2;
-                if (handled) snprintf(line, sizeof(line), "Temperature %.1f C", value);
+                if (handled) {
+                    if (channel == 1 || !saw_non_self_channel) {
+                        snprintf(line, sizeof(line), "Temperature %.1f C", value);
+                    } else {
+                        snprintf(line, sizeof(line), "Temperature %u: %.1f C", channel, value);
+                    }
+                }
                 break;
             }
             case LPP_RELATIVE_HUMIDITY: {
                 float value;
                 handled = reader.readRelativeHumidity(value);
                 pos += 1;
-                if (handled) snprintf(line, sizeof(line), "Humidity %.0f%%", value);
+                if (handled) {
+                    if (channel == 1 || !saw_non_self_channel) {
+                        snprintf(line, sizeof(line), "Humidity %.0f%%", value);
+                    } else {
+                        snprintf(line, sizeof(line), "Humidity %u: %.0f%%", channel, value);
+                    }
+                }
                 break;
             }
             case LPP_BAROMETRIC_PRESSURE: {
                 float value;
                 handled = reader.readPressure(value);
                 pos += 2;
-                if (handled) snprintf(line, sizeof(line), "Pressure %.1f hPa", value);
+                if (handled) {
+                    if (channel == 1 || !saw_non_self_channel) {
+                        snprintf(line, sizeof(line), "Pressure %.1f hPa", value);
+                    } else {
+                        snprintf(line, sizeof(line), "Pressure %u: %.1f hPa", channel, value);
+                    }
+                }
                 break;
             }
             case LPP_ALTITUDE: {
@@ -364,19 +399,22 @@ static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len,
                 break;
             }
             case LPP_GPS: {
-                float lat;
-                float lon;
-                float alt;
-                handled = reader.readGPS(lat, lon, alt);
+                if (pos + 9 > len) { handled = false; break; }
+                float lat = read_i24_be(&data[pos]) / 10000.0f;
+                float lon = read_i24_be(&data[pos + 3]) / 10000.0f;
                 pos += 9;
-                if (handled) snprintf(line, sizeof(line), "GPS %.4f %.4f", lat, lon);
+                snprintf(line, sizeof(line), "GPS %.4f %.4f", lat, lon);
                 break;
             }
             case LPP_PERCENTAGE: {
                 if (pos + 1 > len) { handled = false; break; }
                 float value = data[pos];
                 pos += 1;
-                snprintf(line, sizeof(line), "Level %.0f%%", value);
+                if (channel == 0 || (channel == 1 && !saw_non_self_channel)) {
+                    snprintf(line, sizeof(line), "Battery %.0f%%", value);
+                } else {
+                    snprintf(line, sizeof(line), "Percentage %u: %.0f%%", channel, value);
+                }
                 break;
             }
             case LPP_LUMINOSITY: {
@@ -819,19 +857,11 @@ static void ensure_row(int idx) {
     lv_obj_set_width(body, lv_pct(100));
     lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
 
-    lv_obj_t* hint = lv_label_create(row);
-    lv_obj_set_style_text_font(hint, &lv_font_noto_24, LV_PART_MAIN);
-    lv_obj_set_style_text_color(hint, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(hint, LV_OPA_80, LV_PART_MAIN);
-    lv_obj_set_width(hint, lv_pct(100));
-    lv_label_set_text(hint, "Hold to request");
-
     card_rows[idx] = row;
     card_name_labels[idx] = name;
     card_body_labels[idx] = body;
     card_state_pills[idx] = pill;
     card_state_labels[idx] = state;
-    card_hint_labels[idx] = hint;
     row_visible[idx] = false;
     lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
 }
@@ -955,7 +985,6 @@ static void destroy() {
         card_body_labels[i] = NULL;
         card_state_pills[i] = NULL;
         card_state_labels[i] = NULL;
-        card_hint_labels[i] = NULL;
         row_visible[i] = false;
     }
 }
