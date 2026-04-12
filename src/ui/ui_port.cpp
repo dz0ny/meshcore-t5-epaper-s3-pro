@@ -1,5 +1,6 @@
 #include "ui_port.h"
 #include "../board.h"
+#include "../nvs_param.h"
 #include <epdiy.h>
 #include <Wire.h>
 
@@ -8,10 +9,19 @@ namespace ui::port {
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
 static uint8_t* prev_frame = NULL;  // previous frame for change detection
+static const int32_t CHANGE_DETECT_MAX_PIXELS = 4096;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
         Serial.printf("EPD draw error: %X\n", err);
+    }
+}
+
+static void copy_dirty_area(uint8_t *dst, const uint8_t *src, const lv_area_t *area, int32_t disp_w) {
+    for (int32_t ry = area->y1; ry <= area->y2; ry++) {
+        int32_t offset = ry * disp_w + area->x1;
+        int32_t len = area->x2 - area->x1 + 1;
+        memcpy(&dst[offset], &src[offset], len);
     }
 }
 
@@ -25,9 +35,14 @@ static inline void checkError(enum EpdDrawError err) {
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     int32_t disp_w = epd_rotated_display_width();
+    int32_t area_w = lv_area_get_width(area);
+    int32_t area_h = lv_area_get_height(area);
+    int32_t area_px = area_w * area_h;
 
-    // Skip e-paper update if the dirty area pixels haven't actually changed
-    if (prev_frame) {
+    // Skip e-paper update if a small dirty area pixels haven't actually changed.
+    // For large invalidations, the extra PSRAM scan costs more than it saves.
+    bool track_dirty_area = prev_frame && area_px <= CHANGE_DETECT_MAX_PIXELS;
+    if (track_dirty_area) {
         bool changed = false;
         for (int32_t ry = area->y1; ry <= area->y2 && !changed; ry++) {
             int32_t offset = ry * disp_w + area->x1;
@@ -39,12 +54,6 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         if (!changed) {
             lv_display_flush_ready(disp);
             return;
-        }
-        // Update prev_frame with new content for the dirty area
-        for (int32_t ry = area->y1; ry <= area->y2; ry++) {
-            int32_t offset = ry * disp_w + area->x1;
-            int32_t len = area->x2 - area->x1 + 1;
-            memcpy(&prev_frame[offset], &px_map[offset], len);
         }
     }
 
@@ -104,6 +113,10 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         epd_poweroff();
     }
 
+    if (prev_frame) {
+        copy_dirty_area(prev_frame, px_map, area, disp_w);
+    }
+
     lv_display_flush_ready(disp);
 }
 
@@ -137,6 +150,12 @@ void init() {
     lv_init();
     lv_tick_set_cb(tick_cb);
 
+    int mode = nvs_param_get_u8(NVS_ID_REFRESH_MODE);
+    if (mode < UI_REFRESH_MODE_NORMAL || mode > UI_REFRESH_MODE_FAST) {
+        mode = UI_REFRESH_MODE_NORMAL;
+    }
+    refresh_mode = mode;
+
     int disp_w = epd_rotated_display_width();
     int disp_h = epd_rotated_display_height();
     size_t pixel_count = disp_w * disp_h;
@@ -146,11 +165,12 @@ void init() {
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
 
     // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
-    // Single buffer — e-paper is slow, no benefit from double buffering.
+    // Double buffered in PSRAM — CPU renders to buf2 while buf1 flushes to e-paper.
     size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
+    void *buf2 = ps_calloc(1, buf_size);
     prev_frame = (uint8_t *)ps_calloc(1, buf_size);  // for change detection
-    lv_display_set_buffers(disp, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
@@ -160,8 +180,6 @@ void init() {
     // Disable scroll momentum/throw — instant stop on e-ink (100 = max deceleration)
     lv_indev_set_scroll_throw(indev, 100);
 
-    lv_theme_t *th = lv_theme_simple_init(disp);
-    lv_display_set_theme(disp, th);
 }
 
 void set_refresh_mode(int mode) { refresh_mode = mode; }

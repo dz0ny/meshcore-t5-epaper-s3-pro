@@ -19,7 +19,8 @@
    STDLIB WRAPPER SETTINGS
  *=========================*/
 
-/* Custom malloc routed to PSRAM — all LVGL widget allocations go to PSRAM */
+/* Custom malloc uses a hybrid allocator: small LVGL objects in internal RAM,
+ * larger allocations in PSRAM. */
 #define LV_USE_STDLIB_MALLOC    LV_STDLIB_CUSTOM
 #define LV_USE_STDLIB_STRING    LV_STDLIB_CLIB
 #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_CLIB
@@ -85,8 +86,8 @@
    THEME USAGE
  *====================*/
 
-#define LV_USE_THEME_DEFAULT 0      /* disabled — simple theme is lighter weight */
-#define LV_USE_THEME_SIMPLE 1
+#define LV_USE_THEME_DEFAULT 0
+#define LV_USE_THEME_SIMPLE 0
 
 /*====================
    LAYOUTS
@@ -105,11 +106,11 @@
 #define LV_USE_BUTTON     1
 #define LV_USE_BUTTONMATRIX 1   /* required by keyboard */
 #define LV_USE_CALENDAR   0
-#define LV_USE_CANVAS     0
+#define LV_USE_CANVAS     1
 #define LV_USE_CHART      0
 #define LV_USE_CHECKBOX   0
 #define LV_USE_DROPDOWN   0
-#define LV_USE_IMAGE      0
+#define LV_USE_IMAGE      1  /* required by canvas */
 #define LV_USE_IMAGEBUTTON 0
 #define LV_USE_KEYBOARD   1
 #define LV_USE_LABEL      1

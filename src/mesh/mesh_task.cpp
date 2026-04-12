@@ -145,6 +145,9 @@ void start(int core) {
     radio_set_tx_power(prefs->tx_power_dbm);
 
     sensors.begin();
+#if ENV_INCLUDE_GPS == 1
+    the_mesh_ptr->applyGpsPrefs();
+#endif
 
     mesh_mutex = xSemaphoreCreateMutex();
 
@@ -294,14 +297,36 @@ void set_tx_power(int8_t dbm) {
 
 void set_gps_enabled(bool enabled) {
     if (!the_mesh_ptr) return;
+#if ENV_INCLUDE_GPS == 1
+    if (!mesh_mutex) {
+        the_mesh_ptr->getNodePrefs()->gps_enabled = enabled ? 1 : 0;
+        the_mesh_ptr->applyGpsPrefs();
+        the_mesh_ptr->savePrefs();
+        return;
+    }
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        the_mesh_ptr->getNodePrefs()->gps_enabled = enabled ? 1 : 0;
+        the_mesh_ptr->applyGpsPrefs();
+        the_mesh_ptr->savePrefs();
+        xSemaphoreGive(mesh_mutex);
+    }
+#else
     the_mesh_ptr->getNodePrefs()->gps_enabled = enabled ? 1 : 0;
     the_mesh_ptr->savePrefs();
-    // Also toggle the sensor manager GPS
-    sensors.setSettingValue("gps", enabled ? "1" : "0");
+#endif
 }
 
 bool get_gps_enabled() {
     if (!the_mesh_ptr) return false;
+#if ENV_INCLUDE_GPS == 1
+    if (mesh_mutex && xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        const char* gps_enabled = sensors.getSettingByKey("gps");
+        bool enabled = gps_enabled ? strcmp(gps_enabled, "1") == 0
+                                   : the_mesh_ptr->getNodePrefs()->gps_enabled != 0;
+        xSemaphoreGive(mesh_mutex);
+        return enabled;
+    }
+#endif
     return the_mesh_ptr->getNodePrefs()->gps_enabled != 0;
 }
 

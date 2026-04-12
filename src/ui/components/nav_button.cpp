@@ -3,6 +3,18 @@
 
 namespace ui::nav {
 
+static void create_back_content(lv_obj_t* parent, const char* title) {
+    lv_obj_t* arrow = lv_label_create(parent);
+    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(arrow, LV_SYMBOL_LEFT);
+
+    lv_obj_t* label = lv_label_create(parent);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(label, title);
+}
+
 lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_obj_t* row = lv_obj_create(parent);
     lv_obj_align(row, LV_ALIGN_TOP_LEFT, 0, 50);
@@ -19,17 +31,60 @@ lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    lv_obj_t* arrow = lv_label_create(row);
-    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_bold_30, LV_PART_MAIN);
-    lv_obj_set_style_text_color(arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(arrow, LV_SYMBOL_LEFT);
-
-    lv_obj_t* label = lv_label_create(row);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(label, title);
+    create_back_content(row, title);
 
     return row;
+}
+
+lv_obj_t* back_button_action(lv_obj_t* parent, const char* title, lv_event_cb_t back_cb,
+                             const char* action_text, lv_event_cb_t action_cb, void* action_user_data) {
+    lv_obj_t* row = lv_obj_create(parent);
+    lv_obj_align(row, LV_ALIGN_TOP_LEFT, 0, 50);
+    lv_obj_set_size(row, lv_pct(95), 70);
+    lv_obj_set_style_bg_opa(row, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+
+    lv_obj_t* back = lv_obj_create(row);
+    lv_obj_set_size(back, lv_pct(68), lv_pct(100));
+    lv_obj_align(back, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_set_style_bg_opa(back, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(back, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(back, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(back, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(back, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(back, 8, LV_PART_MAIN);
+    lv_obj_clear_flag(back, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(back, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(back, back_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_ext_click_area(back, 25);
+    lv_obj_set_flex_flow(back, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(back, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    create_back_content(back, title);
+
+    lv_obj_t* action = lv_obj_create(row);
+    lv_obj_set_size(action, 150, 56);
+    lv_obj_align(action, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_set_style_bg_color(action, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(action, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(action, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_radius(action, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(action, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(action, 8, LV_PART_MAIN);
+    lv_obj_clear_flag(action, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(action, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(action, action_cb, LV_EVENT_CLICKED, action_user_data);
+    lv_obj_set_ext_click_area(action, 15);
+
+    lv_obj_t* label = lv_label_create(action);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(label, action_text);
+    lv_obj_center(label);
+
+    return label;
 }
 
 lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_text, lv_event_cb_t cb, void* user_data) {
@@ -44,8 +99,6 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
     lv_obj_add_flag(cont, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(cont, cb, LV_EVENT_CLICKED, user_data);
     lv_obj_set_ext_click_area(cont, 10);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     (void)icon_src;  // unused — all callers pass NULL
 
@@ -53,13 +106,13 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
     lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl, label_text);
+    lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 15, 0);
 
     lv_obj_t* arrow = lv_label_create(cont);
-    lv_obj_set_flex_grow(arrow, 1);
     lv_obj_set_style_text_font(arrow, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(arrow, LV_SYMBOL_RIGHT);
-    lv_obj_set_style_text_align(arrow, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -15, 0);
 
     return cont;
 }
@@ -76,18 +129,18 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label_text, const char* valu
     lv_obj_add_flag(cont, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(cont, cb, LV_EVENT_CLICKED, user_data);
     lv_obj_set_ext_click_area(cont, 10);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* lbl = lv_label_create(cont);
     lv_obj_set_style_text_font(lbl, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl, label_text);
+    lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 15, 0);
 
     lv_obj_t* val = lv_label_create(cont);
     lv_obj_set_style_text_font(val, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(val, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(val, value);
+    lv_obj_align(val, LV_ALIGN_RIGHT_MID, -15, 0);
 
     return val;  // return the value label so caller can update it
 }

@@ -14,10 +14,14 @@ namespace ui::screen::compose {
 
 static lv_obj_t* scr = NULL;
 static lv_obj_t* recipient_list = NULL;
+static lv_obj_t* recipient_card = NULL;
 static lv_obj_t* lbl_to = NULL;
+static lv_obj_t* lbl_hint = NULL;
 static lv_obj_t* ta = NULL;
 static lv_obj_t* kb = NULL;
 static lv_obj_t* send_btn = NULL;
+static lv_obj_t* editor_card = NULL;
+static lv_obj_t* char_count = NULL;
 
 static char recipient_name[32] = {};
 static bool recipient_chosen = false;
@@ -36,15 +40,37 @@ void set_recipient(const char* name) {
         strncpy(recipient_name, name, sizeof(recipient_name) - 1);
         recipient_name[31] = 0;
         recipient_chosen = true;
+        recipient_is_channel = false;
     } else {
         recipient_name[0] = 0;
         recipient_chosen = false;
+        recipient_is_channel = false;
     }
 }
 
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void show_editor();
+static void show_picker();
+
+static void update_recipient_card() {
+    if (!lbl_to || !lbl_hint) return;
+
+    if (recipient_chosen) {
+        lv_label_set_text(lbl_to, recipient_name);
+    } else {
+        lv_label_set_text(lbl_to, "Choose");
+    }
+    lv_label_set_text(lbl_hint, "");
+}
+
+static void update_char_count() {
+    if (!char_count || !ta) return;
+
+    const char* text = lv_textarea_get_text(ta);
+    size_t len = text ? strlen(text) : 0;
+    lv_label_set_text_fmt(char_count, "%d/150", (int)len);
+}
 
 static void on_entry_pick(lv_event_t* e) {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
@@ -83,35 +109,54 @@ static void on_kb_event(lv_event_t* e) {
     if (code == LV_EVENT_READY) {
         on_send(e);
     } else if (code == LV_EVENT_CANCEL) {
-        lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_send_event(ta, LV_EVENT_DEFOCUSED, NULL);
     }
 }
 
 static void on_ta_focus(lv_event_t* e) {
     lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
     model::touch_activity();
 }
 
+static void on_ta_blur(lv_event_t* e) {
+    if (kb) lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void on_ta_change(lv_event_t* e) {
+    update_char_count();
+    model::touch_activity();
+}
+
+static void on_recipient_click(lv_event_t* e) {
+    if (recipient_chosen) {
+        show_picker();
+    }
+}
+
 static void show_editor() {
-    // Hide contact picker, show text input
-    if (recipient_list) {
-        lv_obj_add_flag(recipient_list, LV_OBJ_FLAG_HIDDEN);
-    }
+    update_recipient_card();
 
-    // Update "To:" label
-    if (lbl_to) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), "To: %s", recipient_name);
-        lv_label_set_text(lbl_to, buf);
-    }
-
-    if (ta) lv_obj_clear_flag(ta, LV_OBJ_FLAG_HIDDEN);
+    if (recipient_list) lv_obj_add_flag(recipient_list, LV_OBJ_FLAG_HIDDEN);
+    if (editor_card) lv_obj_clear_flag(editor_card, LV_OBJ_FLAG_HIDDEN);
     if (send_btn) lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
+    if (ta) lv_obj_clear_flag(ta, LV_OBJ_FLAG_HIDDEN);
+    update_char_count();
 
-    // Focus textarea to show keyboard
     if (ta) lv_obj_send_event(ta, LV_EVENT_FOCUSED, NULL);
+}
+
+static void show_picker() {
+    recipient_chosen = false;
+    recipient_is_channel = false;
+    recipient_name[0] = 0;
+    update_recipient_card();
+
+    if (recipient_list) lv_obj_clear_flag(recipient_list, LV_OBJ_FLAG_HIDDEN);
+    if (editor_card) lv_obj_add_flag(editor_card, LV_OBJ_FLAG_HIDDEN);
+    if (ta) lv_obj_add_flag(ta, LV_OBJ_FLAG_HIDDEN);
+    if (send_btn) lv_obj_add_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
+    if (kb) lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void load_entries() {
@@ -139,38 +184,92 @@ static void create(lv_obj_t* parent) {
     scr = parent;
     ui::nav::back_button(parent, "Compose", on_back);
 
-    // "To:" label
-    lbl_to = lv_label_create(parent);
+    recipient_card = lv_obj_create(parent);
+    lv_obj_set_size(recipient_card, lv_pct(95), 110);
+    lv_obj_align(recipient_card, LV_ALIGN_TOP_MID, 0, 130);
+    lv_obj_set_style_bg_color(recipient_card, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(recipient_card, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(recipient_card, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_radius(recipient_card, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(recipient_card, 16, LV_PART_MAIN);
+    lv_obj_clear_flag(recipient_card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(recipient_card, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(recipient_card, on_recipient_click, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_ext_click_area(recipient_card, 15);
+
+    lv_obj_t* recipient_title = lv_label_create(recipient_card);
+    lv_obj_set_style_text_font(recipient_title, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(recipient_title, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(recipient_title, "Recipient");
+    lv_obj_align(recipient_title, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    lv_obj_t* recipient_arrow = lv_label_create(recipient_card);
+    lv_obj_set_style_text_font(recipient_arrow, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(recipient_arrow, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(recipient_arrow, LV_SYMBOL_RIGHT);
+    lv_obj_align(recipient_arrow, LV_ALIGN_TOP_RIGHT, 0, 0);
+
+    lbl_to = lv_label_create(recipient_card);
+    lv_obj_set_width(lbl_to, lv_pct(100));
     lv_obj_set_style_text_font(lbl_to, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_to, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_to, LV_ALIGN_TOP_LEFT, 15, 130);
+    lv_label_set_long_mode(lbl_to, LV_LABEL_LONG_DOT);
+    lv_obj_align(lbl_to, LV_ALIGN_TOP_LEFT, 0, 30);
 
-    if (recipient_chosen) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), "To: %s", recipient_name);
-        lv_label_set_text(lbl_to, buf);
-    } else {
-        lv_label_set_text(lbl_to, "Select recipient:");
-    }
+    lbl_hint = lv_label_create(recipient_card);
+    lv_obj_set_width(lbl_hint, lv_pct(92));
+    lv_obj_set_style_text_font(lbl_hint, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_hint, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_long_mode(lbl_hint, LV_LABEL_LONG_DOT);
+    lv_obj_add_flag(lbl_hint, LV_OBJ_FLAG_HIDDEN);
+    update_recipient_card();
 
-    // Contact picker list (shown when no recipient pre-selected)
     recipient_list = ui::nav::scroll_list(parent);
-    lv_obj_set_size(recipient_list, lv_pct(95), lv_pct(80));
-    lv_obj_align(recipient_list, LV_ALIGN_TOP_MID, 0, 170);
+    lv_obj_set_size(recipient_list, lv_pct(95), 630);
+    lv_obj_align(recipient_list, LV_ALIGN_TOP_MID, 0, 255);
 
-    if (!recipient_chosen) {
-        load_entries();
+    load_entries();
+    if (pick_count == 0) {
+        lv_obj_t* empty = lv_label_create(recipient_list);
+        lv_obj_set_width(empty, lv_pct(100));
+        lv_obj_set_flex_grow(empty, 1);
+        lv_obj_set_style_text_font(empty, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_text(empty, "\n\nNo contacts yet");
+    } else {
         for (int i = 0; i < pick_count; i++) {
             ui::nav::menu_item(recipient_list, NULL, pick_entries[i].name,
                 on_entry_pick, (void*)(intptr_t)i);
         }
     }
 
-    // Textarea
+    editor_card = lv_obj_create(parent);
+    lv_obj_set_size(editor_card, lv_pct(95), 260);
+    lv_obj_align(editor_card, LV_ALIGN_TOP_MID, 0, 255);
+    lv_obj_set_style_bg_color(editor_card, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(editor_card, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(editor_card, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_radius(editor_card, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(editor_card, 16, LV_PART_MAIN);
+    lv_obj_clear_flag(editor_card, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* msg_title = lv_label_create(editor_card);
+    lv_obj_set_style_text_font(msg_title, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(msg_title, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(msg_title, "Message");
+    lv_obj_align(msg_title, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    char_count = lv_label_create(editor_card);
+    lv_obj_set_style_text_font(char_count, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(char_count, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(char_count, "0/150");
+    lv_obj_align(char_count, LV_ALIGN_TOP_RIGHT, 0, 0);
+
     ta = lv_textarea_create(parent);
-    lv_obj_set_size(ta, lv_pct(90), 180);
-    lv_obj_align(ta, LV_ALIGN_TOP_MID, 0, 170);
-    lv_textarea_set_placeholder_text(ta, "Type message...");
+    lv_obj_set_size(ta, lv_pct(89), 180);
+    lv_obj_align(ta, LV_ALIGN_TOP_MID, 0, 305);
+    lv_textarea_set_placeholder_text(ta, "Write a short message");
     lv_textarea_set_max_length(ta, 150);
     lv_textarea_set_one_line(ta, false);
     lv_obj_set_style_text_font(ta, &lv_font_noto_28, LV_PART_MAIN);
@@ -178,13 +277,16 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_bg_color(ta, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_color(ta, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_border_width(ta, 2, LV_PART_MAIN);
+    lv_obj_set_style_radius(ta, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_all(ta, 12, LV_PART_MAIN);
     lv_obj_add_event_cb(ta, on_ta_focus, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(ta, on_ta_blur, LV_EVENT_DEFOCUSED, NULL);
+    lv_obj_add_event_cb(ta, on_ta_change, LV_EVENT_VALUE_CHANGED, NULL);
+    update_char_count();
 
-    // Keyboard
     kb = lv_keyboard_create(parent);
     lv_keyboard_set_textarea(kb, ta);
-    lv_obj_set_size(kb, lv_pct(100), 350);
+    lv_obj_set_size(kb, lv_pct(100), 320);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_text_font(kb, &lv_font_noto_24, LV_PART_MAIN);
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
@@ -192,21 +294,21 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_ITEMS);
     lv_obj_set_style_text_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_ITEMS);
     lv_obj_set_style_border_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_ITEMS);
-    lv_obj_set_style_border_width(kb, 1, LV_PART_ITEMS);
+    lv_obj_set_style_border_width(kb, 2, LV_PART_ITEMS);
+    lv_obj_set_style_radius(kb, 10, LV_PART_ITEMS);
     lv_obj_add_event_cb(kb, on_kb_event, LV_EVENT_ALL, NULL);
 
-    // Send button
     send_btn = ui::nav::text_button(parent, "Send", on_send, NULL);
-    lv_obj_align(send_btn, LV_ALIGN_BOTTOM_MID, 0, -370);
+    lv_obj_align(send_btn, LV_ALIGN_BOTTOM_MID, 0, -335);
 
     if (recipient_chosen) {
-        // Skip picker, go straight to editor
         lv_obj_add_flag(recipient_list, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(editor_card, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ta, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(send_btn, LV_OBJ_FLAG_HIDDEN);  // hidden while kb is visible
+        lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
     } else {
-        // Show picker, hide editor
+        lv_obj_add_flag(editor_card, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ta, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
@@ -218,10 +320,14 @@ static void exit_fn() {}
 static void destroy() {
     scr = NULL;
     recipient_list = NULL;
+    recipient_card = NULL;
     lbl_to = NULL;
+    lbl_hint = NULL;
     ta = NULL;
     kb = NULL;
     send_btn = NULL;
+    editor_card = NULL;
+    char_count = NULL;
     recipient_name[0] = 0;
     recipient_chosen = false;
     recipient_is_channel = false;

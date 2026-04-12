@@ -1,3 +1,5 @@
+#include <cstdio>
+#include <cstring>
 #include "home.h"
 #include "compose.h"
 #include "../ui_theme.h"
@@ -12,6 +14,10 @@ static lv_obj_t* lbl_node_name = NULL;
 static lv_obj_t* lbl_clock = NULL;
 static lv_obj_t* lbl_date = NULL;
 static lv_obj_t* lbl_msg_badge = NULL;
+static char cached_node_name[64] = {};
+static char cached_clock[8] = {};
+static char cached_date[16] = {};
+static char cached_msg_badge[16] = {};
 
 // ---------- Event handlers ----------
 
@@ -93,22 +99,42 @@ static void create(lv_obj_t* parent) {
 
 // Called by model update cycle (every 2s) via lv_timer — just update labels
 void update() {
+    char buf[64];
     if (lbl_clock) {
-        lv_label_set_text_fmt(lbl_clock, "%02d:%02d", model::clock.hour, model::clock.minute);
+        snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
+        if (strcmp(cached_clock, buf) != 0) {
+            strncpy(cached_clock, buf, sizeof(cached_clock) - 1);
+            cached_clock[sizeof(cached_clock) - 1] = 0;
+            lv_label_set_text(lbl_clock, cached_clock);
+        }
     }
     if (lbl_date) {
-        lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
+        snprintf(buf, sizeof(buf), "%02d/%02d/20%02d",
             model::clock.day, model::clock.month, model::clock.year);
+        if (strcmp(cached_date, buf) != 0) {
+            strncpy(cached_date, buf, sizeof(cached_date) - 1);
+            cached_date[sizeof(cached_date) - 1] = 0;
+            lv_label_set_text(lbl_date, cached_date);
+        }
     }
     if (lbl_node_name && model::mesh.node_name) {
-        lv_label_set_text(lbl_node_name, model::mesh.node_name);
+        if (strcmp(cached_node_name, model::mesh.node_name) != 0) {
+            strncpy(cached_node_name, model::mesh.node_name, sizeof(cached_node_name) - 1);
+            cached_node_name[sizeof(cached_node_name) - 1] = 0;
+            lv_label_set_text(lbl_node_name, cached_node_name);
+        }
     }
     if (lbl_msg_badge) {
         int unread = model::sleep_cfg.unread_messages;
         if (unread > 0) {
-            lv_label_set_text_fmt(lbl_msg_badge, "(%d)", unread);
+            snprintf(buf, sizeof(buf), "(%d)", unread);
         } else {
-            lv_label_set_text(lbl_msg_badge, "");
+            buf[0] = 0;
+        }
+        if (strcmp(cached_msg_badge, buf) != 0) {
+            strncpy(cached_msg_badge, buf, sizeof(cached_msg_badge) - 1);
+            cached_msg_badge[sizeof(cached_msg_badge) - 1] = 0;
+            lv_label_set_text(lbl_msg_badge, cached_msg_badge);
         }
     }
 }
@@ -125,6 +151,10 @@ static void destroy() {
     lbl_clock = NULL;
     lbl_msg_badge = NULL;
     lbl_date = NULL;
+    cached_node_name[0] = 0;
+    cached_clock[0] = 0;
+    cached_date[0] = 0;
+    cached_msg_badge[0] = 0;
 }
 
 screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };

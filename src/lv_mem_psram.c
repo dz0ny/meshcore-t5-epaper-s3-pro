@@ -1,6 +1,6 @@
 /**
  * Custom LVGL memory allocator — routes all LVGL allocations to PSRAM
- * to free internal DRAM for I2C driver and other hardware needs.
+ * to avoid exhausting internal RAM and crashing under LVGL load.
  */
 #include "lvgl.h"
 #if LV_USE_STDLIB_MALLOC == LV_STDLIB_CUSTOM

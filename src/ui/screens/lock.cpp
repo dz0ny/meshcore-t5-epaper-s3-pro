@@ -14,6 +14,11 @@ static lv_obj_t* lbl_time = NULL;
 static lv_obj_t* lbl_date = NULL;
 static lv_obj_t* lbl_unread = NULL;
 static lv_obj_t* lbl_info = NULL;
+static char cached_node_name[64] = {};
+static char cached_time[8] = {};
+static char cached_date[16] = {};
+static char cached_unread[96] = {};
+static char cached_info[16] = {};
 
 static void on_unread_click(lv_event_t* e) {
     model::touch_activity();
@@ -59,25 +64,50 @@ static void create(lv_obj_t* parent) {
 
 void update() {
     if (!lbl_time) return;
+    char buf[96];
 
     if (lbl_node_name && model::mesh.node_name)
-        lv_label_set_text(lbl_node_name, model::mesh.node_name);
-    lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
-    lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
+        if (strcmp(cached_node_name, model::mesh.node_name) != 0) {
+            strncpy(cached_node_name, model::mesh.node_name, sizeof(cached_node_name) - 1);
+            cached_node_name[sizeof(cached_node_name) - 1] = 0;
+            lv_label_set_text(lbl_node_name, cached_node_name);
+        }
+    snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
+    if (strcmp(cached_time, buf) != 0) {
+        strncpy(cached_time, buf, sizeof(cached_time) - 1);
+        cached_time[sizeof(cached_time) - 1] = 0;
+        lv_label_set_text(lbl_time, cached_time);
+    }
+    snprintf(buf, sizeof(buf), "%02d/%02d/20%02d",
         model::clock.day, model::clock.month, model::clock.year);
+    if (strcmp(cached_date, buf) != 0) {
+        strncpy(cached_date, buf, sizeof(cached_date) - 1);
+        cached_date[sizeof(cached_date) - 1] = 0;
+        lv_label_set_text(lbl_date, cached_date);
+    }
 
     if (model::sleep_cfg.unread_messages > 0) {
         if (model::sleep_cfg.last_sender[0]) {
-            lv_label_set_text_fmt(lbl_unread, "%d new: %s",
+            snprintf(buf, sizeof(buf), "%d new: %s",
                 model::sleep_cfg.unread_messages, model::sleep_cfg.last_sender);
         } else {
-            lv_label_set_text_fmt(lbl_unread, "%d new messages", model::sleep_cfg.unread_messages);
+            snprintf(buf, sizeof(buf), "%d new messages", model::sleep_cfg.unread_messages);
         }
     } else {
-        lv_label_set_text(lbl_unread, "");
+        buf[0] = 0;
+    }
+    if (strcmp(cached_unread, buf) != 0) {
+        strncpy(cached_unread, buf, sizeof(cached_unread) - 1);
+        cached_unread[sizeof(cached_unread) - 1] = 0;
+        lv_label_set_text(lbl_unread, cached_unread);
     }
 
-    lv_label_set_text_fmt(lbl_info, "BAT %d%%", model::battery.percent);
+    snprintf(buf, sizeof(buf), "BAT %d%%", model::battery.percent);
+    if (strcmp(cached_info, buf) != 0) {
+        strncpy(cached_info, buf, sizeof(cached_info) - 1);
+        cached_info[sizeof(cached_info) - 1] = 0;
+        lv_label_set_text(lbl_info, cached_info);
+    }
 }
 
 static void entry() {
@@ -93,6 +123,11 @@ static void destroy() {
     scr = NULL;
     lbl_node_name = NULL;
     lbl_time = lbl_date = lbl_unread = lbl_info = NULL;
+    cached_node_name[0] = 0;
+    cached_time[0] = 0;
+    cached_date[0] = 0;
+    cached_unread[0] = 0;
+    cached_info[0] = 0;
 }
 
 void show() {

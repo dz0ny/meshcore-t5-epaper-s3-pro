@@ -14,6 +14,11 @@ static lv_obj_t* scr = NULL;
 static lv_obj_t* contact_list = NULL;
 static lv_obj_t* lbl_filter = NULL;
 static lv_timer_t* poll_timer = NULL;
+static lv_obj_t* contact_rows[MAX_CONTACTS] = {};
+static lv_obj_t* contact_row_labels[MAX_CONTACTS] = {};
+static int row_contact_idx[MAX_CONTACTS] = {};
+static bool row_visible[MAX_CONTACTS] = {};
+static lv_obj_t* empty_label = NULL;
 
 // Filter: 0=Chat, 1=Relay, 2=Favorite, 3=All
 static int filter_mode = 0;
@@ -34,7 +39,9 @@ static int display_count = 0;
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void on_contact_click(lv_event_t* e) {
-    int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    int row_idx = (int)(intptr_t)lv_event_get_user_data(e);
+    if (row_idx < 0 || row_idx >= MAX_CONTACTS) return;
+    int idx = row_contact_idx[row_idx];
     if (idx >= 0 && idx < display_count) {
         ui::screen::contact_detail::set_contact(
             displayed[idx].name, displayed[idx].gps_lat, displayed[idx].gps_lon,
@@ -63,10 +70,25 @@ static void on_filter_cycle(lv_event_t* e) {
 
 static void rebuild_list() {
     if (!contact_list) return;
-    lv_obj_clean(contact_list);
+    lv_display_t* disp = lv_obj_get_display(contact_list);
+    lv_display_enable_invalidation(disp, false);
 
-    // Filter toggle row
-    lbl_filter = ui::nav::toggle_item(contact_list, "Filter", filter_names[filter_mode], on_filter_cycle, NULL);
+    if (lbl_filter) {
+        lv_label_set_text(lbl_filter, filter_names[filter_mode]);
+    }
+
+    for (int i = 0; i < MAX_CONTACTS; i++) {
+        if (!contact_rows[i]) {
+            lv_obj_t* row = ui::nav::menu_item(contact_list, NULL, "", on_contact_click, (void*)(intptr_t)i);
+            contact_rows[i] = row;
+            contact_row_labels[i] = lv_obj_get_child(row, 0);
+            row_contact_idx[i] = -1;
+            row_visible[i] = false;
+            lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            row_contact_idx[i] = -1;
+        }
+    }
 
     int shown = 0;
     for (int i = 0; i < display_count; i++) {
@@ -74,19 +96,36 @@ static void rebuild_list() {
         const char* icon = (displayed[i].flags & 0x01) ? LV_SYMBOL_OK " " : "";
         char label[40];
         snprintf(label, sizeof(label), "%s%s", icon, displayed[i].name);
-        ui::nav::menu_item(contact_list, NULL, label, on_contact_click, (void*)(intptr_t)i);
+        if (strcmp(lv_label_get_text(contact_row_labels[shown]), label) != 0) {
+            lv_label_set_text(contact_row_labels[shown], label);
+        }
+        row_contact_idx[shown] = i;
+        if (!row_visible[shown]) {
+            lv_obj_clear_flag(contact_rows[shown], LV_OBJ_FLAG_HIDDEN);
+            row_visible[shown] = true;
+        }
         shown++;
     }
 
-    if (shown == 0) {
-        lv_obj_t* empty = lv_label_create(contact_list);
-        lv_obj_set_width(empty, lv_pct(100));
-        lv_obj_set_flex_grow(empty, 1);
-        lv_obj_set_style_text_font(empty, &lv_font_montserrat_bold_30, LV_PART_MAIN);
-        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-        lv_label_set_text(empty, "\n\n\nNo contacts");
+    for (int i = shown; i < MAX_CONTACTS; i++) {
+        if (row_visible[i]) {
+            lv_obj_add_flag(contact_rows[i], LV_OBJ_FLAG_HIDDEN);
+            row_visible[i] = false;
+        }
     }
+
+    if (empty_label) {
+        if (shown == 0) {
+            lv_obj_clear_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    lv_obj_mark_layout_as_dirty(contact_list);
+    lv_obj_update_layout(contact_list);
+    lv_display_enable_invalidation(disp, true);
+    lv_obj_invalidate(contact_list);
 }
 
 static void poll_contacts(lv_timer_t* t) {
@@ -125,8 +164,18 @@ static void poll_contacts(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Contacts", on_back);
+    lbl_filter = ui::nav::back_button_action(parent, "Contacts", on_back, filter_names[filter_mode], on_filter_cycle, NULL);
     contact_list = ui::nav::scroll_list(parent);
+
+    empty_label = lv_label_create(contact_list);
+    lv_obj_set_width(empty_label, lv_pct(100));
+    lv_obj_set_flex_grow(empty_label, 1);
+    lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(empty_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_align(empty_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_text(empty_label, "\n\n\nNo contacts");
+    lv_obj_add_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
+
     rebuild_list();
 }
 
@@ -145,6 +194,13 @@ static void destroy() {
     scr = NULL;
     contact_list = NULL;
     lbl_filter = NULL;
+    empty_label = NULL;
+    for (int i = 0; i < MAX_CONTACTS; i++) {
+        contact_rows[i] = NULL;
+        contact_row_labels[i] = NULL;
+        row_contact_idx[i] = -1;
+        row_visible[i] = false;
+    }
 }
 
 screen_lifecycle_t lifecycle = {

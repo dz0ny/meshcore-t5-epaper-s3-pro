@@ -13,7 +13,7 @@ static lv_obj_t* lbl_refresh_val = NULL;
 static lv_obj_t* lbl_backlight_val = NULL;
 static lv_obj_t* lbl_brightness_val = NULL;
 static lv_obj_t* lbl_sleep_val = NULL;
-static const char* mode_names[] = {"Normal", "Fast", "Neat"};
+static const char* mode_names[] = {"Normal", "Fast"};
 static const char* sleep_names[] = {"Off", "1 min", "2 min", "5 min", "15 min", "30 min"};
 static const uint32_t sleep_ms[] = {0, 60000, 120000, 300000, 900000, 1800000};
 
@@ -30,7 +30,7 @@ static void on_sleep_cycle(lv_event_t* e) {
 
 static void on_refresh_mode(lv_event_t* e) {
     int mode = ui::port::get_refresh_mode();
-    mode = (mode + 1) % 3;
+    mode = (mode + 1) % 2;
     ui::port::set_refresh_mode(mode);
     nvs_param_set_u8(NVS_ID_REFRESH_MODE, mode);
     if (lbl_refresh_val) lv_label_set_text(lbl_refresh_val, mode_names[mode]);
