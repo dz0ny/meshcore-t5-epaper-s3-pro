@@ -28,7 +28,7 @@
    HAL SETTINGS
  *====================*/
 
-#define LV_DEF_REFR_PERIOD 100    /**< [ms] — e-ink refresh period */
+#define LV_DEF_REFR_PERIOD 33     /**< [ms] — test e-ink refresh period (~30 FPS) */
 
 /* Tick provided via lv_tick_set_cb() in ui_port.cpp */
 

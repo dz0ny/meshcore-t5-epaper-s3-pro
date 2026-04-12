@@ -1,6 +1,7 @@
 #include <cstring>
 #include "compose.h"
 #include "../ui_theme.h"
+#include "../ui_port.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/text_utils.h"
@@ -22,6 +23,8 @@ static lv_obj_t* kb = NULL;
 static lv_obj_t* send_btn = NULL;
 static lv_obj_t* editor_card = NULL;
 static lv_obj_t* char_count = NULL;
+static int saved_refresh_mode = UI_REFRESH_MODE_NORMAL;
+static bool refresh_mode_overridden = false;
 
 static char recipient_name[32] = {};
 static bool recipient_chosen = false;
@@ -52,6 +55,20 @@ static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void show_editor();
 static void show_picker();
+
+static void enable_typing_refresh_mode() {
+    if (!refresh_mode_overridden) {
+        saved_refresh_mode = ui::port::get_refresh_mode();
+        refresh_mode_overridden = true;
+    }
+    ui::port::set_refresh_mode(UI_REFRESH_MODE_FAST);
+}
+
+static void restore_refresh_mode() {
+    if (!refresh_mode_overridden) return;
+    ui::port::set_refresh_mode(saved_refresh_mode);
+    refresh_mode_overridden = false;
+}
 
 static void update_recipient_card() {
     if (!lbl_to || !lbl_hint) return;
@@ -113,12 +130,15 @@ static void on_kb_event(lv_event_t* e) {
 
 
 static void on_ta_focus(lv_event_t* e) {
+    enable_typing_refresh_mode();
     lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
     model::touch_activity();
 }
 
-static void on_ta_blur(lv_event_t* e) {}
+static void on_ta_blur(lv_event_t* e) {
+    restore_refresh_mode();
+}
 
 static void on_ta_change(lv_event_t* e) {
     update_char_count();
@@ -276,6 +296,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_border_width(ta, 2, LV_PART_MAIN);
     lv_obj_set_style_radius(ta, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_all(ta, 12, LV_PART_MAIN);
+    lv_obj_set_style_anim_duration(ta, 0, LV_PART_CURSOR);
     lv_obj_add_event_cb(ta, on_ta_focus, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(ta, on_ta_blur, LV_EVENT_DEFOCUSED, NULL);
     lv_obj_add_event_cb(ta, on_ta_change, LV_EVENT_VALUE_CHANGED, NULL);
@@ -283,18 +304,20 @@ static void create(lv_obj_t* parent) {
 
     kb = lv_keyboard_create(parent);
     lv_keyboard_set_textarea(kb, ta);
-    lv_buttonmatrix_set_button_ctrl_all(kb,
-        (lv_buttonmatrix_ctrl_t)(LV_BUTTONMATRIX_CTRL_CLICK_TRIG | LV_BUTTONMATRIX_CTRL_NO_REPEAT));
+    lv_buttonmatrix_clear_button_ctrl_all(kb, LV_BUTTONMATRIX_CTRL_CLICK_TRIG);
+    lv_buttonmatrix_set_button_ctrl_all(kb, LV_BUTTONMATRIX_CTRL_NO_REPEAT);
     lv_obj_set_size(kb, lv_pct(100), 320);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_text_font(kb, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_text_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_anim_duration(kb, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_ITEMS);
     lv_obj_set_style_text_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_ITEMS);
     lv_obj_set_style_border_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_ITEMS);
     lv_obj_set_style_border_width(kb, 2, LV_PART_ITEMS);
     lv_obj_set_style_radius(kb, 10, LV_PART_ITEMS);
+    lv_obj_set_style_anim_duration(kb, 0, LV_PART_ITEMS);
     lv_obj_add_event_cb(kb, on_kb_event, LV_EVENT_ALL, NULL);
 
     send_btn = ui::nav::text_button(parent, "Send", on_send, NULL);
@@ -314,9 +337,18 @@ static void create(lv_obj_t* parent) {
     }
 }
 
-static void entry() {}
-static void exit_fn() {}
+static void entry() {
+    if (recipient_chosen) {
+        enable_typing_refresh_mode();
+    }
+}
+
+static void exit_fn() {
+    restore_refresh_mode();
+}
+
 static void destroy() {
+    restore_refresh_mode();
     scr = NULL;
     recipient_list = NULL;
     recipient_card = NULL;
@@ -327,6 +359,8 @@ static void destroy() {
     send_btn = NULL;
     editor_card = NULL;
     char_count = NULL;
+    saved_refresh_mode = UI_REFRESH_MODE_NORMAL;
+    refresh_mode_overridden = false;
     recipient_name[0] = 0;
     recipient_chosen = false;
     recipient_is_channel = false;

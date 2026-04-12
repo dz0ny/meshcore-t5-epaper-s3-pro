@@ -18,6 +18,7 @@ lv_obj_t* create(lv_obj_t* parent) {
     lv_obj_set_size(list, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_color(list, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+    lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_all(list, 2, LV_PART_MAIN);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);

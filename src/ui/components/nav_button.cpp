@@ -178,6 +178,7 @@ lv_obj_t* scroll_list(lv_obj_t* parent) {
     lv_obj_align(list, LV_ALIGN_BOTTOM_MID, 0, -10);
     lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+    lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     // Disable elastic bounce and scroll momentum — bad on e-ink
