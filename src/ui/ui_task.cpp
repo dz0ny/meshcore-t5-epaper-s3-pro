@@ -52,7 +52,7 @@ static void show_power_off_splash() {
     lv_obj_t* sub = lv_label_create(splash);
     lv_obj_set_style_text_font(sub, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_label_set_text(sub, "Power Off");
+    lv_label_set_text(sub, board::charger_vbus_in() ? "Sleep" : "Power Off");
     lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
 
     lv_obj_t* hint = lv_label_create(splash);
@@ -69,19 +69,14 @@ static void show_power_off_splash() {
     lv_obj_align(hint, LV_ALIGN_CENTER, 0, 120);
 
     lv_timer_handler();
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    lv_refr_now(NULL);
 }
 
 void do_power_off() {
     show_power_off_splash();
 
-    // Force LVGL to render the splash and flush to e-paper
-    lv_timer_handler();
-    lv_refr_now(NULL);
-
     // Try battery FET shutdown first (instant off on battery power)
     board::ppm.shutdown();
-    vTaskDelay(pdMS_TO_TICKS(500));
 
     // Still alive — USB powered, go to deep sleep instead
     // Wake on BOOT button press
@@ -91,9 +86,10 @@ void do_power_off() {
 
 namespace ui::task {
 
-static unsigned long next_model_update = 0;
-static unsigned long next_lock_clock_update = 0;
-static unsigned long next_lock_unread_update = 0;
+static unsigned long next_clock_update = 0;
+static unsigned long next_gps_update = 0;
+static unsigned long next_battery_update = 0;
+static unsigned long next_mesh_update = 0;
 static unsigned long next_lock_battery_update = 0;
 static unsigned long next_lock_mesh_update = 0;
 static unsigned long backlight_off_at = 0;
@@ -121,6 +117,28 @@ static void on_pca_click() {
         ui::statusbar::show();
     }
     ui::screen_mgr::switch_to(SCREEN_HOME, false);
+}
+
+static void dispatch_dirty(uint32_t flags) {
+    if (flags == model::DIRTY_NONE) return;
+
+    uint32_t statusbar_flags = flags & (model::DIRTY_CLOCK | model::DIRTY_BATTERY | model::DIRTY_GPS | model::DIRTY_MESH);
+    if (statusbar_flags) {
+        ui::statusbar::update_now(statusbar_flags);
+    }
+
+    int top_id = ui::screen_mgr::top_id();
+    if (top_id == SCREEN_HOME) {
+        uint32_t home_flags = flags & (model::DIRTY_CLOCK | model::DIRTY_MESH | model::DIRTY_SLEEP);
+        if (home_flags) {
+            ui::screen::home::update(home_flags);
+        }
+    } else if (top_id == SCREEN_LOCK) {
+        uint32_t lock_flags = flags & (model::DIRTY_CLOCK | model::DIRTY_BATTERY | model::DIRTY_MESH | model::DIRTY_SLEEP);
+        if (lock_flags) {
+            ui::screen::lock::update(lock_flags);
+        }
+    }
 }
 
 static void ui_task_fn(void* param) {
@@ -165,40 +183,34 @@ static void ui_task_fn(void* param) {
 
         bool is_locked = (ui::screen_mgr::top_id() == SCREEN_LOCK);
 
-        // Update model + labels BEFORE lv_timer_handler so flush uses fresh data.
-        // No full-screen invalidation — LVGL tracks dirty areas automatically.
-        // Only widgets whose text/state changes get redrawn + partial e-paper update.
-        if (!is_locked && millis() > next_model_update) {
+        // Poll the model, then only update the UI surfaces whose data actually changed.
+        if (millis() > next_clock_update) {
             model::update_clock();
+            next_clock_update = millis() + 1000;
+        }
+        if (!is_locked && millis() > next_gps_update) {
             model::update_gps();
+            next_gps_update = millis() + 10000;
+        }
+        if (!is_locked && millis() > next_battery_update) {
             model::update_battery();
+            next_battery_update = millis() + 30000;
+        }
+        if (!is_locked && millis() > next_mesh_update) {
             model::update_mesh();
-            ui::statusbar::update_now();
-            ui::screen::home::update();
-            next_model_update = millis() + 10000;  // 10s — e-ink doesn't need fast updates
+            next_mesh_update = millis() + 10000;
         }
 
-        // Lock screen: keep fast-changing data responsive, poll slow-changing
-        // data less often to avoid unnecessary work while asleep.
-        if (is_locked && millis() > next_lock_clock_update) {
-            model::update_clock();
-            ui::screen::lock::update_time_date();
-            next_lock_clock_update = millis() + 1000;
-        }
-        if (is_locked && millis() > next_lock_unread_update) {
-            ui::screen::lock::update_unread();
-            next_lock_unread_update = millis() + 1000;
-        }
         if (is_locked && millis() > next_lock_battery_update) {
             model::update_battery();
-            ui::screen::lock::update_battery();
             next_lock_battery_update = millis() + 300000;
         }
         if (is_locked && millis() > next_lock_mesh_update) {
             model::update_mesh();
-            ui::screen::lock::update_node_name();
             next_lock_mesh_update = millis() + 300000;
         }
+
+        dispatch_dirty(model::take_dirty());
 
         // Reset activity on any touch + auto backlight at night
         if (touch_pressed) {
@@ -229,7 +241,7 @@ static void ui_task_fn(void* param) {
         // After LVGL processed events: if lock screen was touched but LVGL
         // didn't navigate away (user tapped outside the unread label), wake to home.
         if (lock_touched && ui::screen_mgr::top_id() == SCREEN_LOCK) {
-            model::sleep_cfg.unread_messages = 0;
+            model::clear_unread_messages();
             ui::statusbar::show();
             ui::screen_mgr::switch_to(SCREEN_HOME, false);
         }
@@ -289,7 +301,14 @@ void start(int core) {
         lv_timer_handler();
 
         // Wait for mesh task to finish init (identity/PKI, radio, contacts)
+        unsigned long wait_started = millis();
         while (!mesh::task::is_ready()) {
+            if (millis() - wait_started > 15000) {
+                lv_label_set_text(status, "Mesh init slow...\nContinuing");
+                lv_timer_handler();
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                break;
+            }
             vTaskDelay(pdMS_TO_TICKS(50));
         }
 

@@ -70,7 +70,7 @@ static void create(lv_obj_t* parent) {
     last_displayed = model::message_count;
 
     // Clear unread on open
-    model::sleep_cfg.unread_messages = 0;
+    model::clear_unread_messages();
 }
 
 static void entry() {

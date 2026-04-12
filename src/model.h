@@ -10,6 +10,16 @@
 
 namespace model {
 
+enum DirtyFlags : uint32_t {
+    DIRTY_NONE = 0,
+    DIRTY_CLOCK = 1 << 0,
+    DIRTY_BATTERY = 1 << 1,
+    DIRTY_GPS = 1 << 2,
+    DIRTY_MESH = 1 << 3,
+    DIRTY_MESSAGES = 1 << 4,
+    DIRTY_SLEEP = 1 << 5,
+};
+
 struct GPS {
     double lat;
     double lng;
@@ -99,6 +109,10 @@ void init_messages();  // call once at startup to allocate PSRAM
 void touch_activity();  // call on any user interaction
 bool should_sleep();    // check if timeout expired
 void delete_message(int idx);  // remove message at index, shift remaining
+void note_incoming_message(const char* from_name, const char* text);
+void clear_unread_messages();
+void mark_dirty(uint32_t flags);
+uint32_t take_dirty();
 
 // Call from background tasks to refresh the model
 void update_gps();

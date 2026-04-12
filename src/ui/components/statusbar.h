@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lvgl.h"
+#include "../../model.h"
 
 namespace ui::statusbar {
 
@@ -8,7 +9,7 @@ namespace ui::statusbar {
 lv_obj_t* create();
 
 // Force an immediate update.
-void update_now();
+void update_now(uint32_t flags = model::DIRTY_CLOCK | model::DIRTY_BATTERY | model::DIRTY_GPS | model::DIRTY_MESH);
 void show();
 void hide();
 

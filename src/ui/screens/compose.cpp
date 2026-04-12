@@ -286,6 +286,8 @@ static void create(lv_obj_t* parent) {
 
     kb = lv_keyboard_create(parent);
     lv_keyboard_set_textarea(kb, ta);
+    lv_buttonmatrix_set_button_ctrl_all(kb,
+        (lv_buttonmatrix_ctrl_t)(LV_BUTTONMATRIX_CTRL_CLICK_TRIG | LV_BUTTONMATRIX_CTRL_NO_REPEAT));
     lv_obj_set_size(kb, lv_pct(100), 320);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_text_font(kb, &lv_font_noto_24, LV_PART_MAIN);

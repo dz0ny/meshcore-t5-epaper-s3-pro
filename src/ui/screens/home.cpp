@@ -98,9 +98,9 @@ static void create(lv_obj_t* parent) {
 }
 
 // Called by model update cycle (every 2s) via lv_timer — just update labels
-void update() {
+void update(uint32_t flags) {
     char buf[64];
-    if (lbl_clock) {
+    if ((flags & model::DIRTY_CLOCK) && lbl_clock) {
         snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
         if (strcmp(cached_clock, buf) != 0) {
             strncpy(cached_clock, buf, sizeof(cached_clock) - 1);
@@ -108,7 +108,7 @@ void update() {
             lv_label_set_text(lbl_clock, cached_clock);
         }
     }
-    if (lbl_date) {
+    if ((flags & model::DIRTY_CLOCK) && lbl_date) {
         snprintf(buf, sizeof(buf), "%02d/%02d/20%02d",
             model::clock.day, model::clock.month, model::clock.year);
         if (strcmp(cached_date, buf) != 0) {
@@ -117,14 +117,14 @@ void update() {
             lv_label_set_text(lbl_date, cached_date);
         }
     }
-    if (lbl_node_name && model::mesh.node_name) {
+    if ((flags & model::DIRTY_MESH) && lbl_node_name && model::mesh.node_name) {
         if (strcmp(cached_node_name, model::mesh.node_name) != 0) {
             strncpy(cached_node_name, model::mesh.node_name, sizeof(cached_node_name) - 1);
             cached_node_name[sizeof(cached_node_name) - 1] = 0;
             lv_label_set_text(lbl_node_name, cached_node_name);
         }
     }
-    if (lbl_msg_badge) {
+    if ((flags & model::DIRTY_SLEEP) && lbl_msg_badge) {
         int unread = model::sleep_cfg.unread_messages;
         if (unread > 0) {
             snprintf(buf, sizeof(buf), "(%d)", unread);
@@ -140,7 +140,7 @@ void update() {
 }
 
 static void entry() {
-    update();
+    update(model::DIRTY_CLOCK | model::DIRTY_MESH | model::DIRTY_SLEEP);
 }
 
 static void exit_fn() {}

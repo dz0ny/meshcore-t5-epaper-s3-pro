@@ -1,4 +1,5 @@
 #include <esp_heap_caps.h>
+#include <freertos/FreeRTOS.h>
 #include <time.h>
 #include <sys/time.h>
 #include "model.h"
@@ -15,8 +16,27 @@ GPS     gps = {};
 Battery battery = {};
 Mesh    mesh = {};
 Clock   clock = {};
+static portMUX_TYPE dirty_lock = portMUX_INITIALIZER_UNLOCKED;
+static uint32_t dirty_flags = DIRTY_NONE;
+
+void mark_dirty(uint32_t flags) {
+    portENTER_CRITICAL(&dirty_lock);
+    dirty_flags |= flags;
+    portEXIT_CRITICAL(&dirty_lock);
+}
+
+uint32_t take_dirty() {
+    portENTER_CRITICAL(&dirty_lock);
+    uint32_t flags = dirty_flags;
+    dirty_flags = DIRTY_NONE;
+    portEXIT_CRITICAL(&dirty_lock);
+    return flags;
+}
 
 void update_gps() {
+    bool prev_has_fix = gps.has_fix;
+    bool prev_module_ok = gps.module_ok;
+
     // Read from MeshCore's EnvironmentSensorManager / MicroNMEALocationProvider
     LocationProvider* loc = sensors.getLocationProvider();
     if (loc) {
@@ -47,9 +67,16 @@ void update_gps() {
         hw_rtc_synced = true;
         Serial.println("GPS: hardware RTC synced");
     }
+
+    if (gps.has_fix != prev_has_fix || gps.module_ok != prev_module_ok) {
+        mark_dirty(DIRTY_GPS);
+    }
 }
 
 void update_battery() {
+    uint16_t prev_percent = battery.percent;
+    bool prev_charging = battery.charging;
+
     battery.percent = board::battery_percent();
     battery.voltage_mv = board::battery_voltage_mv();
     battery.current_ma = board::battery_current_ma();
@@ -71,9 +98,16 @@ void update_battery() {
         battery.vbat_v = board::charger_vbat_v();
         battery.charge_current_ma = board::charger_current_ma();
     }
+
+    if (battery.percent != prev_percent || battery.charging != prev_charging) {
+        mark_dirty(DIRTY_BATTERY);
+    }
 }
 
 void update_mesh() {
+    bool prev_ble_enabled = mesh.ble_enabled;
+    const char* prev_node_name = mesh.node_name;
+
     auto ms = mesh::bridge::get_status();
     mesh.peer_count = ms.peer_count;
     mesh.last_rssi = ms.last_rssi;
@@ -88,9 +122,19 @@ void update_mesh() {
     mesh.sf = mesh::task::get_sf();
     mesh.cr = mesh::task::get_cr();
     mesh.tx_power_dbm = mesh::task::get_tx_power();
+
+    if (mesh.ble_enabled != prev_ble_enabled || mesh.node_name != prev_node_name) {
+        mark_dirty(DIRTY_MESH);
+    }
 }
 
 void update_clock() {
+    uint8_t prev_hour = clock.hour;
+    uint8_t prev_minute = clock.minute;
+    uint8_t prev_day = clock.day;
+    uint8_t prev_month = clock.month;
+    uint8_t prev_year = clock.year;
+
     // Read UTC from ESP32 system clock (seeded from hardware RTC at boot, updated by GPS)
     time_t now;
     time(&now);
@@ -177,6 +221,14 @@ void update_clock() {
     clock.hour = (uint8_t)local_h;
     clock.minute = utc_m;
     clock.second = utc_s;
+
+    if (clock.hour != prev_hour ||
+        clock.minute != prev_minute ||
+        clock.day != prev_day ||
+        clock.month != prev_month ||
+        clock.year != prev_year) {
+        mark_dirty(DIRTY_CLOCK);
+    }
 }
 
 // Message history — allocated in PSRAM to save DRAM
@@ -195,6 +247,28 @@ void delete_message(int idx) {
         messages[i] = messages[i + 1];
     }
     message_count--;
+    mark_dirty(DIRTY_MESSAGES);
+}
+
+void note_incoming_message(const char* from_name, const char* text) {
+    sleep_cfg.unread_messages++;
+    if (from_name) {
+        strncpy(sleep_cfg.last_sender, from_name, sizeof(sleep_cfg.last_sender) - 1);
+        sleep_cfg.last_sender[sizeof(sleep_cfg.last_sender) - 1] = 0;
+    }
+    if (text) {
+        strncpy(sleep_cfg.last_message, text, sizeof(sleep_cfg.last_message) - 1);
+        sleep_cfg.last_message[sizeof(sleep_cfg.last_message) - 1] = 0;
+    }
+    mark_dirty(DIRTY_MESSAGES | DIRTY_SLEEP);
+}
+
+void clear_unread_messages() {
+    if (sleep_cfg.unread_messages == 0 && sleep_cfg.last_sender[0] == 0 && sleep_cfg.last_message[0] == 0) return;
+    sleep_cfg.unread_messages = 0;
+    sleep_cfg.last_sender[0] = 0;
+    sleep_cfg.last_message[0] = 0;
+    mark_dirty(DIRTY_SLEEP);
 }
 
 // Sleep

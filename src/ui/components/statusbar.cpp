@@ -32,45 +32,53 @@ static void set_label_visible(lv_obj_t* label, bool visible) {
     }
 }
 
-static void do_update() {
+static void do_update(uint32_t flags) {
     if (!bar_obj) return;
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
-    set_label_text_if_changed(lbl_time, cached_time, sizeof(cached_time), buf);
-
-    // GPS: icon when fix, warning icon when no fix
-    if (model::gps.has_fix) {
-        set_label_visible(lbl_gps, true);
-        set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), LV_SYMBOL_GPS);
-    } else if (model::gps.module_ok) {
-        set_label_visible(lbl_gps, true);
-        set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), LV_SYMBOL_WARNING);
-    } else {
-        set_label_visible(lbl_gps, false);
+    if (flags & model::DIRTY_CLOCK) {
+        snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
+        set_label_text_if_changed(lbl_time, cached_time, sizeof(cached_time), buf);
     }
 
-    // BLE: icon when active
-    if (model::mesh.ble_enabled) {
-        set_label_visible(lbl_ble, true);
-        set_label_text_if_changed(lbl_ble, cached_ble, sizeof(cached_ble), LV_SYMBOL_BLUETOOTH);
-    } else {
-        set_label_visible(lbl_ble, false);
+    if (flags & model::DIRTY_GPS) {
+        // GPS: icon when fix, warning icon when no fix
+        if (model::gps.has_fix) {
+            set_label_visible(lbl_gps, true);
+            set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), LV_SYMBOL_GPS);
+        } else if (model::gps.module_ok) {
+            set_label_visible(lbl_gps, true);
+            set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), LV_SYMBOL_WARNING);
+        } else {
+            set_label_visible(lbl_gps, false);
+        }
     }
 
-    // Battery
-    uint16_t pct = model::battery.percent;
-    const char* bat_icon = LV_SYMBOL_BATTERY_FULL;
-    if (pct < 20) bat_icon = LV_SYMBOL_BATTERY_EMPTY;
-    else if (pct < 50) bat_icon = LV_SYMBOL_BATTERY_2;
-    else if (pct < 80) bat_icon = LV_SYMBOL_BATTERY_3;
-
-    if (model::battery.charging) {
-        snprintf(buf, sizeof(buf), LV_SYMBOL_CHARGE " %d%%", pct);
-    } else {
-        snprintf(buf, sizeof(buf), "%s %d%%", bat_icon, pct);
+    if (flags & model::DIRTY_MESH) {
+        // BLE: icon when active
+        if (model::mesh.ble_enabled) {
+            set_label_visible(lbl_ble, true);
+            set_label_text_if_changed(lbl_ble, cached_ble, sizeof(cached_ble), LV_SYMBOL_BLUETOOTH);
+        } else {
+            set_label_visible(lbl_ble, false);
+        }
     }
-    set_label_text_if_changed(lbl_battery, cached_battery, sizeof(cached_battery), buf);
+
+    if (flags & model::DIRTY_BATTERY) {
+        // Battery
+        uint16_t pct = model::battery.percent;
+        const char* bat_icon = LV_SYMBOL_BATTERY_FULL;
+        if (pct < 20) bat_icon = LV_SYMBOL_BATTERY_EMPTY;
+        else if (pct < 50) bat_icon = LV_SYMBOL_BATTERY_2;
+        else if (pct < 80) bat_icon = LV_SYMBOL_BATTERY_3;
+
+        if (model::battery.charging) {
+            snprintf(buf, sizeof(buf), LV_SYMBOL_CHARGE " %d%%", pct);
+        } else {
+            snprintf(buf, sizeof(buf), "%s %d%%", bat_icon, pct);
+        }
+        set_label_text_if_changed(lbl_battery, cached_battery, sizeof(cached_battery), buf);
+    }
 }
 
 lv_obj_t* create() {
@@ -115,11 +123,11 @@ lv_obj_t* create() {
     lv_obj_set_style_text_color(lbl_battery, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_battery, LV_SYMBOL_BATTERY_FULL " --%");
 
-    do_update();
+    do_update(model::DIRTY_CLOCK | model::DIRTY_BATTERY | model::DIRTY_GPS | model::DIRTY_MESH);
     return bar_obj;
 }
 
-void update_now() { do_update(); }
+void update_now(uint32_t flags) { do_update(flags); }
 
 void show() { if (bar_obj) lv_obj_clear_flag(bar_obj, LV_OBJ_FLAG_HIDDEN); }
 void hide() { if (bar_obj) lv_obj_add_flag(bar_obj, LV_OBJ_FLAG_HIDDEN); }

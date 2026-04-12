@@ -40,9 +40,7 @@ public:
         sd_log::mark_dirty();
 
         // Track for lock screen
-        model::sleep_cfg.unread_messages++;
-        if (from_name) strncpy(model::sleep_cfg.last_sender, from_name, sizeof(model::sleep_cfg.last_sender) - 1);
-        if (text) strncpy(model::sleep_cfg.last_message, text, sizeof(model::sleep_cfg.last_message) - 1);
+        model::note_incoming_message(from_name, text);
 
         Serial.printf("BRIDGE: msg from '%s': %s\n", from_name ? from_name : "?", text ? text : "?");
     }

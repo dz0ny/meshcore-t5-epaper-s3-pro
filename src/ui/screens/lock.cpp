@@ -30,7 +30,7 @@ static void set_label_text(lv_obj_t* label, char* cached, size_t cached_size, co
 
 static void on_unread_click(lv_event_t* e) {
     model::touch_activity();
-    model::sleep_cfg.unread_messages = 0;
+    model::clear_unread_messages();
     ui::statusbar::show();
     ui::screen_mgr::switch_to(SCREEN_HOME, false);
     ui::screen_mgr::push(SCREEN_CHAT, false);
@@ -72,72 +72,58 @@ static void create(lv_obj_t* parent) {
     lv_label_set_text(lbl_info, "");
 }
 
-void update_node_name() {
-    if (!lbl_node_name) return;
-
-    set_label_text(
-        lbl_node_name,
-        cached_node_name,
-        sizeof(cached_node_name),
-        model::mesh.node_name ? model::mesh.node_name : "T-Paper"
-    );
-}
-
-void update_time_date() {
-    if (!lbl_time) return;
+void update(uint32_t flags) {
     char buf[96];
 
-    snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
-    set_label_text(lbl_time, cached_time, sizeof(cached_time), buf);
+    if (flags & model::DIRTY_MESH) {
+        set_label_text(
+            lbl_node_name,
+            cached_node_name,
+            sizeof(cached_node_name),
+            model::mesh.node_name ? model::mesh.node_name : "T-Paper"
+        );
+    }
 
-    snprintf(buf, sizeof(buf), "%02d/%02d/20%02d",
-        model::clock.day, model::clock.month, model::clock.year);
-    set_label_text(lbl_date, cached_date, sizeof(cached_date), buf);
-}
+    if (flags & model::DIRTY_CLOCK) {
+        snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
+        set_label_text(lbl_time, cached_time, sizeof(cached_time), buf);
 
-void update_unread() {
-    if (!lbl_unread) return;
-    char buf[96];
+        snprintf(buf, sizeof(buf), "%02d/%02d/20%02d",
+            model::clock.day, model::clock.month, model::clock.year);
+        set_label_text(lbl_date, cached_date, sizeof(cached_date), buf);
+    }
 
-    if (model::sleep_cfg.unread_messages > 0) {
-        if (model::sleep_cfg.last_sender[0]) {
-            snprintf(buf, sizeof(buf), "%d new: %s",
-                model::sleep_cfg.unread_messages, model::sleep_cfg.last_sender);
+    if (flags & model::DIRTY_SLEEP) {
+        if (model::sleep_cfg.unread_messages > 0) {
+            if (model::sleep_cfg.last_sender[0]) {
+                snprintf(buf, sizeof(buf), "%d new: %s",
+                    model::sleep_cfg.unread_messages, model::sleep_cfg.last_sender);
+            } else {
+                snprintf(buf, sizeof(buf), "%d new messages", model::sleep_cfg.unread_messages);
+            }
         } else {
-            snprintf(buf, sizeof(buf), "%d new messages", model::sleep_cfg.unread_messages);
+            buf[0] = 0;
         }
-    } else {
-        buf[0] = 0;
+        if (buf[0]) {
+            lv_obj_clear_flag(lbl_unread, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
+        } else {
+            lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
+        }
+        set_label_text(lbl_unread, cached_unread, sizeof(cached_unread), buf);
     }
-    if (buf[0]) {
-        lv_obj_clear_flag(lbl_unread, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
-    } else {
-        lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
+
+    if (flags & model::DIRTY_BATTERY) {
+        snprintf(buf, sizeof(buf), "BAT %d%%", model::battery.percent);
+        set_label_text(lbl_info, cached_info, sizeof(cached_info), buf);
     }
-    set_label_text(lbl_unread, cached_unread, sizeof(cached_unread), buf);
-}
-
-void update_battery() {
-    if (!lbl_info) return;
-    char buf[16];
-
-    snprintf(buf, sizeof(buf), "BAT %d%%", model::battery.percent);
-    set_label_text(lbl_info, cached_info, sizeof(cached_info), buf);
-}
-
-void update() {
-    update_node_name();
-    update_time_date();
-    update_unread();
-    update_battery();
 }
 
 static void entry() {
     ui::port::set_backlight(0);
     ui::statusbar::hide();
-    update();
+    update(model::DIRTY_CLOCK | model::DIRTY_BATTERY | model::DIRTY_MESH | model::DIRTY_SLEEP);
 }
 
 static void exit_fn() {
