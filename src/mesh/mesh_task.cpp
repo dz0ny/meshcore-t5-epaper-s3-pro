@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <esp_partition.h>
 #include <esp_heap_caps.h>
 #include <Mesh.h>
 #include <SPIFFS.h>
@@ -43,23 +42,6 @@ static uint32_t last_rx_count = 0;
 static uint32_t last_tx_count = 0;
 static uint32_t last_activity_tick = 0;
 static const uint32_t SILENCE_MS = 5000;  // flush after 5s of radio silence
-
-static bool erase_spiffs_partition() {
-    const esp_partition_t* partition = esp_partition_find_first(
-        ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
-    if (!partition) {
-        Serial.println("MESH: SPIFFS partition not found");
-        return false;
-    }
-
-    Serial.printf("MESH: erasing SPIFFS partition at 0x%lx (%lu bytes)\n", partition->address, partition->size);
-    esp_err_t err = esp_partition_erase_range(partition, 0, partition->size);
-    if (err != ESP_OK) {
-        Serial.printf("MESH: SPIFFS erase failed (%d)\n", err);
-        return false;
-    }
-    return true;
-}
 
 // ---------- FreeRTOS task ----------
 
@@ -117,18 +99,7 @@ void start(int core) {
     mc_rng.begin(radio_get_rng_seed());
 
     // Init filesystems
-    bool spiffs_ok = SPIFFS.begin(false);
-    if (!spiffs_ok) {
-        Serial.println("MESH: SPIFFS mount failed, erasing partition");
-        if (erase_spiffs_partition()) {
-            spiffs_ok = SPIFFS.begin(false);
-        }
-    }
-    if (!spiffs_ok) {
-        Serial.println("MESH: SPIFFS unavailable after recovery");
-        return;
-    }
-    Serial.printf("MESH: SPIFFS ready (%u/%u KB)\n", SPIFFS.usedBytes() / 1024, SPIFFS.totalBytes() / 1024);
+    SPIFFS.begin(true);
 
     // SPIFFS for identity/prefs, SD for contacts/channels (if available)
     if (board::peri_status[E_PERI_SD_CARD]) {
