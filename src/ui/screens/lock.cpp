@@ -8,7 +8,6 @@
 
 namespace ui::screen::lock {
 
-static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
 static lv_obj_t* lbl_time = NULL;
 static lv_obj_t* lbl_date = NULL;
@@ -20,6 +19,15 @@ static char cached_date[16] = {};
 static char cached_unread[96] = {};
 static char cached_info[16] = {};
 
+static void set_label_text(lv_obj_t* label, char* cached, size_t cached_size, const char* text) {
+    if (!label || !text) return;
+    if (strcmp(cached, text) != 0) {
+        strncpy(cached, text, cached_size - 1);
+        cached[cached_size - 1] = 0;
+        lv_label_set_text(label, cached);
+    }
+}
+
 static void on_unread_click(lv_event_t* e) {
     model::touch_activity();
     model::sleep_cfg.unread_messages = 0;
@@ -29,8 +37,6 @@ static void on_unread_click(lv_event_t* e) {
 }
 
 static void create(lv_obj_t* parent) {
-    scr = parent;
-
     lbl_node_name = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_node_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -66,29 +72,32 @@ static void create(lv_obj_t* parent) {
     lv_label_set_text(lbl_info, "");
 }
 
-void update() {
+void update_node_name() {
+    if (!lbl_node_name) return;
+
+    set_label_text(
+        lbl_node_name,
+        cached_node_name,
+        sizeof(cached_node_name),
+        model::mesh.node_name ? model::mesh.node_name : "T-Paper"
+    );
+}
+
+void update_time_date() {
     if (!lbl_time) return;
     char buf[96];
 
-    if (lbl_node_name && model::mesh.node_name)
-        if (strcmp(cached_node_name, model::mesh.node_name) != 0) {
-            strncpy(cached_node_name, model::mesh.node_name, sizeof(cached_node_name) - 1);
-            cached_node_name[sizeof(cached_node_name) - 1] = 0;
-            lv_label_set_text(lbl_node_name, cached_node_name);
-        }
     snprintf(buf, sizeof(buf), "%02d:%02d", model::clock.hour, model::clock.minute);
-    if (strcmp(cached_time, buf) != 0) {
-        strncpy(cached_time, buf, sizeof(cached_time) - 1);
-        cached_time[sizeof(cached_time) - 1] = 0;
-        lv_label_set_text(lbl_time, cached_time);
-    }
+    set_label_text(lbl_time, cached_time, sizeof(cached_time), buf);
+
     snprintf(buf, sizeof(buf), "%02d/%02d/20%02d",
         model::clock.day, model::clock.month, model::clock.year);
-    if (strcmp(cached_date, buf) != 0) {
-        strncpy(cached_date, buf, sizeof(cached_date) - 1);
-        cached_date[sizeof(cached_date) - 1] = 0;
-        lv_label_set_text(lbl_date, cached_date);
-    }
+    set_label_text(lbl_date, cached_date, sizeof(cached_date), buf);
+}
+
+void update_unread() {
+    if (!lbl_unread) return;
+    char buf[96];
 
     if (model::sleep_cfg.unread_messages > 0) {
         if (model::sleep_cfg.last_sender[0]) {
@@ -100,18 +109,29 @@ void update() {
     } else {
         buf[0] = 0;
     }
-    if (strcmp(cached_unread, buf) != 0) {
-        strncpy(cached_unread, buf, sizeof(cached_unread) - 1);
-        cached_unread[sizeof(cached_unread) - 1] = 0;
-        lv_label_set_text(lbl_unread, cached_unread);
+    if (buf[0]) {
+        lv_obj_clear_flag(lbl_unread, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
+    } else {
+        lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
     }
+    set_label_text(lbl_unread, cached_unread, sizeof(cached_unread), buf);
+}
+
+void update_battery() {
+    if (!lbl_info) return;
+    char buf[16];
 
     snprintf(buf, sizeof(buf), "BAT %d%%", model::battery.percent);
-    if (strcmp(cached_info, buf) != 0) {
-        strncpy(cached_info, buf, sizeof(cached_info) - 1);
-        cached_info[sizeof(cached_info) - 1] = 0;
-        lv_label_set_text(lbl_info, cached_info);
-    }
+    set_label_text(lbl_info, cached_info, sizeof(cached_info), buf);
+}
+
+void update() {
+    update_node_name();
+    update_time_date();
+    update_unread();
+    update_battery();
 }
 
 static void entry() {
@@ -124,7 +144,6 @@ static void exit_fn() {
 }
 
 static void destroy() {
-    scr = NULL;
     lbl_node_name = NULL;
     lbl_time = lbl_date = lbl_unread = lbl_info = NULL;
     cached_node_name[0] = 0;

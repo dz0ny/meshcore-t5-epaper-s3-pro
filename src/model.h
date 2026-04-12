@@ -49,6 +49,7 @@ struct Mesh {
     float    last_rssi;
     float    last_snr;
     bool     radio_ok;
+    bool     ble_enabled;
     // Radio config (read-only from prefs)
     const char* node_name;
     float    freq_mhz;

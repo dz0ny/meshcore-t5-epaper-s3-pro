@@ -4,9 +4,8 @@
 
 namespace ui::statusbar {
 
-// Create the status bar at the top of a screen.
-// Includes a self-updating timer — no need to call update() manually.
-lv_obj_t* create(lv_obj_t* parent);
+// Create the status bar on the top layer. Updates are triggered externally.
+lv_obj_t* create();
 
 // Force an immediate update.
 void update_now();

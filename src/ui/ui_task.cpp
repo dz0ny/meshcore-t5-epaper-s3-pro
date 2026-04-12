@@ -92,7 +92,10 @@ void do_power_off() {
 namespace ui::task {
 
 static unsigned long next_model_update = 0;
-static unsigned long next_lock_update = 0;
+static unsigned long next_lock_clock_update = 0;
+static unsigned long next_lock_unread_update = 0;
+static unsigned long next_lock_battery_update = 0;
+static unsigned long next_lock_mesh_update = 0;
 static unsigned long backlight_off_at = 0;
 
 static OneButton boot_btn(BOARD_BOOT_BTN, true, true);  // active-low, internal pull-up
@@ -160,10 +163,12 @@ static void ui_task_fn(void* param) {
             model::touch_activity();
         }
 
+        bool is_locked = (ui::screen_mgr::top_id() == SCREEN_LOCK);
+
         // Update model + labels BEFORE lv_timer_handler so flush uses fresh data.
         // No full-screen invalidation — LVGL tracks dirty areas automatically.
         // Only widgets whose text/state changes get redrawn + partial e-paper update.
-        if (millis() > next_model_update) {
+        if (!is_locked && millis() > next_model_update) {
             model::update_clock();
             model::update_gps();
             model::update_battery();
@@ -173,13 +178,26 @@ static void ui_task_fn(void* param) {
             next_model_update = millis() + 10000;  // 10s — e-ink doesn't need fast updates
         }
 
-        // Lock screen: update every 60 seconds
-        if (ui::screen_mgr::top_id() == SCREEN_LOCK && millis() > next_lock_update) {
+        // Lock screen: keep fast-changing data responsive, poll slow-changing
+        // data less often to avoid unnecessary work while asleep.
+        if (is_locked && millis() > next_lock_clock_update) {
             model::update_clock();
+            ui::screen::lock::update_time_date();
+            next_lock_clock_update = millis() + 1000;
+        }
+        if (is_locked && millis() > next_lock_unread_update) {
+            ui::screen::lock::update_unread();
+            next_lock_unread_update = millis() + 1000;
+        }
+        if (is_locked && millis() > next_lock_battery_update) {
             model::update_battery();
+            ui::screen::lock::update_battery();
+            next_lock_battery_update = millis() + 300000;
+        }
+        if (is_locked && millis() > next_lock_mesh_update) {
             model::update_mesh();
-            ui::screen::lock::update();
-            next_lock_update = millis() + 60000;
+            ui::screen::lock::update_node_name();
+            next_lock_mesh_update = millis() + 300000;
         }
 
         // Reset activity on any touch + auto backlight at night
@@ -202,7 +220,7 @@ static void ui_task_fn(void* param) {
 
         // Let LVGL handle its own timing — returns immediately if period hasn't elapsed.
         // On lock screen: slow poll to save power.
-        if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
+        if (is_locked) {
             lv_timer_handler_run_in_period(500);
         } else {
             lv_timer_handler_run_in_period(20);
@@ -298,7 +316,7 @@ void start(int core) {
     }
 
     // Create global statusbar on top layer — persists across all screens
-    ui::statusbar::create(NULL);
+    ui::statusbar::create();
 
     Serial.println("UI: init screen mgr...");
     ui::screen_mgr::init();

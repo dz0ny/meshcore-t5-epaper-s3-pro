@@ -79,6 +79,7 @@ void update_mesh() {
     mesh.last_rssi = ms.last_rssi;
     mesh.last_snr = ms.last_snr;
     mesh.radio_ok = ms.radio_ok;
+    mesh.ble_enabled = mesh::task::ble_is_enabled();
     mesh.rx_packets = mesh::task::get_packets_recv();
     mesh.tx_packets = mesh::task::get_packets_sent();
     mesh.node_name = mesh::task::node_name();

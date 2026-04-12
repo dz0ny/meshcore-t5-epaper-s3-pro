@@ -2,7 +2,6 @@
 #include "statusbar.h"
 #include "../ui_theme.h"
 #include "../../model.h"
-#include "../../mesh/mesh_task.h"
 
 namespace ui::statusbar {
 
@@ -17,10 +16,20 @@ static char cached_ble[8] = {};
 static char cached_battery[24] = {};
 
 static void set_label_text_if_changed(lv_obj_t* label, char* cache, size_t cache_size, const char* text) {
-    if (strncmp(cache, text, cache_size) == 0) return;
+    if (!label || !text) return;
+    if (strcmp(cache, text) == 0) return;
     strncpy(cache, text, cache_size - 1);
     cache[cache_size - 1] = 0;
     lv_label_set_text(label, cache);
+}
+
+static void set_label_visible(lv_obj_t* label, bool visible) {
+    if (!label) return;
+    if (visible) {
+        lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 static void do_update() {
@@ -32,18 +41,21 @@ static void do_update() {
 
     // GPS: icon when fix, warning icon when no fix
     if (model::gps.has_fix) {
+        set_label_visible(lbl_gps, true);
         set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), LV_SYMBOL_GPS);
     } else if (model::gps.module_ok) {
+        set_label_visible(lbl_gps, true);
         set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), LV_SYMBOL_WARNING);
     } else {
-        set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), "  ");
+        set_label_visible(lbl_gps, false);
     }
 
     // BLE: icon when active
-    if (mesh::task::ble_is_enabled()) {
+    if (model::mesh.ble_enabled) {
+        set_label_visible(lbl_ble, true);
         set_label_text_if_changed(lbl_ble, cached_ble, sizeof(cached_ble), LV_SYMBOL_BLUETOOTH);
     } else {
-        set_label_text_if_changed(lbl_ble, cached_ble, sizeof(cached_ble), "  ");
+        set_label_visible(lbl_ble, false);
     }
 
     // Battery
@@ -61,7 +73,7 @@ static void do_update() {
     set_label_text_if_changed(lbl_battery, cached_battery, sizeof(cached_battery), buf);
 }
 
-lv_obj_t* create(lv_obj_t* parent) {
+lv_obj_t* create() {
     lv_obj_t* layer = lv_layer_top();
 
     bar_obj = lv_obj_create(layer);
@@ -86,12 +98,14 @@ lv_obj_t* create(lv_obj_t* parent) {
     lbl_ble = lv_label_create(bar_obj);
     lv_obj_set_style_text_font(lbl_ble, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_ble, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_ble, "  ");
+    lv_label_set_text(lbl_ble, LV_SYMBOL_BLUETOOTH);
+    lv_obj_add_flag(lbl_ble, LV_OBJ_FLAG_HIDDEN);
 
     lbl_gps = lv_label_create(bar_obj);
     lv_obj_set_style_text_font(lbl_gps, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_gps, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_gps, "  ");
+    lv_label_set_text(lbl_gps, LV_SYMBOL_GPS);
+    lv_obj_add_flag(lbl_gps, LV_OBJ_FLAG_HIDDEN);
 
     // Right side: battery (flex-grow pushes it right)
     lbl_battery = lv_label_create(bar_obj);
