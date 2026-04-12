@@ -1,7 +1,7 @@
-<h1 align="center">MeshCore T5 ePaper Pro</h1>
+<h1 align="center">MeshCore T5 ePaper S3 Pro</h1>
 
 <p align="center">
-  A paper-like handheld MeshCore communicator for the LilyGo T5 ePaper Pro
+  A paper-like handheld MeshCore communicator for the LilyGo T5 ePaper S3 Pro
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
   <img alt="Install" src="https://img.shields.io/badge/install-browser%20flasher-2b2b28" />
 </p>
 
-MeshCore T5 ePaper Pro turns the LilyGo T5 ePaper Pro into a dedicated long-range mesh messaging device with a calm, readable e-ink interface.
+MeshCore T5 ePaper S3 Pro turns the LilyGo T5 ePaper S3 Pro into a dedicated long-range mesh messaging device with a calm, readable e-ink interface.
 It is built for people who want simple off-grid communication, strong battery-friendly readability, and a UI that feels more like paper than a phone.
 
 ## Why This Device
@@ -91,7 +91,7 @@ uvx platformio run -e lilygo-t5-epaper-pro -t upload
 
 ## Hardware
 
-- LilyGo T5 ePaper Pro
+- LilyGo T5 ePaper S3 Pro
 - ESP32-S3
 - 4.7" e-paper display
 - SX1262 LoRa radio

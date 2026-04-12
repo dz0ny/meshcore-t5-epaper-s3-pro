@@ -18,8 +18,8 @@ FLASH_FREQ = "80m"
 FLASH_SIZE = "16MB"
 CHIP = "esp32s3"
 CHIP_FAMILY = "ESP32-S3"
-DEVICE_NAME = "LilyGo T5 ePaper Pro"
-PROJECT_NAME = "LilyGo T5 ePaper Pro"
+DEVICE_NAME = "LilyGo T5 ePaper S3 Pro"
+PROJECT_NAME = "LilyGo T5 ePaper S3 Pro"
 PROJECT_SLUG = "lilygo-t5-epaper-pro"
 
 
@@ -111,7 +111,7 @@ def build_page(version: str, repo_url: str) -> str:
         <div class="border-b border-paper-line p-7 max-sm:p-5">
           <p class="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-paper-muted">Browser Flasher</p>
           <h1 class="text-[clamp(2rem,6vw,3.2rem)] font-bold leading-none">{PROJECT_NAME}</h1>
-          <p class="mt-4 max-w-[34rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper Pro directly from Chrome or Edge with ESP Web Tools.</p>
+          <p class="mt-4 max-w-[34rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper S3 Pro directly from Chrome or Edge with ESP Web Tools.</p>
         </div>
         <div class="grid gap-5 p-7 max-sm:p-5">
           <div class="flex flex-wrap gap-2">
@@ -146,7 +146,7 @@ def build_page(version: str, repo_url: str) -> str:
           <p class="text-sm leading-6 text-paper-muted">Use a USB data cable and open this page in a Web Serial capable browser.</p>
           <ol class="list-decimal space-y-1 pl-5 text-sm leading-6 text-paper-muted">
             <li>Put the board in bootloader mode if the browser cannot detect it.</li>
-            <li>This page currently supports only the LilyGo T5 ePaper Pro build.</li>
+            <li>This page currently supports only the LilyGo T5 ePaper S3 Pro build.</li>
             <li>Choose erase when you want a clean install.</li>
           </ol>
         </div>

@@ -53,7 +53,7 @@ jobs:
       - name: Build firmware
         run: pio run -e lilygo-t5-epaper-pro
 
-      - name: Generate LilyGo T5 ePaper Pro web flasher
+      - name: Generate LilyGo T5 ePaper S3 Pro web flasher
         env:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
