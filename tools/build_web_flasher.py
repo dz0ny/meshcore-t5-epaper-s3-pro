@@ -19,7 +19,8 @@ FLASH_SIZE = "16MB"
 CHIP = "esp32s3"
 CHIP_FAMILY = "ESP32-S3"
 DEVICE_NAME = "LilyGo T5 ePaper Pro"
-PROJECT_NAME = "t-paper"
+PROJECT_NAME = "LilyGo T5 ePaper Pro"
+PROJECT_SLUG = "lilygo-t5-epaper-pro"
 
 
 def parse_args() -> argparse.Namespace:
@@ -86,13 +87,15 @@ def build_page(version: str, repo_url: str) -> str:
     </script>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <style>
-      body {{
-        color-scheme: light;
-        font-family: "Montserrat", sans-serif;
       :root {{
         --esp-tools-button-color: #2b2b28;
         --esp-tools-button-text-color: #f8f8f5;
         --esp-tools-button-border-radius: 0;
+      }}
+
+      body {{
+        color-scheme: light;
+        font-family: "Montserrat", sans-serif;
       }}
 
       esp-web-install-button::part(button) {{
@@ -103,12 +106,12 @@ def build_page(version: str, repo_url: str) -> str:
     </style>
   </head>
   <body class="min-h-screen bg-gradient-to-b from-[#f4f4f1] to-paper-bg text-paper-text">
-    <main class="mx-auto w-[min(40rem,calc(100vw-2rem))] py-10 max-sm:pt-4 max-sm:pb-8">
+    <main class="mx-auto w-[min(46rem,calc(100vw-2rem))] py-10 max-sm:pt-4 max-sm:pb-8">
       <section class="overflow-hidden border border-paper-line bg-paper-panel">
         <div class="border-b border-paper-line p-7 max-sm:p-5">
           <p class="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-paper-muted">Browser Flasher</p>
           <h1 class="text-[clamp(2rem,6vw,3.2rem)] font-bold leading-none">{PROJECT_NAME}</h1>
-          <p class="mt-4 max-w-[30rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper Pro directly from Chrome or Edge with ESP Web Tools.</p>
+          <p class="mt-4 max-w-[34rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper Pro directly from Chrome or Edge with ESP Web Tools.</p>
         </div>
         <div class="grid gap-5 p-7 max-sm:p-5">
           <div class="flex flex-wrap gap-2">
@@ -119,6 +122,26 @@ def build_page(version: str, repo_url: str) -> str:
           <div class="flex flex-wrap items-center gap-4">
             <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
             <a class="text-paper-accent underline decoration-1 underline-offset-2" href="{safe_repo_url}">Repository</a>
+            <a class="text-paper-accent underline decoration-1 underline-offset-2" href="https://lilygo.cc/en-us/products/t5-e-paper-s3-pro">Product Page</a>
+          </div>
+          <div class="grid gap-3 border border-paper-line bg-[#fcfcfa] p-4">
+            <p class="text-sm font-semibold uppercase tracking-[0.08em] text-paper-muted">What You Get</p>
+            <ul class="grid gap-2 text-sm leading-6 text-paper-muted">
+              <li>Home screen with clock, unread state, and device overview</li>
+              <li>Contacts, conversations, message detail, and compose screens</li>
+              <li>Discovery view for recently heard mesh nodes</li>
+              <li>Status, battery, GPS, sensors, and map screens</li>
+              <li>Settings for mesh, display, BLE, GPS, and storage</li>
+            </ul>
+          </div>
+          <div class="grid gap-3 border border-paper-line bg-[#fcfcfa] p-4">
+            <p class="text-sm font-semibold uppercase tracking-[0.08em] text-paper-muted">Core Functions</p>
+            <ul class="grid gap-2 text-sm leading-6 text-paper-muted">
+              <li>Off-grid LoRa mesh messaging with an e-paper-first interface</li>
+              <li>Explicit contact management and nearby node discovery</li>
+              <li>Live battery, radio, and location status on-device</li>
+              <li>Touch-driven navigation designed for calm, readable use outdoors</li>
+            </ul>
           </div>
           <p class="text-sm leading-6 text-paper-muted">Use a USB data cable and open this page in a Web Serial capable browser.</p>
           <ol class="list-decimal space-y-1 pl-5 text-sm leading-6 text-paper-muted">
@@ -198,7 +221,7 @@ def main() -> None:
     (output_dir / "manifest.json").write_text(manifest, encoding="utf-8")
     (output_dir / "index.html").write_text(build_page(args.version, args.repo_url), encoding="utf-8")
 
-    shutil.copy2(merged_firmware, output_dir / f"{PROJECT_NAME}-{args.version}.bin")
+    shutil.copy2(merged_firmware, output_dir / f"{PROJECT_SLUG}-{args.version}.bin")
 
 
 if __name__ == "__main__":

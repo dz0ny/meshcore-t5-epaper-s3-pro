@@ -1,80 +1,111 @@
-# MeshCore T5 ePaper Pro
+<h1 align="center">MeshCore T5 ePaper Pro</h1>
 
-MeshCore firmware for the LilyGo T5 ePaper Pro, built on ESP32-S3 with an LVGL e-paper interface and MeshCore radio stack.
+<p align="center">
+  A paper-like handheld MeshCore communicator for the LilyGo T5 ePaper Pro
+</p>
 
-## Highlights
+<p align="center">
+  <img alt="Device" src="https://img.shields.io/badge/device-LilyGo%20T5%20ePaper%20Pro-444444" />
+  <img alt="Display" src="https://img.shields.io/badge/display-4.7%22%20e--paper-d6d6d1" />
+  <img alt="Connectivity" src="https://img.shields.io/badge/connectivity-LoRa%20mesh-6b6b67" />
+  <img alt="Install" src="https://img.shields.io/badge/install-browser%20flasher-2b2b28" />
+</p>
 
-- Built for the LilyGo T5S3 4.7" e-paper Pro
-- Dual-core split: MeshCore radio task on one core, LVGL UI on the other
-- Reactive screen model with contacts, chat, discovery, settings, GPS, sensors, and status views
-- Browser-based install flow via GitHub Pages and ESP Web Tools
+MeshCore T5 ePaper Pro turns the LilyGo T5 ePaper Pro into a dedicated long-range mesh messaging device with a calm, readable e-ink interface.
+It is built for people who want simple off-grid communication, strong battery-friendly readability, and a UI that feels more like paper than a phone.
 
-## Hardware
+## Why This Device
 
-- Board: LilyGo T5 ePaper Pro
-- MCU: ESP32-S3 with PSRAM
-- Display: 540x960 4.7" e-paper
-- Radio: SX1262 LoRa
-- Touch: GT911 capacitive touch
-- GPS: L76K or u-blox M10Q
-- Power: BQ25896 charger + BQ27220 fuel gauge
-- Storage: SPIFFS and SD card
+- Readable in daylight with an always-on e-paper feel
+- Built for low-distraction messaging and status checking
+- Long-range LoRa mesh communication without relying on normal internet access
+- Purpose-built interface instead of a generic developer demo
 
-## Local Build
+## What You Can Do
+
+- Send and receive mesh messages
+- Browse contacts and recent conversations
+- Discover nearby or recently heard nodes
+- Check battery, GPS, and radio status
+- Configure display, mesh, BLE, storage, and device settings directly on the device
+
+## Screens
+
+- Home screen with time and at-a-glance device status
+- Contacts list and contact detail views
+- Chat list, message detail, and compose screens
+- Discovery screen for recently heard mesh nodes
+- Status, battery, GPS, map, and sensors screens
+- Settings screens for mesh, display, BLE, GPS, and storage
+
+## Main Functions
+
+- 1:1 and device-to-device mesh messaging
+- Contact management directly on the handheld
+- Node discovery and quick visibility into nearby mesh activity
+- On-device battery, radio, and location awareness
+- Simple touch navigation optimized for e-paper readability
+
+## Experience
+
+The interface is designed around the strengths of e-paper:
+
+- Large readable typography
+- Minimal visual noise
+- Clear black-and-white presentation
+- Fast access to the most important actions
+- No animation-heavy UI patterns
+
+## Built For
+
+- Off-grid communication setups
+- Outdoor field use
+- Low-power portable mesh terminals
+- People who prefer dedicated hardware over a phone-first workflow
+
+## Install
+
+### Browser Flasher
+
+The easiest way to install the latest build is through the web flasher:
+
+[Open Web Flasher](https://dz0ny.github.io/meshcore-t5-epaepr-pro/)
+
+Use Chrome or Edge and connect the device with a USB data cable.
+
+If the board is not detected, hold `BOOT` and tap `RESET`.
+
+### Local Build
 
 ```bash
-uvx platformio run -e t-paper
+# PlatformIO environment name: lilygo-t5-epaper-pro
+uvx platformio run -e lilygo-t5-epaper-pro
 ```
 
 Flash over USB:
 
 ```bash
-uvx platformio run -e t-paper -t upload
+# PlatformIO environment name: lilygo-t5-epaper-pro
+uvx platformio run -e lilygo-t5-epaper-pro -t upload
 ```
 
-If the board does not connect, hold `BOOT` and tap `RESET`.
+## Hardware
 
-## Web Flasher
+- LilyGo T5 ePaper Pro
+- ESP32-S3
+- 4.7" e-paper display
+- SX1262 LoRa radio
+- Capacitive touch
+- GPS support
+- On-device storage with SPIFFS and SD card
 
-This repository includes a GitHub Pages workflow that publishes a simple browser flasher for the latest `t-paper` build using ESP Web Tools.
+Product page: [lilygo.cc/en-us/products/t5-e-paper-s3-pro](https://lilygo.cc/en-us/products/t5-e-paper-s3-pro)
 
-Once GitHub Pages is enabled for the repository, the install page is available at:
+## Project Focus
 
-`https://dz0ny.github.io/meshcore-t5-epaepr-pro/`
-
-Use Chrome or Edge with a USB data cable.
-
-## Project Layout
-
-```text
-src/
-  board.*              hardware bring-up
-  model.*              reactive shared UI state
-  mesh/                MeshCore bridge and radio task
-  ui/                  LVGL task, components, and screens
-lib/                   vendored dependencies
-boards/                PlatformIO board definitions
-tools/                 helper scripts, including web flasher packaging
-```
-
-## UI Notes
-
-- E-paper first: no animation-heavy UI
-- Minimum readable font size is 24pt
-- Screens use a shared navigation pattern and top status bar
-- Updates are optimized for partial refreshes
-
-## Firmware Packaging
-
-The web flasher build process:
-
-1. Builds the `t-paper` PlatformIO environment
-2. Merges the ESP32-S3 bootloader, partitions, boot app, and app binary
-3. Generates a `manifest.json` and a minimal install page for GitHub Pages
-
-The packaging script lives in [tools/build_web_flasher.py](/Users/dz0ny/t-paper/tools/build_web_flasher.py).
+This project is not trying to be a general-purpose tablet UI.
+It is a focused mesh communicator with a paper-like display, tuned for clarity, simplicity, and practical field use.
 
 ## Repository
 
 - GitHub: [dz0ny/meshcore-t5-epaepr-pro](https://github.com/dz0ny/meshcore-t5-epaepr-pro)
-
