@@ -50,10 +50,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install platformio esptool
 
-      - name: Build firmware
-        run: pio run -e lilygo-t5-epaper-pro
+      - name: Build firmware (all targets)
+        run: pio run -e lilygo-t5-epaper-pro -e tdeck
 
-      - name: Generate LilyGo T5 ePaper S3 Pro web flasher
+      - name: Generate web flasher
         env:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
@@ -64,7 +64,7 @@ jobs:
           fi
 
           python tools/build_web_flasher.py \
-            --build-dir .pio/build/lilygo-t5-epaper-pro \
+            --build-dir .pio/build \
             --output-dir .github-pages \
             --version "${VERSION}" \
             --repo-url "${REPO_URL}"
