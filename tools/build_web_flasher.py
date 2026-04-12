@@ -59,150 +59,69 @@ def build_page(version: str, repo_url: str) -> str:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{PROJECT_NAME} Web Flasher</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {{
+        theme: {{
+          extend: {{
+            fontFamily: {{
+              sans: ["Montserrat", "sans-serif"]
+            }},
+            colors: {{
+              paper: {{
+                bg: "#efefec",
+                panel: "#f8f8f5",
+                line: "#d7d7d1",
+                text: "#20201d",
+                muted: "#6c6c67",
+                accent: "#2b2b28"
+              }}
+            }}
+          }}
+        }}
+      }};
+    </script>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <style>
-      :root {{
-        color-scheme: light;
-        --bg: #f7f3ea;
-        --panel: #fffdf8;
-        --text: #16120c;
-        --muted: #6e6252;
-        --line: #d9cfbf;
-        --accent: #16120c;
-        --esp-tools-button-color: #16120c;
-        --esp-tools-button-text-color: #fffdf8;
-        --esp-tools-button-border-radius: 999px;
-      }}
-
-      * {{
-        box-sizing: border-box;
-      }}
-
       body {{
-        margin: 0;
-        min-height: 100vh;
-        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-        color: var(--text);
-        background:
-          radial-gradient(circle at top left, #efe4d0 0, transparent 28rem),
-          linear-gradient(180deg, #fbf8f1 0%, var(--bg) 100%);
+        color-scheme: light;
+        font-family: "Montserrat", sans-serif;
+      :root {{
+        --esp-tools-button-color: #2b2b28;
+        --esp-tools-button-text-color: #f8f8f5;
+        --esp-tools-button-border-radius: 0;
       }}
 
-      main {{
-        width: min(46rem, calc(100vw - 2rem));
-        margin: 0 auto;
-        padding: 3rem 0 4rem;
-      }}
-
-      .card {{
-        background: color-mix(in srgb, var(--panel) 92%, white);
-        border: 1px solid var(--line);
-        border-radius: 1.5rem;
-        box-shadow: 0 1rem 3rem rgba(22, 18, 12, 0.08);
-        overflow: hidden;
-      }}
-
-      .hero {{
-        padding: 2rem;
-        border-bottom: 1px solid var(--line);
-      }}
-
-      .eyebrow {{
-        margin: 0 0 0.75rem;
-        font-size: 0.85rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--muted);
-      }}
-
-      h1 {{
-        margin: 0;
-        font-size: clamp(2.2rem, 6vw, 4rem);
-        line-height: 0.95;
-      }}
-
-      .lede {{
-        margin: 1rem 0 0;
-        max-width: 34rem;
-        font-size: 1.1rem;
-        line-height: 1.6;
-        color: var(--muted);
-      }}
-
-      .body {{
-        display: grid;
-        gap: 1.5rem;
-        padding: 2rem;
-      }}
-
-      .meta {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }}
-
-      .pill {{
-        padding: 0.55rem 0.9rem;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        font-size: 0.95rem;
-        background: #fff;
-      }}
-
-      .actions {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: center;
-      }}
-
-      .hint, .notes {{
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.6;
-      }}
-
-      .notes {{
-        padding-left: 1.1rem;
-      }}
-
-      a {{
-        color: inherit;
-      }}
-
-      @media (max-width: 640px) {{
-        main {{
-          padding-top: 1rem;
-        }}
-
-        .hero,
-        .body {{
-          padding: 1.25rem;
-        }}
+      esp-web-install-button::part(button) {{
+        font-family: "Montserrat", sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.01em;
       }}
     </style>
   </head>
-  <body>
-    <main>
-      <section class="card">
-        <div class="hero">
-          <p class="eyebrow">Browser Flasher</p>
-          <h1>{PROJECT_NAME}</h1>
-          <p class="lede">Flash the latest PlatformIO build for the LilyGo T5 ePaper Pro directly from Chrome or Edge with ESP Web Tools.</p>
+  <body class="min-h-screen bg-gradient-to-b from-[#f4f4f1] to-paper-bg text-paper-text">
+    <main class="mx-auto w-[min(40rem,calc(100vw-2rem))] py-10 max-sm:pt-4 max-sm:pb-8">
+      <section class="overflow-hidden border border-paper-line bg-paper-panel">
+        <div class="border-b border-paper-line p-7 max-sm:p-5">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-paper-muted">Browser Flasher</p>
+          <h1 class="text-[clamp(2rem,6vw,3.2rem)] font-bold leading-none">{PROJECT_NAME}</h1>
+          <p class="mt-4 max-w-[30rem] text-base leading-6 text-paper-muted">Flash the latest PlatformIO build for the LilyGo T5 ePaper Pro directly from Chrome or Edge with ESP Web Tools.</p>
         </div>
-        <div class="body">
-          <div class="meta">
-            <span class="pill">Device: {DEVICE_NAME}</span>
-            <span class="pill">Chip: {CHIP_FAMILY}</span>
-            <span class="pill">Build: {safe_version}</span>
+        <div class="grid gap-5 p-7 max-sm:p-5">
+          <div class="flex flex-wrap gap-2">
+            <span class="border border-paper-line bg-[#fcfcfa] px-3 py-2 text-sm">Device: {DEVICE_NAME}</span>
+            <span class="border border-paper-line bg-[#fcfcfa] px-3 py-2 text-sm">Chip: {CHIP_FAMILY}</span>
+            <span class="border border-paper-line bg-[#fcfcfa] px-3 py-2 text-sm">Build: {safe_version}</span>
           </div>
-          <div class="actions">
+          <div class="flex flex-wrap items-center gap-4">
             <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
-            <a href="{safe_repo_url}">Repository</a>
+            <a class="text-paper-accent underline decoration-1 underline-offset-2" href="{safe_repo_url}">Repository</a>
           </div>
-          <p class="hint">Use a USB data cable and open this page in a Web Serial capable browser.</p>
-          <ol class="notes">
+          <p class="text-sm leading-6 text-paper-muted">Use a USB data cable and open this page in a Web Serial capable browser.</p>
+          <ol class="list-decimal space-y-1 pl-5 text-sm leading-6 text-paper-muted">
             <li>Put the board in bootloader mode if the browser cannot detect it.</li>
             <li>This page currently supports only the LilyGo T5 ePaper Pro build.</li>
             <li>Choose erase when you want a clean install.</li>
