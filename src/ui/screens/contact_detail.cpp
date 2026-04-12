@@ -24,12 +24,17 @@ static uint8_t contact_type = 0;
 static bool contact_has_path = false;
 static uint8_t contact_pubkey[7] = {};
 static bool has_pubkey = false;
+static bool contact_is_favorite = false;
 
 // UI widgets
 static lv_obj_t* lbl_coords = NULL;
 static lv_obj_t* lbl_distance = NULL;
 static lv_obj_t* lbl_bearing_text = NULL;
 static lv_obj_t* compass_canvas = NULL;
+static lv_obj_t* lbl_nav_action = NULL;
+#define LV_SYMBOL_STAR       "\xEF\x80\x85" /*61445, 0xF005*/
+#define LV_SYMBOL_STAR_O     "\xEF\x80\x86" /*61446, 0xF006*/
+static const char* favorite_action_label(bool is_favorite) { return is_favorite ? LV_SYMBOL_STAR : LV_SYMBOL_STAR_O; }
 
 void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t type, bool has_path,
                  const uint8_t* pubkey_prefix) {
@@ -149,8 +154,11 @@ static void on_remove(lv_event_t* e) {
 
 static void on_favorite(lv_event_t* e) {
     if (has_pubkey) {
-        bool is_fav = mesh::task::toggle_favorite(contact_pubkey);
-        ui::toast::show(is_fav ? "Added to favorites" : "Removed from favorites");
+        contact_is_favorite = mesh::task::toggle_favorite(contact_pubkey);
+        if (lbl_nav_action) {
+            lv_label_set_text(lbl_nav_action, favorite_action_label(contact_is_favorite));
+        }
+        ui::toast::show(contact_is_favorite ? "Added to favorites" : "Removed from favorites");
     }
 }
 
@@ -161,7 +169,16 @@ static void on_send_message(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Contacts", on_back);
+    bool is_existing = has_pubkey && mesh::task::is_contact(contact_pubkey);
+    contact_is_favorite = is_existing && mesh::task::is_favorite(contact_pubkey);
+
+    if (is_existing) {
+        lbl_nav_action = ui::nav::back_button_action(
+            parent, "Contacts", on_back, favorite_action_label(contact_is_favorite), on_favorite, NULL);
+    } else {
+        ui::nav::back_button(parent, "Contacts", on_back);
+        lbl_nav_action = NULL;
+    }
 
     double c_lat = contact_lat / 1e6;
     double c_lon = contact_lon / 1e6;
@@ -225,16 +242,9 @@ static void create(lv_obj_t* parent) {
 
     // Action buttons at bottom
     if (has_pubkey) {
-        bool is_existing = mesh::task::is_contact(contact_pubkey);
-
         if (is_existing) {
             bool can_chat = (contact_type == ADV_TYPE_CHAT || contact_type == ADV_TYPE_ROOM);
             int next_y = -20;
-
-            // Favorite toggle (bottom-most)
-            lv_obj_t* fav_btn = ui::nav::text_button(parent, LV_SYMBOL_OK " Favorite", on_favorite, NULL);
-            lv_obj_align(fav_btn, LV_ALIGN_BOTTOM_MID, 0, next_y);
-            next_y -= 90;
 
             // Remove Contact
             lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
@@ -259,6 +269,7 @@ static void destroy() {
     scr = NULL;
     lbl_coords = lbl_distance = lbl_bearing_text = NULL;
     compass_canvas = NULL;
+    lbl_nav_action = NULL;
 }
 
 screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };

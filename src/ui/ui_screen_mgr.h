@@ -17,6 +17,8 @@ bool register_screen(int id, screen_lifecycle_t* life);
 bool switch_to(int id, bool anim);
 bool push(int id, bool anim);
 bool pop(bool anim);
+void set_nav_title(const char* title);
+const char* previous_nav_title(const char* fallback);
 int  top_id();
 lv_obj_t* top_obj();
 

@@ -108,8 +108,26 @@ static void on_kb_event(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_READY) {
         on_send(e);
-    } else if (code == LV_EVENT_CANCEL) {
-        lv_obj_send_event(ta, LV_EVENT_DEFOCUSED, NULL);
+    }
+}
+
+static void on_kb_draw(lv_event_t* e) {
+    lv_draw_task_t* draw_task = lv_event_get_draw_task(e);
+    if (!draw_task) return;
+
+    lv_draw_dsc_base_t* base_dsc = (lv_draw_dsc_base_t*)lv_draw_task_get_draw_dsc(draw_task);
+    if (!base_dsc || base_dsc->part != LV_PART_ITEMS) return;
+
+    lv_draw_label_dsc_t* label_draw_dsc = lv_draw_task_get_label_dsc(draw_task);
+    if (!label_draw_dsc || !label_draw_dsc->text) return;
+
+    if (lv_strcmp(label_draw_dsc->text, LV_SYMBOL_BACKSPACE) == 0) {
+        label_draw_dsc->text = "Bksp";
+    } else if (lv_strcmp(label_draw_dsc->text, LV_SYMBOL_KEYBOARD) == 0 ||
+               lv_strcmp(label_draw_dsc->text, LV_SYMBOL_CLOSE) == 0) {
+        label_draw_dsc->text = "";
+    } else if (lv_strcmp(label_draw_dsc->text, LV_SYMBOL_OK) == 0) {
+        label_draw_dsc->text = "Send";
     }
 }
 
@@ -119,9 +137,7 @@ static void on_ta_focus(lv_event_t* e) {
     model::touch_activity();
 }
 
-static void on_ta_blur(lv_event_t* e) {
-    if (kb) lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-}
+static void on_ta_blur(lv_event_t* e) {}
 
 static void on_ta_change(lv_event_t* e) {
     update_char_count();
@@ -290,7 +306,7 @@ static void create(lv_obj_t* parent) {
         (lv_buttonmatrix_ctrl_t)(LV_BUTTONMATRIX_CTRL_CLICK_TRIG | LV_BUTTONMATRIX_CTRL_NO_REPEAT));
     lv_obj_set_size(kb, lv_pct(100), 320);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_text_font(kb, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(kb, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_text_color(kb, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_bg_color(kb, lv_color_hex(EPD_COLOR_BG), LV_PART_ITEMS);
@@ -299,6 +315,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_border_width(kb, 2, LV_PART_ITEMS);
     lv_obj_set_style_radius(kb, 10, LV_PART_ITEMS);
     lv_obj_add_event_cb(kb, on_kb_event, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(kb, on_kb_draw, LV_EVENT_DRAW_TASK_ADDED, NULL);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
 
     send_btn = ui::nav::text_button(parent, "Send", on_send, NULL);
     lv_obj_align(send_btn, LV_ALIGN_BOTTOM_MID, 0, -335);

@@ -1,4 +1,5 @@
 #include "nav_button.h"
+#include "../ui_screen_mgr.h"
 #include "../ui_theme.h"
 
 namespace ui::nav {
@@ -16,6 +17,8 @@ static void create_back_content(lv_obj_t* parent, const char* title) {
 }
 
 lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
+    ui::screen_mgr::set_nav_title(title);
+
     lv_obj_t* row = lv_obj_create(parent);
     lv_obj_align(row, LV_ALIGN_TOP_LEFT, 0, 50);
     lv_obj_set_size(row, lv_pct(95), 70);
@@ -31,13 +34,15 @@ lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    create_back_content(row, title);
+    create_back_content(row, ui::screen_mgr::previous_nav_title(title));
 
     return row;
 }
 
 lv_obj_t* back_button_action(lv_obj_t* parent, const char* title, lv_event_cb_t back_cb,
                              const char* action_text, lv_event_cb_t action_cb, void* action_user_data) {
+    ui::screen_mgr::set_nav_title(title);
+
     lv_obj_t* row = lv_obj_create(parent);
     lv_obj_align(row, LV_ALIGN_TOP_LEFT, 0, 50);
     lv_obj_set_size(row, lv_pct(95), 70);
@@ -47,7 +52,7 @@ lv_obj_t* back_button_action(lv_obj_t* parent, const char* title, lv_event_cb_t 
     lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
 
     lv_obj_t* back = lv_obj_create(row);
-    lv_obj_set_size(back, lv_pct(68), lv_pct(100));
+    lv_obj_set_size(back, lv_pct(60), lv_pct(100));
     lv_obj_align(back, LV_ALIGN_LEFT_MID, 0, 0);
     lv_obj_set_style_bg_opa(back, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(back, 0, LV_PART_MAIN);
@@ -62,10 +67,10 @@ lv_obj_t* back_button_action(lv_obj_t* parent, const char* title, lv_event_cb_t 
     lv_obj_set_flex_flow(back, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(back, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    create_back_content(back, title);
+    create_back_content(back, ui::screen_mgr::previous_nav_title(title));
 
     lv_obj_t* action = lv_obj_create(row);
-    lv_obj_set_size(action, 150, 56);
+    lv_obj_set_size(action, LV_SIZE_CONTENT, 56);
     lv_obj_align(action, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_bg_color(action, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(action, 3, LV_PART_MAIN);

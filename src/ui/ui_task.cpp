@@ -86,6 +86,9 @@ void do_power_off() {
 
 namespace ui::task {
 
+static const unsigned long BATTERY_UPDATE_MS = 2000;
+static const unsigned long LOCK_BATTERY_UPDATE_MS = 10000;
+
 static unsigned long next_clock_update = 0;
 static unsigned long next_gps_update = 0;
 static unsigned long next_battery_update = 0;
@@ -194,7 +197,7 @@ static void ui_task_fn(void* param) {
         }
         if (!is_locked && millis() > next_battery_update) {
             model::update_battery();
-            next_battery_update = millis() + 30000;
+            next_battery_update = millis() + BATTERY_UPDATE_MS;
         }
         if (!is_locked && millis() > next_mesh_update) {
             model::update_mesh();
@@ -203,7 +206,7 @@ static void ui_task_fn(void* param) {
 
         if (is_locked && millis() > next_lock_battery_update) {
             model::update_battery();
-            next_lock_battery_update = millis() + 300000;
+            next_lock_battery_update = millis() + LOCK_BATTERY_UPDATE_MS;
         }
         if (is_locked && millis() > next_lock_mesh_update) {
             model::update_mesh();

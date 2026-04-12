@@ -1,5 +1,6 @@
 #include "ui_screen_mgr.h"
 #include "ui_theme.h"
+#include <cstring>
 
 // Ported from factory scr_mrg.cpp — kept as C-style linked list, works well.
 
@@ -19,6 +20,7 @@ struct card_t {
     lv_obj_t* obj;
     card_state st;
     screen_lifecycle_t* life;
+    char nav_title[32];
     card_t* next;
     card_t* prev;
 };
@@ -35,6 +37,31 @@ static lv_screen_load_anim_t anim_pop  = LV_SCR_LOAD_ANIM_NONE;
 static uint32_t anim_time = 0;
 
 // ---------- Internal ----------
+
+static const char* default_nav_title(int id) {
+    switch (id) {
+        case SCREEN_HOME: return "Home";
+        case SCREEN_CONTACTS: return "Contacts";
+        case SCREEN_CHAT: return "Messages";
+        case SCREEN_SETTINGS: return "Settings";
+        case SCREEN_GPS: return "GPS";
+        case SCREEN_BATTERY: return "Battery";
+        case SCREEN_MESH: return "Mesh";
+        case SCREEN_STATUS: return "Status";
+        case SCREEN_SET_DISPLAY: return "Display";
+        case SCREEN_SET_GPS: return "GPS Settings";
+        case SCREEN_SET_MESH: return "Mesh Config";
+        case SCREEN_DISCOVERY: return "Discovery";
+        case SCREEN_LOCK: return "Lock";
+        case SCREEN_CONTACT_DETAIL: return "Contact";
+        case SCREEN_MSG_DETAIL: return "Message";
+        case SCREEN_SET_BLE: return "Bluetooth";
+        case SCREEN_SET_STORAGE: return "Storage";
+        case SCREEN_COMPOSE: return "Compose";
+        case SCREEN_MAP: return "Map";
+        default: return "";
+    }
+}
 
 static lv_obj_t* create_default_screen(card_t* card) {
     lv_obj_t* obj = lv_obj_create(NULL);
@@ -93,6 +120,7 @@ void init() {
     head->obj = NULL;
     head->st = (card_state)-1;
     head->life = NULL;
+    head->nav_title[0] = 0;
     head->next = NULL;
     head->prev = NULL;
     top_card = head;
@@ -108,6 +136,7 @@ bool register_screen(int id, screen_lifecycle_t* life) {
     c->obj = NULL;
     c->st = STATE_IDLE;
     c->life = life;
+    c->nav_title[0] = 0;
     c->next = NULL;
     c->prev = top_card;
     top_card->next = c;
@@ -143,6 +172,7 @@ bool switch_to(int id, bool anim) {
     s->obj = create_default_screen(tgt);
     s->st = STATE_CREATED;
     s->life = tgt->life;
+    s->nav_title[0] = 0;
     s->prev = NULL;
     s->next = NULL;
     stack_root = s;
@@ -169,6 +199,7 @@ bool push(int id, bool anim) {
     s->obj = create_default_screen(tgt);
     s->st = STATE_CREATED;
     s->life = tgt->life;
+    s->nav_title[0] = 0;
 
     if (!stack_top) {
         s->prev = NULL;
@@ -211,6 +242,21 @@ bool pop(bool anim) {
         if (cur_obj) lv_obj_delete(cur_obj);
     }
     return true;
+}
+
+void set_nav_title(const char* title) {
+    if (!stack_top || !title) return;
+
+    strncpy(stack_top->nav_title, title, sizeof(stack_top->nav_title) - 1);
+    stack_top->nav_title[sizeof(stack_top->nav_title) - 1] = 0;
+}
+
+const char* previous_nav_title(const char* fallback) {
+    if (!stack_top || !stack_top->prev) return fallback ? fallback : "";
+
+    if (stack_top->prev->nav_title[0] != 0) return stack_top->prev->nav_title;
+
+    return default_nav_title(stack_top->prev->id);
 }
 
 int top_id() {

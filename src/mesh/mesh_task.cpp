@@ -500,6 +500,19 @@ bool remove_contact_by_prefix(const uint8_t* pubkey_prefix) {
     return ok;
 }
 
+bool is_favorite(const uint8_t* pubkey_prefix) {
+    if (!the_mesh_ptr || !mesh_mutex) return false;
+    bool is_fav = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ContactInfo* c = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+        if (c) {
+            is_fav = (c->flags & 0x01) != 0;
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return is_fav;
+}
+
 bool toggle_favorite(const uint8_t* pubkey_prefix) {
     if (!the_mesh_ptr || !mesh_mutex) return false;
     bool is_fav = false;
