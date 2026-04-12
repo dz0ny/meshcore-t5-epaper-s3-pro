@@ -5,7 +5,6 @@
 // E-paper refresh modes
 #define UI_REFRESH_MODE_NORMAL 0
 #define UI_REFRESH_MODE_FAST   1
-#define UI_REFRESH_MODE_NEAT   2
 
 namespace ui::port {
 

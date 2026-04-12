@@ -41,17 +41,20 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_bold_120, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_time, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_time, LV_ALIGN_TOP_MID, 0, 100);
+    lv_label_set_text(lbl_time, "");
 
     lbl_date = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_date, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, 210);
+    lv_label_set_text(lbl_date, "");
 
     // Unread messages — tappable, jumps directly to chat
     lbl_unread = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_unread, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_unread, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_unread, LV_ALIGN_CENTER, 0, 30);
+    lv_label_set_text(lbl_unread, "");
     lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_ext_click_area(lbl_unread, 30);
     lv_obj_add_event_cb(lbl_unread, on_unread_click, LV_EVENT_CLICKED, NULL);
@@ -60,6 +63,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(lbl_info, &lv_font_noto_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_align(lbl_info, LV_ALIGN_BOTTOM_MID, 0, -30);
+    lv_label_set_text(lbl_info, "");
 }
 
 void update() {

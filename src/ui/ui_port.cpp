@@ -103,14 +103,6 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         epd_poweron();
         checkError(epd_hl_update_area(&board::hl, MODE_GL16, epd_ambient_temperature(), update_rect));
         epd_poweroff();
-    } else if (refresh_mode == UI_REFRESH_MODE_NEAT) {
-        epd_hl_set_all_white(&board::hl);
-        epd_poweron();
-        checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
-        epd_poweroff();
-        epd_poweron();
-        checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
-        epd_poweroff();
     }
 
     if (prev_frame) {
@@ -125,10 +117,10 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     static lv_indev_state_t last_state = LV_INDEV_STATE_RELEASED;
     static uint32_t next_poll = 0;
 
-    // Throttle I2C touch reads to ~10Hz — e-ink doesn't need faster
+    // Throttle I2C touch reads to ~20Hz — faster than e-paper refresh, but still light on the bus
     uint32_t now = millis();
     if (now >= next_poll) {
-        next_poll = now + 100;
+        next_poll = now + 50;
         if (board::touch.isPressed() && touch_enabled) {
             if (board::touch.getPoint(&x, &y, 1)) {
                 last_state = LV_INDEV_STATE_PRESSED;

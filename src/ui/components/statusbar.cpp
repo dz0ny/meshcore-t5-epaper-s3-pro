@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <esp_heap_caps.h>
 #include "statusbar.h"
 #include "../ui_theme.h"
 #include "../../model.h"
@@ -12,11 +11,9 @@ static lv_obj_t* lbl_time = NULL;
 static lv_obj_t* lbl_battery = NULL;
 static lv_obj_t* lbl_gps = NULL;
 static lv_obj_t* lbl_ble = NULL;
-static lv_obj_t* lbl_dram = NULL;
 static char cached_time[8] = {};
 static char cached_gps[8] = {};
 static char cached_ble[8] = {};
-static char cached_dram[32] = {};
 static char cached_battery[24] = {};
 
 static void set_label_text_if_changed(lv_obj_t* label, char* cache, size_t cache_size, const char* text) {
@@ -41,12 +38,6 @@ static void do_update() {
     } else {
         set_label_text_if_changed(lbl_gps, cached_gps, sizeof(cached_gps), "  ");
     }
-
-    // Free memory
-    uint32_t dram_kb = heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024;
-    uint32_t psram_kb = heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024;
-    snprintf(buf, sizeof(buf), "D%luK P%luK", (unsigned long)dram_kb, (unsigned long)psram_kb);
-    set_label_text_if_changed(lbl_dram, cached_dram, sizeof(cached_dram), buf);
 
     // BLE: icon when active
     if (mesh::task::ble_is_enabled()) {
@@ -101,11 +92,6 @@ lv_obj_t* create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(lbl_gps, sb_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_gps, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(lbl_gps, "  ");
-
-    lbl_dram = lv_label_create(bar_obj);
-    lv_obj_set_style_text_font(lbl_dram, sb_font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_dram, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_dram, "");
 
     // Right side: battery (flex-grow pushes it right)
     lbl_battery = lv_label_create(bar_obj);
