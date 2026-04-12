@@ -98,9 +98,6 @@ void start(int core) {
     }
     mc_rng.begin(radio_get_rng_seed());
 
-    // Init filesystems
-    SPIFFS.begin(true);
-
     // SPIFFS for identity/prefs, SD for contacts/channels (if available)
     if (board::peri_status[E_PERI_SD_CARD]) {
         void* sm = heap_caps_malloc(sizeof(DataStore), MALLOC_CAP_SPIRAM);
