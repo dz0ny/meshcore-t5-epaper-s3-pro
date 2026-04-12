@@ -82,10 +82,13 @@ uint32_t get_ble_pin();
 // Toggle favorite flag on a contact (bit 0 of ContactInfo::flags)
 bool is_favorite(const uint8_t* pubkey_prefix);
 bool toggle_favorite(const uint8_t* pubkey_prefix);
+bool request_telemetry(const uint8_t* pubkey_prefix, bool force_flood = false);
+bool request_trace_ping(const uint8_t* pubkey_prefix, uint32_t* out_tag = nullptr);
 
 // Clear all contacts or channels (saves immediately)
 void clear_contacts();
 void clear_channels();
+void flush_storage();
 
 // Enter light sleep — waits for radio idle, then sleeps both cores.
 // Wakes on LoRa packet (DIO1) or timer.

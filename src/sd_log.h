@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include "model.h"
 
 // SD card message persistence.
@@ -24,5 +25,15 @@ void flush();
 
 // Returns true if there are unflushed messages.
 bool is_dirty();
+
+// Store the latest telemetry response for a contact.
+void store_telemetry(const uint8_t* pub_key_prefix, const uint8_t* data, uint8_t len);
+
+// Load the latest telemetry response for a contact into out.
+bool get_telemetry(const uint8_t* pub_key_prefix, uint8_t* out, uint8_t* len, size_t out_size,
+                   uint32_t* timestamp = nullptr);
+
+// Remove persisted telemetry snapshots.
+void clear_telemetry();
 
 } // namespace sd_log

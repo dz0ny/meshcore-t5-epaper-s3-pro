@@ -42,6 +42,8 @@ public:
   virtual void setBuzzerQuiet(bool quiet) { (void)quiet; }
   virtual void msgRead(int msgcount) = 0;
   virtual void newMsg(uint8_t path_len, const char* from_name, const char* text, int msgcount) = 0;
+  virtual void telemetryResponse(const uint8_t* pub_key_prefix, const uint8_t* data, uint8_t len) = 0;
+  virtual void traceResponse(uint32_t tag, uint8_t hop_count, int8_t snr_there_q4, int8_t snr_back_q4) = 0;
   virtual void notify(UIEventType t = UIEventType::none) = 0;
   virtual void loop() = 0;
 };

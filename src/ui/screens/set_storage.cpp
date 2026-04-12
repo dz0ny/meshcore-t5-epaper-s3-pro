@@ -8,6 +8,7 @@
 #include "../../model.h"
 #include "../../board.h"
 #include "../../mesh/mesh_task.h"
+#include "../../sd_log.h"
 #include <SPIFFS.h>
 #include <SD.h>
 #include <epdiy.h>
@@ -35,6 +36,8 @@ static void on_clear_channels(lv_event_t* e) {
 }
 
 static void on_factory_reset(lv_event_t* e) {
+    mesh::task::flush_storage();
+
     // Shut down peripherals
     mesh::task::ble_disable();
     board::touch.sleep();
@@ -46,6 +49,7 @@ static void on_factory_reset(lv_event_t* e) {
     // Wipe storage
     SPIFFS.format();
     SD.remove("/messages.bin");
+    SD.remove("/telemetry.bin");
     SD.remove("/contacts3");
     SD.remove("/channels2");
 

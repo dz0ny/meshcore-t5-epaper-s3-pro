@@ -1,7 +1,9 @@
 #include <cmath>
 #include <cstring>
 #include <cstdio>
+#include <cctype>
 #include "contact_detail.h"
+#include "ping.h"
 #include "compose.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
@@ -15,6 +17,7 @@
 namespace ui::screen::contact_detail {
 
 static lv_obj_t* scr = NULL;
+static lv_obj_t* content_list = NULL;
 
 // Contact data (set before pushing screen)
 static char contact_name[32];
@@ -28,12 +31,108 @@ static bool contact_is_favorite = false;
 
 // UI widgets
 static lv_obj_t* lbl_coords = NULL;
-static lv_obj_t* lbl_distance = NULL;
-static lv_obj_t* lbl_bearing_text = NULL;
 static lv_obj_t* compass_canvas = NULL;
 static lv_obj_t* lbl_nav_action = NULL;
-#define LV_SYMBOL_STAR       "\xEF\x80\x85" /*61445, 0xF005 — FA5 solid star*/
-static const char* favorite_action_label(bool is_favorite) { return is_favorite ? LV_SYMBOL_STAR " Fav" : "+ Fav"; }
+#define SYMBOL_STAR_FILLED   "\xE2\x98\x85" /* U+2605 ★ */
+#define SYMBOL_STAR_EMPTY    "\xE2\x98\x86" /* U+2606 ☆ */
+static const char* favorite_action_label(bool is_favorite) { return is_favorite ? SYMBOL_STAR_FILLED " Fav" : SYMBOL_STAR_EMPTY " Fav"; }
+
+static const char* contact_type_label(uint8_t type) {
+    switch (type) {
+        case ADV_TYPE_CHAT: return "Direct chat";
+        case ADV_TYPE_ROOM: return "Room";
+        case ADV_TYPE_SENSOR: return "Sensor";
+        case ADV_TYPE_REPEATER: return "Repeater";
+        default: return "Mesh contact";
+    }
+}
+
+static lv_obj_t* create_card(lv_obj_t* parent, lv_coord_t height) {
+    lv_obj_t* card = lv_obj_create(parent);
+    lv_obj_set_width(card, lv_pct(100));
+    if (height > 0) {
+        lv_obj_set_height(card, height);
+    } else {
+        lv_obj_set_height(card, LV_SIZE_CONTENT);
+    }
+    lv_obj_set_style_bg_color(card, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(card, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(card, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_radius(card, 20, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(card, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(card, 10, LV_PART_MAIN);
+    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    return card;
+}
+
+static lv_obj_t* create_meta_label(lv_obj_t* parent, const char* text) {
+    lv_obj_t* label = lv_label_create(parent);
+    lv_obj_set_style_text_font(label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(label, text);
+    return label;
+}
+
+static lv_obj_t* create_value_label(lv_obj_t* parent, const char* text) {
+    lv_obj_t* label = lv_label_create(parent);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_width(label, lv_pct(100));
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(label, text);
+    return label;
+}
+
+static void create_detail_row(lv_obj_t* parent, const char* title, const char* value) {
+    lv_obj_t* row = lv_obj_create(parent);
+    lv_obj_set_width(row, lv_pct(100));
+    lv_obj_set_height(row, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(row, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(row, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(row, 10, LV_PART_MAIN);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* title_label = lv_label_create(row);
+    lv_obj_set_style_text_font(title_label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(title_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(title_label, title);
+
+    lv_obj_t* value_label = lv_label_create(row);
+    lv_obj_set_width(value_label, 250);
+    lv_obj_set_style_text_font(value_label, &lv_font_noto_24, LV_PART_MAIN);
+    lv_obj_set_style_text_color(value_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_align(value_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_label_set_long_mode(value_label, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(value_label, value);
+}
+
+static void contact_avatar_text(char* out, size_t out_size, const char* name) {
+    if (!out || out_size < 3) return;
+
+    out[0] = '?';
+    out[1] = '?';
+    out[2] = 0;
+
+    size_t found = 0;
+    bool take_next = true;
+    for (size_t i = 0; name && name[i] && found < 2; i++) {
+        unsigned char ch = (unsigned char)name[i];
+        if (std::isalnum(ch) && take_next) {
+            out[found++] = (char)std::toupper(ch);
+            take_next = false;
+        } else if (std::isspace(ch) || ch == '-' || ch == '_' || ch == '.') {
+            take_next = true;
+        }
+    }
+
+    if (found == 1) {
+        out[1] = out[0];
+    }
+}
 
 void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t type, bool has_path,
                  const uint8_t* pubkey_prefix) {
@@ -56,7 +155,6 @@ static void draw_compass(lv_obj_t* parent, double bearing_deg) {
     // Compass container
     lv_obj_t* compass = lv_obj_create(parent);
     lv_obj_set_size(compass, 280, 280);
-    lv_obj_align(compass, LV_ALIGN_CENTER, 0, 60);
     lv_obj_set_style_bg_color(compass, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(compass, 3, LV_PART_MAIN);
     lv_obj_set_style_border_color(compass, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -166,6 +264,11 @@ static void on_send_message(lv_event_t* e) {
     ui::screen_mgr::push(SCREEN_COMPOSE, true);
 }
 
+static void on_ping(lv_event_t* e) {
+    ui::screen::ping::set_contact(contact_name, contact_lat, contact_lon, contact_type, contact_has_path, contact_pubkey);
+    ui::screen_mgr::push(SCREEN_PING, true);
+}
+
 static void create(lv_obj_t* parent) {
     scr = parent;
     bool is_existing = has_pubkey && mesh::task::is_contact(contact_pubkey);
@@ -183,81 +286,121 @@ static void create(lv_obj_t* parent) {
     double c_lon = contact_lon / 1e6;
     bool has_contact_gps = (contact_lat != 0 || contact_lon != 0);
     bool has_own_gps = model::gps.has_fix;
+    const char* route_text = contact_has_path ? "Direct" : "Unknown";
+    const char* type_text = contact_type_label(contact_type);
 
-    // Name
-    lv_obj_t* lbl_name = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_name, &lv_font_noto_28, LV_PART_MAIN);
+    lv_obj_t* hero_card = create_card(parent, 150);
+    lv_obj_set_size(hero_card, lv_pct(95), 150);
+    lv_obj_align(hero_card, LV_ALIGN_TOP_MID, 0, 130);
+    lv_obj_t* hero_badge = lv_obj_create(hero_card);
+    lv_obj_set_size(hero_badge, 84, 84);
+    lv_obj_align(hero_badge, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_set_style_bg_color(hero_badge, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_border_width(hero_badge, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(hero_badge, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_clear_flag(hero_badge, LV_OBJ_FLAG_SCROLLABLE);
+
+    char initial_buf[3];
+    contact_avatar_text(initial_buf, sizeof(initial_buf), contact_name);
+    lv_obj_t* hero_initial = lv_label_create(hero_badge);
+    lv_obj_set_style_text_font(hero_initial, &lv_font_montserrat_bold_30, LV_PART_MAIN);
+    lv_obj_set_style_text_color(hero_initial, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_label_set_text(hero_initial, initial_buf);
+    lv_obj_center(hero_initial);
+
+    lv_obj_t* lbl_name = lv_label_create(hero_card);
+    lv_obj_set_width(lbl_name, 360);
+    lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_bold_30, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_name, LV_ALIGN_TOP_MID, 0, 130);
+    lv_label_set_long_mode(lbl_name, LV_LABEL_LONG_WRAP);
+    lv_obj_align(lbl_name, LV_ALIGN_TOP_LEFT, 108, 2);
     lv_label_set_text(lbl_name, contact_name);
 
-    // Contact coords
-    lbl_coords = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_coords, &lv_font_noto_24, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_coords, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_coords, LV_ALIGN_TOP_MID, 0, 165);
+    lv_obj_t* lbl_type = create_meta_label(hero_card, type_text);
+    lv_obj_align(lbl_type, LV_ALIGN_TOP_LEFT, 108, 58);
+
+    lv_obj_t* details_card = create_card(parent, 230);
+    lv_obj_set_size(details_card, lv_pct(95), 230);
+    lv_obj_align(details_card, LV_ALIGN_TOP_MID, 0, 295);
+    lv_obj_set_style_pad_row(details_card, 8, LV_PART_MAIN);
+    lv_obj_set_flex_flow(details_card, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(details_card, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+
+    static char distance_buf[48];
+    static char coord_buf[48];
+    const char* distance_text = "No position data";
+    const char* coords_text = "Location unavailable";
+    bool show_compass = false;
+    double bearing = 0.0;
 
     if (has_contact_gps) {
-        static char coord_buf[48];
         snprintf(coord_buf, sizeof(coord_buf), "%.4f, %.4f", c_lat, c_lon);
-        lv_label_set_text(lbl_coords, coord_buf);
-    } else {
-        lv_label_set_text(lbl_coords, "No GPS position");
+        coords_text = coord_buf;
     }
-
-    // Info line: type + path
-    lv_obj_t* lbl_info = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_info, &lv_font_noto_24, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 195);
-    static char info_buf[48];
-    snprintf(info_buf, sizeof(info_buf), "Route: %s", contact_has_path ? "Direct" : "Unknown");
-    lv_label_set_text(lbl_info, info_buf);
-
-    // Distance + bearing
-    lbl_distance = lv_label_create(parent);
-    lv_obj_set_style_text_font(lbl_distance, &lv_font_noto_28, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_distance, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_distance, LV_ALIGN_TOP_MID, 0, 230);
 
     if (has_contact_gps && has_own_gps) {
         double dist = ui::geo::distance_km(model::gps.lat, model::gps.lng, c_lat, c_lon);
-        double bearing = ui::geo::bearing(model::gps.lat, model::gps.lng, c_lat, c_lon);
-        static char dist_buf[48];
+        bearing = ui::geo::bearing(model::gps.lat, model::gps.lng, c_lat, c_lon);
         if (dist < 1.0) {
-            snprintf(dist_buf, sizeof(dist_buf), "%dm %s", (int)(dist * 1000), ui::geo::bearing_to_cardinal(bearing));
+            snprintf(distance_buf, sizeof(distance_buf), "%dm %s", (int)(dist * 1000),
+                     ui::geo::bearing_to_cardinal(bearing));
         } else {
-            snprintf(dist_buf, sizeof(dist_buf), "%.1fkm %s", dist, ui::geo::bearing_to_cardinal(bearing));
+            snprintf(distance_buf, sizeof(distance_buf), "%.1fkm %s", dist,
+                     ui::geo::bearing_to_cardinal(bearing));
         }
-        lv_label_set_text(lbl_distance, dist_buf);
-
-        // Draw compass rose with arrow pointing to contact
-        draw_compass(parent, bearing);
+        distance_text = distance_buf;
+        show_compass = true;
     } else if (has_contact_gps) {
-        lv_label_set_text(lbl_distance, "Waiting for GPS fix...");
-    } else {
-        lv_label_set_text(lbl_distance, "");
+        distance_text = "Waiting for GPS fix";
     }
 
-    // Action buttons at bottom
+    create_detail_row(details_card, "Location", coords_text);
+    create_detail_row(details_card, "Distance", distance_text);
     if (has_pubkey) {
+        char key_buf[32];
+        snprintf(key_buf, sizeof(key_buf), "%02X%02X%02X%02X%02X%02X%02X",
+                 contact_pubkey[0], contact_pubkey[1], contact_pubkey[2], contact_pubkey[3],
+                 contact_pubkey[4], contact_pubkey[5], contact_pubkey[6]);
+        create_detail_row(details_card, "Node key", key_buf);
+    }
+    create_detail_row(details_card, "Route", route_text);
+
+    if (show_compass) {
+        lv_obj_t* compass_card = create_card(parent, 220);
+        lv_obj_set_size(compass_card, 220, 220);
+        lv_obj_align(compass_card, LV_ALIGN_TOP_RIGHT, -14, 536);
+        draw_compass(compass_card, bearing);
+        lv_obj_set_size(compass_canvas, 170, 170);
+        lv_obj_align(compass_canvas, LV_ALIGN_CENTER, 0, 0);
+    }
+
+    if (has_pubkey) {
+        int btn_y = show_compass ? 536 : 548;
+        int btn_w = show_compass ? 280 : 512;
         if (is_existing) {
             bool can_chat = (contact_type == ADV_TYPE_CHAT || contact_type == ADV_TYPE_ROOM);
-            int next_y = -20;
-
-            // Remove Contact
-            lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
-            lv_obj_align(rm_btn, LV_ALIGN_BOTTOM_MID, 0, next_y);
-            next_y -= 90;
-
-            // Send Message (only for chat/room types)
+            bool can_ping = has_pubkey;
             if (can_chat) {
                 lv_obj_t* msg_btn = ui::nav::text_button(parent, "Send Message", on_send_message, NULL);
-                lv_obj_align(msg_btn, LV_ALIGN_BOTTOM_MID, 0, next_y);
+                lv_obj_set_size(msg_btn, btn_w, 80);
+                lv_obj_align(msg_btn, show_compass ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_MID,
+                             show_compass ? 14 : 0, btn_y);
             }
+            if (can_ping) {
+                lv_obj_t* ping_btn = ui::nav::text_button(parent, "Ping", on_ping, NULL);
+                lv_obj_set_size(ping_btn, btn_w, 80);
+                lv_obj_align(ping_btn, show_compass ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_MID,
+                             show_compass ? 14 : 0, can_chat ? btn_y + 92 : btn_y);
+            }
+            lv_obj_t* rm_btn = ui::nav::text_button(parent, "Remove Contact", on_remove, NULL);
+            lv_obj_set_size(rm_btn, btn_w, 80);
+            lv_obj_align(rm_btn, show_compass ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_MID,
+                         show_compass ? 14 : 0, (can_chat ? 1 : 0) * 92 + (can_ping ? 1 : 0) * 92 + btn_y);
         } else {
             lv_obj_t* add_btn = ui::nav::text_button(parent, "Add Contact", on_add, NULL);
-            lv_obj_align(add_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+            lv_obj_set_size(add_btn, btn_w, 80);
+            lv_obj_align(add_btn, show_compass ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_MID,
+                         show_compass ? 14 : 0, btn_y + (show_compass ? 46 : 0));
         }
     }
 }
@@ -266,7 +409,8 @@ static void entry() {}
 static void exit_fn() {}
 static void destroy() {
     scr = NULL;
-    lbl_coords = lbl_distance = lbl_bearing_text = NULL;
+    content_list = NULL;
+    lbl_coords = NULL;
     compass_canvas = NULL;
     lbl_nav_action = NULL;
 }

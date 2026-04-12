@@ -90,6 +90,9 @@ public:
 
   void begin(bool has_display);
   void startInterface(BaseSerialInterface &serial);
+  bool requestTelemetry(ContactInfo& recipient, uint32_t& est_timeout);
+  bool requestTelemetry(ContactInfo& recipient, uint32_t& est_timeout, bool force_flood);
+  bool requestTrace(ContactInfo& recipient, uint32_t& tag, uint32_t& est_timeout);
 
   const char *getNodeName();
   NodePrefs *getNodePrefs();

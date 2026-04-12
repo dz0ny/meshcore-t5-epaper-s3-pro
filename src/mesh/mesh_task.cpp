@@ -528,6 +528,38 @@ bool toggle_favorite(const uint8_t* pubkey_prefix) {
     return is_fav;
 }
 
+bool request_telemetry(const uint8_t* pubkey_prefix, bool force_flood) {
+    if (!the_mesh_ptr || !mesh_mutex || !pubkey_prefix) return false;
+    bool ok = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ContactInfo* c = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+        if (c) {
+            uint32_t est_timeout = 0;
+            ok = the_mesh_ptr->requestTelemetry(*c, est_timeout, force_flood);
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return ok;
+}
+
+bool request_trace_ping(const uint8_t* pubkey_prefix, uint32_t* out_tag) {
+    if (!the_mesh_ptr || !mesh_mutex || !pubkey_prefix) return false;
+    bool ok = false;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        ContactInfo* c = the_mesh_ptr->lookupContactByPubKey(pubkey_prefix, 7);
+        if (c) {
+            uint32_t tag = 0;
+            uint32_t est_timeout = 0;
+            ok = the_mesh_ptr->requestTrace(*c, tag, est_timeout);
+            if (ok && out_tag) {
+                *out_tag = tag;
+            }
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return ok;
+}
+
 void clear_contacts() {
     if (!the_mesh_ptr || !mesh_mutex || !store) return;
     if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
@@ -554,6 +586,14 @@ void clear_channels() {
         }
         store->saveChannels(the_mesh_ptr);
         Serial.println("MESH: all channels cleared");
+        xSemaphoreGive(mesh_mutex);
+    }
+}
+
+void flush_storage() {
+    if (!mesh_mutex) return;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(2000))) {
+        sd_log::flush();
         xSemaphoreGive(mesh_mutex);
     }
 }

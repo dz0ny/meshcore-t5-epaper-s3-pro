@@ -33,6 +33,8 @@
 #include "screens/set_storage.h"
 #include "screens/compose.h"
 #include "screens/map.h"
+#include "screens/sensors.h"
+#include "screens/ping.h"
 
 static void show_power_off_splash() {
     ui::statusbar::hide();
@@ -74,6 +76,7 @@ static void show_power_off_splash() {
 
 void do_power_off() {
     show_power_off_splash();
+    mesh::task::flush_storage();
 
     // Try battery FET shutdown first (instant off on battery power)
     board::ppm.shutdown();
@@ -104,7 +107,7 @@ static void on_boot_click() {
     model::touch_activity();
     if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
         ui::statusbar::show();
-        ui::screen_mgr::switch_to(SCREEN_HOME, false);
+        ui::screen_mgr::pop(false);
     } else {
         ui::screen::lock::show();
     }
@@ -242,11 +245,11 @@ static void ui_task_fn(void* param) {
         }
 
         // After LVGL processed events: if lock screen was touched but LVGL
-        // didn't navigate away (user tapped outside the unread label), wake to home.
+        // didn't navigate away (user tapped outside the unread label), wake to the previous screen.
         if (lock_touched && ui::screen_mgr::top_id() == SCREEN_LOCK) {
             model::clear_unread_messages();
             ui::statusbar::show();
-            ui::screen_mgr::switch_to(SCREEN_HOME, false);
+            ui::screen_mgr::pop(false);
         }
 
         vTaskDelay(pdMS_TO_TICKS(5));  // yield to other tasks
@@ -363,6 +366,8 @@ void start(int core) {
     ui::screen_mgr::register_screen(16, &ui::screen::set_storage::lifecycle);
     ui::screen_mgr::register_screen(17, &ui::screen::compose::lifecycle);
     ui::screen_mgr::register_screen(18, &ui::screen::map::lifecycle);
+    ui::screen_mgr::register_screen(19, &ui::screen::sensors::lifecycle);
+    ui::screen_mgr::register_screen(20, &ui::screen::ping::lifecycle);
 
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);

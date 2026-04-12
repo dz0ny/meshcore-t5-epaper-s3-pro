@@ -59,6 +59,8 @@ static const char* default_nav_title(int id) {
         case SCREEN_SET_STORAGE: return "Storage";
         case SCREEN_COMPOSE: return "Compose";
         case SCREEN_MAP: return "Map";
+        case SCREEN_SENSORS: return "Sensors";
+        case SCREEN_PING: return "Ping";
         default: return "";
     }
 }

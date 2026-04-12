@@ -37,6 +37,7 @@ static DisplayContact displayed[MAX_CONTACTS];
 static int display_count = 0;
 
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
+static void on_discovery(lv_event_t* e) { ui::screen_mgr::push(SCREEN_DISCOVERY, true); }
 
 static void on_contact_click(lv_event_t* e) {
     int row_idx = (int)(intptr_t)lv_event_get_user_data(e);
@@ -93,7 +94,7 @@ static void rebuild_list() {
     int shown = 0;
     for (int i = 0; i < display_count; i++) {
         if (!passes_filter(displayed[i])) continue;
-        const char* icon = (displayed[i].flags & 0x01) ? LV_SYMBOL_OK " " : "";
+        const char* icon = (displayed[i].flags & 0x01) ? "\xE2\x98\x85 " : "";
         char label[40];
         snprintf(label, sizeof(label), "%s%s", icon, displayed[i].name);
         if (strcmp(lv_label_get_text(contact_row_labels[shown]), label) != 0) {
@@ -164,8 +165,10 @@ static void poll_contacts(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    lbl_filter = ui::nav::back_button_action(parent, "Contacts", on_back, filter_names[filter_mode], on_filter_cycle, NULL);
+    ui::nav::back_button_action(parent, "Contacts", on_back, "Discover", on_discovery, NULL);
     contact_list = ui::nav::scroll_list(parent);
+
+    lbl_filter = ui::nav::toggle_item(contact_list, "Filter", filter_names[filter_mode], on_filter_cycle, NULL);
 
     empty_label = lv_label_create(contact_list);
     lv_obj_set_width(empty_label, lv_pct(100));

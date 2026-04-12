@@ -32,6 +32,19 @@ struct MessageIn {
     bool is_channel;    // group channel message
 };
 
+struct TelemetryResponse {
+    uint8_t pub_key_prefix[7];
+    uint8_t data[96];
+    uint8_t len;
+};
+
+struct TraceResponse {
+    uint32_t tag;
+    uint8_t hop_count;
+    int8_t snr_there_q4;
+    int8_t snr_back_q4;
+};
+
 struct MeshStatus {
     int peer_count;
     uint32_t last_rx_time;
@@ -44,6 +57,8 @@ struct MeshStatus {
 
 extern QueueHandle_t contact_queue;   // ContactUpdate items
 extern QueueHandle_t message_queue;   // MessageIn items
+extern QueueHandle_t telemetry_queue; // TelemetryResponse items
+extern QueueHandle_t trace_queue;     // TraceResponse items
 
 // ---------- Status (protected by mutex) ----------
 
@@ -61,11 +76,15 @@ void init();
 // Called from mesh task (core 0)
 void push_contact(const ContactUpdate& c);
 void push_message(const MessageIn& m);
+void push_telemetry(const TelemetryResponse& t);
+void push_trace(const TraceResponse& t);
 void update_status(const MeshStatus& s);
 
 // Called from UI task (core 1)
 bool pop_contact(ContactUpdate& c);
 bool pop_message(MessageIn& m);
+bool pop_telemetry(TelemetryResponse& t);
+bool pop_trace(TraceResponse& t);
 MeshStatus get_status();
 
 } // namespace mesh::bridge

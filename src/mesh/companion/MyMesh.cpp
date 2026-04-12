@@ -713,6 +713,9 @@ void MyMesh::onContactResponse(const ContactInfo &contact, const uint8_t *data, 
     _serial->writeFrame(out_frame, i);
   } else if (len > 4 && tag == pending_telemetry) {  // check for matching response tag
     pending_telemetry = 0;
+    if (_ui) {
+      _ui->telemetryResponse(contact.id.pub_key, &data[4], len - 4);
+    }
 
     int i = 0;
     out_frame[i++] = PUSH_CODE_TELEMETRY_RESPONSE;
@@ -810,9 +813,15 @@ void MyMesh::onRawDataRecv(mesh::Packet *packet) {
 void MyMesh::onTraceRecv(mesh::Packet *packet, uint32_t tag, uint32_t auth_code, uint8_t flags,
                          const uint8_t *path_snrs, const uint8_t *path_hashes, uint8_t path_len) {
   uint8_t path_sz = flags & 0x03;  // NEW v1.11+
+  uint8_t hop_count = path_sz == 0 ? path_len : (path_len >> path_sz);
   if (12 + path_len + (path_len >> path_sz) + 1 > sizeof(out_frame)) {
     MESH_DEBUG_PRINTLN("onTraceRecv(), path_len is too long: %d", (uint32_t)path_len);
     return;
+  }
+  if (_ui) {
+    int8_t snr_there_q4 = (path_snrs && hop_count > 0) ? (int8_t)path_snrs[0] : 0;
+    int8_t snr_back_q4 = (int8_t)(packet->getSNR() * 4);
+    _ui->traceResponse(tag, hop_count, snr_there_q4, snr_back_q4);
   }
   int i = 0;
   out_frame[i++] = PUSH_CODE_TRACE_DATA;
@@ -1141,6 +1150,40 @@ bool MyMesh::isValidClientRepeatFreq(uint32_t f) const {
 void MyMesh::startInterface(BaseSerialInterface &serial) {
   _serial = &serial;
   serial.enable();
+}
+
+bool MyMesh::requestTelemetry(ContactInfo& recipient, uint32_t& est_timeout) {
+  return requestTelemetry(recipient, est_timeout, false);
+}
+
+bool MyMesh::requestTelemetry(ContactInfo& recipient, uint32_t& est_timeout, bool force_flood) {
+  uint32_t tag;
+  uint8_t saved_path_len = recipient.out_path_len;
+  if (force_flood) {
+    recipient.out_path_len = OUT_PATH_UNKNOWN;
+  }
+  int result = sendRequest(recipient, REQ_TYPE_GET_TELEMETRY_DATA, tag, est_timeout);
+  recipient.out_path_len = saved_path_len;
+  if (result == MSG_SEND_FAILED) {
+    return false;
+  }
+
+  clearPendingReqs();
+  pending_telemetry = tag;
+  return true;
+}
+
+bool MyMesh::requestTrace(ContactInfo& recipient, uint32_t& tag, uint32_t& est_timeout) {
+  auto pkt = createTrace(tag = getRTCClock()->getCurrentTimeUnique(), 0, 0);
+  if (!pkt) {
+    return false;
+  }
+
+  sendDirect(pkt, recipient.id.pub_key, 1);
+
+  uint32_t t = _radio->getEstAirtimeFor(pkt->payload_len + pkt->path_len + 2);
+  est_timeout = calcDirectTimeoutMillisFor(t, 1);
+  return true;
 }
 
 void MyMesh::handleCmdFrame(size_t len) {

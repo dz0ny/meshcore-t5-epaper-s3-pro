@@ -32,6 +32,7 @@ static void on_unread_click(lv_event_t* e) {
     model::touch_activity();
     model::clear_unread_messages();
     ui::statusbar::show();
+    ui::screen_mgr::pop(false);
     ui::screen_mgr::switch_to(SCREEN_HOME, false);
     ui::screen_mgr::push(SCREEN_CHAT, false);
 }
@@ -140,10 +141,11 @@ static void destroy() {
 }
 
 void show() {
+    if (ui::screen_mgr::top_id() == SCREEN_LOCK) return;
     model::update_clock();
     model::update_battery();
     model::update_mesh();
-    ui::screen_mgr::switch_to(SCREEN_LOCK, false);
+    ui::screen_mgr::push(SCREEN_LOCK, false);
 }
 
 screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };
