@@ -9,17 +9,10 @@
 
 namespace ui::screen::home {
 
-#if defined(BOARD_TDECK)
-static constexpr lv_coord_t HOME_NODE_NAME_Y = 26;
-static constexpr lv_coord_t HOME_CLOCK_Y = 38;
-static constexpr lv_coord_t HOME_DATE_Y = 68;
-static constexpr lv_coord_t HOME_MENU_Y = 85;
-#else
-static constexpr lv_coord_t HOME_NODE_NAME_Y = 55;
-static constexpr lv_coord_t HOME_CLOCK_Y = 100;
-static constexpr lv_coord_t HOME_DATE_Y = 225;
-static constexpr lv_coord_t HOME_MENU_Y = 340;
-#endif
+static constexpr lv_coord_t HOME_NODE_NAME_Y = UI_HOME_NODE_Y;
+static constexpr lv_coord_t HOME_CLOCK_Y = UI_HOME_CLOCK_Y;
+static constexpr lv_coord_t HOME_DATE_Y = UI_HOME_DATE_Y;
+static constexpr lv_coord_t HOME_MENU_Y = UI_HOME_MENU_Y;
 
 static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
@@ -87,8 +80,7 @@ static void create(lv_obj_t* parent) {
 
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
-#if defined(BOARD_TDECK)
-    // On T-Deck, menu needs to scroll — screen is only 240px tall
+#if UI_HOME_MENU_SCROLL
     lv_obj_set_size(menu, lv_pct(95), SCREEN_HEIGHT - HOME_MENU_Y);
     lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y);
     lv_obj_set_scrollbar_mode(menu, LV_SCROLLBAR_MODE_OFF);

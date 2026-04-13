@@ -505,13 +505,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(lbl_route, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
 
     lv_obj_t* button_row = lv_obj_create(parent);
-#if defined(BOARD_TDECK)
-    lv_obj_set_size(button_row, lv_pct(95), 45);
-    lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, 160);
-#else
-    lv_obj_set_size(button_row, lv_pct(95), 90);
-    lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, 360);
-#endif
+    lv_obj_set_size(button_row, lv_pct(95), UI_PING_BTN_ROW_H);
+    lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, UI_PING_BTN_ROW_Y);
     lv_obj_set_style_bg_opa(button_row, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(button_row, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(button_row, 0, LV_PART_MAIN);

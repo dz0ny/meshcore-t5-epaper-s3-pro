@@ -290,15 +290,10 @@ static void create(lv_obj_t* parent) {
     const char* type_text = contact_type_label(contact_type);
 
     lv_obj_t* hero_card = create_card(parent, 150);
-#if defined(BOARD_TDECK)
-    lv_obj_set_size(hero_card, lv_pct(95), 65);
-    lv_obj_align(hero_card, LV_ALIGN_TOP_MID, 0, 60);
-#else
-    lv_obj_set_size(hero_card, lv_pct(95), 150);
-    lv_obj_align(hero_card, LV_ALIGN_TOP_MID, 0, 130);
-#endif
+    lv_obj_set_size(hero_card, lv_pct(95), UI_CONTACT_HERO_H);
+    lv_obj_align(hero_card, LV_ALIGN_TOP_MID, 0, UI_CONTACT_HERO_Y);
     lv_obj_t* hero_badge = lv_obj_create(hero_card);
-    lv_obj_set_size(hero_badge, 84, 84);
+    lv_obj_set_size(hero_badge, UI_CONTACT_BADGE_SZ, UI_CONTACT_BADGE_SZ);
     lv_obj_align(hero_badge, LV_ALIGN_LEFT_MID, 0, 0);
     lv_obj_set_style_bg_color(hero_badge, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_border_width(hero_badge, 0, LV_PART_MAIN);
@@ -314,24 +309,19 @@ static void create(lv_obj_t* parent) {
     lv_obj_center(hero_initial);
 
     lv_obj_t* lbl_name = lv_label_create(hero_card);
-    lv_obj_set_width(lbl_name, 360);
+    lv_obj_set_width(lbl_name, lv_pct(60));
     lv_obj_set_style_text_font(lbl_name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_long_mode(lbl_name, LV_LABEL_LONG_WRAP);
-    lv_obj_align(lbl_name, LV_ALIGN_TOP_LEFT, 108, 2);
+    lv_obj_align(lbl_name, LV_ALIGN_TOP_LEFT, UI_CONTACT_NAME_X, 2);
     lv_label_set_text(lbl_name, contact_name);
 
     lv_obj_t* lbl_type = create_meta_label(hero_card, type_text);
-    lv_obj_align(lbl_type, LV_ALIGN_TOP_LEFT, 108, 58);
+    lv_obj_align(lbl_type, LV_ALIGN_TOP_LEFT, UI_CONTACT_TYPE_X, UI_CONTACT_TYPE_Y);
 
     lv_obj_t* details_card = create_card(parent, 230);
-#if defined(BOARD_TDECK)
-    lv_obj_set_size(details_card, lv_pct(95), 100);
-    lv_obj_align(details_card, LV_ALIGN_TOP_MID, 0, 130);
-#else
-    lv_obj_set_size(details_card, lv_pct(95), 230);
-    lv_obj_align(details_card, LV_ALIGN_TOP_MID, 0, 295);
-#endif
+    lv_obj_set_size(details_card, lv_pct(95), UI_CONTACT_DETAIL_H);
+    lv_obj_align(details_card, LV_ALIGN_TOP_MID, 0, UI_CONTACT_DETAIL_Y);
     lv_obj_set_style_pad_row(details_card, 8, LV_PART_MAIN);
     lv_obj_set_flex_flow(details_card, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(details_card, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
