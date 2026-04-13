@@ -6,6 +6,7 @@
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
+#include "../components/toast.h"
 #include "../components/geo_utils.h"
 #include "../components/text_utils.h"
 #include "../../model.h"
@@ -18,16 +19,11 @@ static lv_obj_t* scr = NULL;
 static lv_obj_t* canvas_obj = NULL;
 static lv_obj_t* tap_layer = NULL;
 static lv_obj_t* lbl_zoom = NULL;
-static lv_obj_t* lbl_dist_info = NULL;
 static lv_timer_t* poll_timer = NULL;
 static lv_obj_t* grid_label = NULL;
 static lv_obj_t* no_fix_label = NULL;
 static lv_obj_t* contact_taps[32] = {};
 static lv_obj_t* contact_name_labels[32] = {};
-
-static const uint8_t MAP_GRID_COLOR = 0x40;
-static const uint8_t MAP_AXIS_COLOR = 0x00;
-static const uint8_t MAP_MARKER_COLOR = 0x00;
 
 // Zoom levels in km radius
 static const double zoom_levels[] = {0.5, 1.0, 5.0, 20.0, 50.0};
@@ -54,6 +50,18 @@ static int contact_count = 0;
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void rebuild_map();
+
+static uint8_t color_to_l8(uint32_t color) {
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+    return (uint8_t)((r * 77 + g * 150 + b * 29) >> 8);
+}
+
+static uint8_t map_bg_color() { return color_to_l8(EPD_COLOR_BG); }
+static uint8_t map_grid_color() { return color_to_l8(EPD_COLOR_BORDER); }
+static uint8_t map_axis_color() { return color_to_l8(EPD_COLOR_TEXT); }
+static uint8_t map_marker_color() { return color_to_l8(EPD_COLOR_FOCUS); }
 
 static void style_overlay_label(lv_obj_t* obj) {
     lv_obj_set_style_text_color(obj, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -90,7 +98,7 @@ static void on_contact_tap(lv_event_t* e) {
         snprintf(buf, sizeof(buf), "%s: %.1fkm %s", contacts[idx].name,
                  dist, ui::geo::bearing_to_cardinal(bear));
     }
-    if (lbl_dist_info) lv_label_set_text(lbl_dist_info, buf);
+    ui::toast::show(buf);
 }
 
 static void load_contacts() {
@@ -201,7 +209,7 @@ static void rebuild_map() {
         lv_label_set_text(lbl_zoom, zbuf);
     }
 
-    memset(canvas_buf, 0xFF, MAP_W * MAP_H);
+    memset(canvas_buf, map_bg_color(), MAP_W * MAP_H);
 
     double scale_y = MAP_H / (zoom_km * 2.0);
     double scale_x = MAP_W / (zoom_km * 2.0);
@@ -219,18 +227,18 @@ static void rebuild_map() {
     int grid_px_x = (int)(grid_km * scale_x);
     if (grid_px_y > 20 && grid_px_x > 20) {
         for (int gy = grid_px_y; MAP_CY + gy < MAP_H; gy += grid_px_y) {
-            draw_hline_dashed_thick(MAP_CY + gy, UI_BORDER_CARD, MAP_GRID_COLOR);
-            draw_hline_dashed_thick(MAP_CY - gy, UI_BORDER_CARD, MAP_GRID_COLOR);
+            draw_hline_dashed_thick(MAP_CY + gy, UI_BORDER_CARD, map_grid_color());
+            draw_hline_dashed_thick(MAP_CY - gy, UI_BORDER_CARD, map_grid_color());
         }
         for (int gx = grid_px_x; MAP_CX + gx < MAP_W; gx += grid_px_x) {
-            draw_vline_dashed_thick(MAP_CX + gx, UI_BORDER_CARD, MAP_GRID_COLOR);
-            draw_vline_dashed_thick(MAP_CX - gx, UI_BORDER_CARD, MAP_GRID_COLOR);
+            draw_vline_dashed_thick(MAP_CX + gx, UI_BORDER_CARD, map_grid_color());
+            draw_vline_dashed_thick(MAP_CX - gx, UI_BORDER_CARD, map_grid_color());
         }
     }
 
-    draw_hline(MAP_CY, MAP_AXIS_COLOR);
-    draw_vline(MAP_CX, MAP_AXIS_COLOR);
-    draw_filled_circle(MAP_CX, MAP_CY, 6, MAP_MARKER_COLOR);
+    draw_hline(MAP_CY, map_axis_color());
+    draw_vline(MAP_CX, map_axis_color());
+    draw_filled_circle(MAP_CX, MAP_CY, 6, map_marker_color());
 
     hide_contact_overlays();
 
@@ -280,7 +288,7 @@ static void rebuild_map() {
         contacts[i].px = px;
         contacts[i].py = py;
 
-        draw_filled_circle(px, py, 8, MAP_MARKER_COLOR);
+        draw_filled_circle(px, py, 8, map_marker_color());
 
         char short_name[10];
         strncpy(short_name, contacts[i].name, 9);
@@ -385,15 +393,6 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_size(btn_out, UI_MAP_BTN_W, UI_MAP_BTN_H);
     lv_obj_align(btn_out, LV_ALIGN_BOTTOM_RIGHT, -6, -6);
 
-    lbl_dist_info = lv_label_create(tap_layer);
-    lv_obj_set_style_text_font(lbl_dist_info, UI_FONT_BODY, LV_PART_MAIN);
-    style_overlay_label(lbl_dist_info);
-    lv_obj_set_style_pad_all(lbl_dist_info, 4, LV_PART_MAIN);
-    lv_obj_set_style_text_align(lbl_dist_info, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_set_width(lbl_dist_info, lv_pct(90));
-    lv_obj_align(lbl_dist_info, LV_ALIGN_TOP_MID, 0, 4);
-    lv_label_set_text(lbl_dist_info, "Tap a contact for distance");
-
     load_contacts();
     rebuild_map();
 }
@@ -413,7 +412,6 @@ static void destroy() {
     canvas_obj = NULL;
     tap_layer = NULL;
     lbl_zoom = NULL;
-    lbl_dist_info = NULL;
     grid_label = NULL;
     no_fix_label = NULL;
     contact_count = 0;

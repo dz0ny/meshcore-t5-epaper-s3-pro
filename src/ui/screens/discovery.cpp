@@ -62,14 +62,15 @@ static void ensure_row(int idx) {
     if (!node_list || idx < 0 || idx >= 16 || node_rows[idx]) return;
 
     lv_obj_t* value = ui::nav::toggle_item(node_list, "", "", on_node_click, (void*)(intptr_t)idx);
-    lv_obj_t* row = lv_obj_get_parent(value);
-    lv_obj_t* label = lv_obj_get_child(row, 0);
+    lv_obj_t* hit = lv_obj_get_parent(value);
+    lv_obj_t* row = hit ? lv_obj_get_child(hit, 0) : NULL;
+    lv_obj_t* label = row ? lv_obj_get_child(row, 0) : NULL;
 
-    node_rows[idx] = row;
+    node_rows[idx] = hit;
     node_row_labels[idx] = label;
     node_row_values[idx] = value;
     row_visible[idx] = false;
-    lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(hit, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void rebuild_list() {

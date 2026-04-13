@@ -108,12 +108,12 @@
 #define UI_PING_BTN_ROW_H    45
 
 // ---------- Map screen ----------
-#define UI_MAP_X             1
-#define UI_MAP_Y             42
+#define UI_MAP_X             UI_OUTER_MARGIN_X
+#define UI_MAP_Y             33
 #define UI_MAP_W             316
-#define UI_MAP_H             168
-#define UI_MAP_BTN_W         44
-#define UI_MAP_BTN_H         34
+#define UI_MAP_H             206
+#define UI_MAP_BTN_W         32
+#define UI_MAP_BTN_H         24
 #define UI_MAP_BTN_SIDE      10
 #define UI_MAP_BTN_BOTTOM    -8
 #define UI_MAP_ZOOM_BOTTOM   -28

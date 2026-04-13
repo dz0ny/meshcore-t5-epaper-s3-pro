@@ -145,6 +145,7 @@ lv_obj_t* back_button_action_ex(lv_obj_t* parent, const char* title, lv_event_cb
     ui::screen_mgr::set_nav_title(title);
 
     lv_obj_t* row = create_back_hit_row(parent, NULL, NULL);
+    lv_obj_set_size(row, lv_pct(UI_OUTER_WIDTH_PCT), UI_BACK_BTN_HEIGHT);
     lv_obj_set_style_bg_opa(row, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);

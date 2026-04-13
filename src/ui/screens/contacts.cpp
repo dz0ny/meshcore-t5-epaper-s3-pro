@@ -80,12 +80,13 @@ static void rebuild_list() {
 
     for (int i = 0; i < MAX_CONTACTS; i++) {
         if (!contact_rows[i]) {
-            lv_obj_t* row = ui::nav::menu_item(contact_list, NULL, "", on_contact_click, (void*)(intptr_t)i);
-            contact_rows[i] = row;
-            contact_row_labels[i] = lv_obj_get_child(row, 0);
+            lv_obj_t* hit = ui::nav::menu_item(contact_list, NULL, "", on_contact_click, (void*)(intptr_t)i);
+            lv_obj_t* row = lv_obj_get_child(hit, 0);
+            contact_rows[i] = hit;
+            contact_row_labels[i] = row ? lv_obj_get_child(row, 0) : NULL;
             row_contact_idx[i] = -1;
             row_visible[i] = false;
-            lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(hit, LV_OBJ_FLAG_HIDDEN);
         } else {
             row_contact_idx[i] = -1;
         }
@@ -97,7 +98,7 @@ static void rebuild_list() {
         const char* icon = (displayed[i].flags & 0x01) ? "\xE2\x98\x85 " : "";
         char label[40];
         snprintf(label, sizeof(label), "%s%s", icon, displayed[i].name);
-        if (strcmp(lv_label_get_text(contact_row_labels[shown]), label) != 0) {
+        if (contact_row_labels[shown] && strcmp(lv_label_get_text(contact_row_labels[shown]), label) != 0) {
             lv_label_set_text(contact_row_labels[shown], label);
         }
         row_contact_idx[shown] = i;
