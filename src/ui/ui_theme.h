@@ -1,16 +1,45 @@
 #pragma once
 
+#include <stdint.h>
 #include "lvgl.h"
 
-// ---------- Color palette ----------
+namespace ui::theme {
 
-#define EPD_COLOR_BG          0xFFFFFF
-#define EPD_COLOR_FG          0x000000
-#define EPD_COLOR_TEXT        0x000000
-#define EPD_COLOR_BORDER      0x333333
-#define EPD_COLOR_FOCUS       0x91B821
-#define EPD_COLOR_PROMPT_BG   0x1E1E00
-#define EPD_COLOR_PROMPT_TXT  0xFFFEE6
+enum theme_id : uint8_t {
+    THEME_LIGHT = 0,
+    THEME_DARK = 1,
+    THEME_SAR_RED = 2,
+    THEME_SAR_GREEN = 3,
+    THEME_SAR_NAVY_BLUE = 4,
+};
+
+struct palette_t {
+    uint32_t bg;
+    uint32_t fg;
+    uint32_t text;
+    uint32_t border;
+    uint32_t focus;
+    uint32_t prompt_bg;
+    uint32_t prompt_txt;
+};
+
+void init();
+uint8_t count();
+theme_id current();
+bool set(theme_id id);
+theme_id next();
+const char* current_name();
+const palette_t& colors();
+
+} // namespace ui::theme
+
+#define EPD_COLOR_BG          (ui::theme::colors().bg)
+#define EPD_COLOR_FG          (ui::theme::colors().fg)
+#define EPD_COLOR_TEXT        (ui::theme::colors().text)
+#define EPD_COLOR_BORDER      (ui::theme::colors().border)
+#define EPD_COLOR_FOCUS       (ui::theme::colors().focus)
+#define EPD_COLOR_PROMPT_BG   (ui::theme::colors().prompt_bg)
+#define EPD_COLOR_PROMPT_TXT  (ui::theme::colors().prompt_txt)
 
 // ---------- Screen IDs ----------
 
@@ -40,11 +69,14 @@ enum screen_id {
 
 // ---------- Font declarations ----------
 
-LV_FONT_DECLARE(lv_font_noto_24);
-LV_FONT_DECLARE(lv_font_noto_28);
-LV_FONT_DECLARE(lv_font_montserrat_bold_30);
-LV_FONT_DECLARE(lv_font_montserrat_bold_80);
-LV_FONT_DECLARE(lv_font_montserrat_bold_120);
+LV_FONT_DECLARE(lv_font_noto_14);               // T-Deck statusbar, small text
+LV_FONT_DECLARE(lv_font_noto_15);               // T-Deck nav/back button
+LV_FONT_DECLARE(lv_font_noto_16);               // T-Deck titles, menu labels
+LV_FONT_DECLARE(lv_font_noto_24);               // statusbar, sender names
+LV_FONT_DECLARE(lv_font_noto_28);               // message text, values
+LV_FONT_DECLARE(lv_font_montserrat_bold_30);    // menus, titles, settings
+LV_FONT_DECLARE(lv_font_montserrat_bold_80);    // lock screen clock
+LV_FONT_DECLARE(lv_font_montserrat_bold_120);   // home screen clock
 
 // ---------- Per-device layout ----------
 

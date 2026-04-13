@@ -74,17 +74,16 @@ static void update_cb(lv_timer_t* t) {
     if (b.charger_ok && lbl_chg_status) {
         lv_label_set_text(lbl_chg_status, b.charge_status ? b.charge_status : "--");
         lv_label_set_text(lbl_bus_status, b.bus_status ? b.bus_status : "--");
-        lv_label_set_text(lbl_ntc, b.ntc_status ? b.ntc_status : "--");
+        if (lbl_ntc) lv_label_set_text(lbl_ntc, b.ntc_status ? b.ntc_status : "--");
         lv_label_set_text_fmt(lbl_vbus, "%.2f V", b.vbus_v);
         lv_label_set_text_fmt(lbl_vsys, "%.2f V", b.vsys_v);
         lv_label_set_text_fmt(lbl_vbat, "%.2f V", b.vbat_v);
-        lv_label_set_text_fmt(lbl_chg_curr, "%.0f mA", b.charge_current_ma);
+        if (lbl_chg_curr) lv_label_set_text_fmt(lbl_chg_curr, "%.0f mA", b.charge_current_ma);
     }
 }
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Battery", on_back);
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 
@@ -104,11 +103,15 @@ static void create(lv_obj_t* parent) {
         section_header(list, "Charger");
         lbl_chg_status = info_row(list, "Status");
         lbl_bus_status = info_row(list, "Bus");
-        lbl_ntc        = info_row(list, "NTC");
+        if (board::peri_status[E_PERI_BQ25896]) {
+            lbl_ntc    = info_row(list, "NTC");
+        }
         lbl_vbus       = info_row(list, "VBUS");
         lbl_vsys       = info_row(list, "VSYS");
         lbl_vbat       = info_row(list, "VBAT");
-        lbl_chg_curr   = info_row(list, "Chg Curr");
+        if (board::peri_status[E_PERI_BQ25896]) {
+            lbl_chg_curr = info_row(list, "Chg Curr");
+        }
     }
 }
 

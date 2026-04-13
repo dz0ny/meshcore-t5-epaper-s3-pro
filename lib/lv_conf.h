@@ -93,7 +93,7 @@
 #define LV_FONT_MONTSERRAT_14 1   /* Default font (required by LVGL internals) */
 
 #if defined(BOARD_TDECK)
-#define LV_FONT_MONTSERRAT_16 1   /* Title font for T-Deck scaled UI */
+#define LV_FONT_MONTSERRAT_16 0   /* Using custom noto_16 with FA5 glyphs instead */
 #define LV_FONT_MONTSERRAT_18 0
 #define LV_FONT_MONTSERRAT_20 0
 #define LV_FONT_MONTSERRAT_22 0

@@ -39,21 +39,21 @@
 static void show_power_off_splash() {
     ui::statusbar::hide();
     lv_obj_t* splash = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(splash, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(splash, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_pad_all(splash, 0, LV_PART_MAIN);
     lv_obj_clear_flag(splash, LV_OBJ_FLAG_SCROLLABLE);
     lv_screen_load(splash);
 
     lv_obj_t* title = lv_label_create(splash);
     lv_obj_set_style_text_font(title, UI_FONT_CLOCK_SM, LV_PART_MAIN);
-    lv_obj_set_style_text_color(title, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_text_color(title, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(title, "MeshCore");
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
 
     lv_obj_t* sub = lv_label_create(splash);
     lv_obj_set_style_text_font(sub, UI_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_text_color(sub, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(sub, board::charger_vbus_in() ? "Sleep" : "Power Off");
     lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
 
@@ -61,7 +61,7 @@ static void show_power_off_splash() {
     lv_obj_set_width(hint, lv_pct(80));
     lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(hint, UI_FONT_SMALL, LV_PART_MAIN);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_text_color(hint, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (board::charger_vbus_in()) {
         lv_label_set_text(hint, "USB connected - press BOOT to wake");
@@ -281,40 +281,41 @@ void start(int core) {
     model::touch_activity(); // init sleep timer
     Serial.println("UI: init port...");
     ui::port::init();
+    ui::theme::init();
 
     // Splash screen with progress
     {
         lv_obj_t *splash = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(splash, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(splash, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
         lv_obj_set_style_pad_all(splash, 0, LV_PART_MAIN);
         lv_obj_clear_flag(splash, LV_OBJ_FLAG_SCROLLABLE);
         lv_screen_load(splash);
 
         lv_obj_t *title = lv_label_create(splash);
         lv_obj_set_style_text_font(title, UI_FONT_CLOCK_SM, LV_PART_MAIN);
-        lv_obj_set_style_text_color(title, lv_color_hex(0x000000), LV_PART_MAIN);
+        lv_obj_set_style_text_color(title, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(title, "MeshCore");
         lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-        lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
+        lv_obj_align(title, LV_ALIGN_CENTER, 0, UI_SPLASH_TITLE_Y);
 
         lv_obj_t *sub = lv_label_create(splash);
         lv_obj_set_style_text_font(sub, UI_FONT_TITLE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(sub, lv_color_hex(0x000000), LV_PART_MAIN);
+        lv_obj_set_style_text_color(sub, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(sub, T_PAPER_HW_VERSION);
-        lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
+        lv_obj_align(sub, LV_ALIGN_CENTER, 0, UI_SPLASH_SUB_Y);
 
         lv_obj_t *ver = lv_label_create(splash);
         lv_obj_set_style_text_font(ver, UI_FONT_BODY, LV_PART_MAIN);
-        lv_obj_set_style_text_color(ver, lv_color_hex(0x000000), LV_PART_MAIN);
+        lv_obj_set_style_text_color(ver, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_label_set_text(ver, T_PAPER_FW_VERSION);
-        lv_obj_align(ver, LV_ALIGN_CENTER, 0, 100);
+        lv_obj_align(ver, LV_ALIGN_CENTER, 0, UI_SPLASH_VER_Y);
 
         lv_obj_t *status = lv_label_create(splash);
         lv_obj_set_style_text_font(status, UI_FONT_SMALL, LV_PART_MAIN);
-        lv_obj_set_style_text_color(status, lv_color_hex(0x000000), LV_PART_MAIN);
+        lv_obj_set_style_text_color(status, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
         lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_set_width(status, lv_pct(80));
-        lv_obj_align(status, LV_ALIGN_CENTER, 0, 160);
+        lv_obj_align(status, LV_ALIGN_CENTER, 0, UI_SPLASH_STATUS_Y);
         lv_label_set_text(status, "Starting...");
 
         lv_timer_handler();
@@ -388,7 +389,6 @@ void start(int core) {
     ui::screen_mgr::register_screen(18, &ui::screen::map::lifecycle);
     ui::screen_mgr::register_screen(19, &ui::screen::sensors::lifecycle);
     ui::screen_mgr::register_screen(20, &ui::screen::ping::lifecycle);
-
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);
 

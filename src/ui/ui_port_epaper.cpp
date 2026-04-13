@@ -11,6 +11,11 @@ namespace ui::port {
 
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
+static int backlight_mode = 0;
+static const char* mode_names_bl[] = {"Auto", "On", "Off"};
+static int brightness = 1;  // default Mid
+static const char* bright_names[] = {"Low", "Mid", "High"};
+static const int bright_pwm[] = {50, 100, 230};
 static const int32_t CHANGE_DETECT_MAX_PIXELS = 4096;
 static uint8_t gray_to_lo[256];
 static uint8_t gray_to_hi[256];
@@ -266,6 +271,12 @@ void init() {
     }
     refresh_mode = mode;
 
+    int stored_brightness = nvs_param_get_u8(NVS_ID_BRIGHTNESS);
+    if (stored_brightness < 0 || stored_brightness > 2) {
+        stored_brightness = 1;
+    }
+    brightness = stored_brightness;
+
     int disp_w = epd_rotated_display_width();
     int disp_h = epd_rotated_display_height();
     size_t pixel_count = disp_w * disp_h;
@@ -315,13 +326,6 @@ void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
 
 // Backlight mode: 0=Auto, 1=On, 2=Off
-static int backlight_mode = 0;
-static const char* mode_names_bl[] = {"Auto", "On", "Off"};
-
-// Brightness: 0=Low, 1=Mid, 2=High
-static int brightness = 1;  // default Mid
-static const char* bright_names[] = {"Low", "Mid", "High"};
-static const int bright_pwm[] = {50, 100, 230};
 
 void set_backlight(int mode) {
     if (mode < 0) mode = 0;

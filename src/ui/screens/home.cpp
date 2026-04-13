@@ -6,6 +6,7 @@
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../../model.h"
+#include "../../board.h"
 
 namespace ui::screen::home {
 
@@ -56,12 +57,14 @@ static void on_settings_click(lv_event_t* e) {
 static void create(lv_obj_t* parent) {
     scr = parent;
 
-    // Node name (mesh identity)
+    // Node name (mesh identity) — hidden on small screens
+#if UI_HOME_SHOW_NODE
     lbl_node_name = lv_label_create(parent);
     lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, HOME_NODE_NAME_Y);
     lv_obj_set_style_text_font(lbl_node_name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : "LilyGo T5 ePaper S3 Pro");
+    lv_label_set_text(lbl_node_name, model::mesh.node_name ? model::mesh.node_name : T_PAPER_HW_VERSION);
+#endif
 
     // Big clock
     lbl_clock = lv_label_create(parent);

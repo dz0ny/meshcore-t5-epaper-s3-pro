@@ -35,8 +35,8 @@ static const int n_zoom = 5;
 static int zoom_idx = 2;  // default 5km
 
 // Map area dimensions
-static const int MAP_W = 530;
-static const int MAP_H = 720;
+static const int MAP_W = UI_MAP_W;
+static const int MAP_H = UI_MAP_H;
 static const int MAP_CX = MAP_W / 2;
 static const int MAP_CY = MAP_H / 2;
 
@@ -54,6 +54,14 @@ static int contact_count = 0;
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void rebuild_map();
+
+static void style_overlay_label(lv_obj_t* obj) {
+    lv_obj_set_style_text_color(obj, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(obj, UI_BORDER_THIN, LV_PART_MAIN);
+    lv_obj_set_style_border_color(obj, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
+}
 
 static void on_zoom_in(lv_event_t* e) {
     if (zoom_idx > 0) zoom_idx--;
@@ -211,12 +219,12 @@ static void rebuild_map() {
     int grid_px_x = (int)(grid_km * scale_x);
     if (grid_px_y > 20 && grid_px_x > 20) {
         for (int gy = grid_px_y; MAP_CY + gy < MAP_H; gy += grid_px_y) {
-            draw_hline_dashed_thick(MAP_CY + gy, 3, MAP_GRID_COLOR);
-            draw_hline_dashed_thick(MAP_CY - gy, 3, MAP_GRID_COLOR);
+            draw_hline_dashed_thick(MAP_CY + gy, UI_BORDER_CARD, MAP_GRID_COLOR);
+            draw_hline_dashed_thick(MAP_CY - gy, UI_BORDER_CARD, MAP_GRID_COLOR);
         }
         for (int gx = grid_px_x; MAP_CX + gx < MAP_W; gx += grid_px_x) {
-            draw_vline_dashed_thick(MAP_CX + gx, 3, MAP_GRID_COLOR);
-            draw_vline_dashed_thick(MAP_CX - gx, 3, MAP_GRID_COLOR);
+            draw_vline_dashed_thick(MAP_CX + gx, UI_BORDER_CARD, MAP_GRID_COLOR);
+            draw_vline_dashed_thick(MAP_CX - gx, UI_BORDER_CARD, MAP_GRID_COLOR);
         }
     }
 
@@ -299,19 +307,30 @@ static void poll_update(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Map", on_back);
 
     if (!canvas_buf) {
         canvas_buf = (uint8_t*)heap_caps_malloc(MAP_W * MAP_H, MALLOC_CAP_SPIRAM);
     }
 
-    canvas_obj = lv_canvas_create(parent);
-    lv_obj_set_pos(canvas_obj, 5, 130);
+    lv_obj_t* content = lv_obj_create(parent);
+    lv_obj_set_pos(content, UI_MAP_X, UI_MAP_Y);
+    lv_obj_set_size(content, MAP_W, MAP_H);
+    lv_obj_set_style_bg_color(content, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(content, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(content, UI_BORDER_THIN, LV_PART_MAIN);
+    lv_obj_set_style_border_color(content, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
+    lv_obj_set_style_radius(content, 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(content, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+
+    canvas_obj = lv_canvas_create(content);
+    lv_obj_set_size(canvas_obj, lv_pct(100), lv_pct(100));
+    lv_obj_set_pos(canvas_obj, 0, 0);
     lv_canvas_set_buffer(canvas_obj, canvas_buf, MAP_W, MAP_H, LV_COLOR_FORMAT_L8);
 
-    tap_layer = lv_obj_create(parent);
-    lv_obj_set_size(tap_layer, MAP_W, MAP_H);
-    lv_obj_set_pos(tap_layer, 5, 130);
+    tap_layer = lv_obj_create(content);
+    lv_obj_set_size(tap_layer, lv_pct(100), lv_pct(100));
+    lv_obj_set_pos(tap_layer, 0, 0);
     lv_obj_set_style_bg_opa(tap_layer, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(tap_layer, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(tap_layer, 0, LV_PART_MAIN);
@@ -319,18 +338,15 @@ static void create(lv_obj_t* parent) {
 
     grid_label = lv_label_create(tap_layer);
     lv_obj_set_style_text_font(grid_label, UI_FONT_SMALL, LV_PART_MAIN);
-    lv_obj_set_style_text_color(grid_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(grid_label, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(grid_label, LV_OPA_COVER, LV_PART_MAIN);
+    style_overlay_label(grid_label);
     lv_obj_set_style_pad_all(grid_label, 3, LV_PART_MAIN);
     lv_obj_set_pos(grid_label, 5, 5);
 
     no_fix_label = lv_label_create(tap_layer);
     lv_obj_set_style_text_font(no_fix_label, UI_FONT_BODY, LV_PART_MAIN);
-    lv_obj_set_style_text_color(no_fix_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(no_fix_label, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(no_fix_label, LV_OPA_COVER, LV_PART_MAIN);
+    style_overlay_label(no_fix_label);
     lv_obj_set_style_text_align(no_fix_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(no_fix_label, 6, LV_PART_MAIN);
     lv_obj_set_width(no_fix_label, MAP_W);
     lv_label_set_text(no_fix_label, "Waiting for GPS fix...");
     lv_obj_set_pos(no_fix_label, 0, MAP_CY + 30);
@@ -348,36 +364,34 @@ static void create(lv_obj_t* parent) {
 
         contact_name_labels[i] = lv_label_create(tap_layer);
         lv_obj_set_style_text_font(contact_name_labels[i], UI_FONT_SMALL, LV_PART_MAIN);
-        lv_obj_set_style_text_color(contact_name_labels[i], lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_bg_color(contact_name_labels[i], lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(contact_name_labels[i], LV_OPA_COVER, LV_PART_MAIN);
+        style_overlay_label(contact_name_labels[i]);
         lv_obj_set_style_pad_all(contact_name_labels[i], 2, LV_PART_MAIN);
         lv_obj_add_flag(contact_name_labels[i], LV_OBJ_FLAG_HIDDEN);
     }
 
-    lv_obj_t* btn_in = ui::nav::text_button(parent, "+", on_zoom_in, NULL);
-    lv_obj_set_size(btn_in, 80, 60);
-    lv_obj_align(btn_in, LV_ALIGN_BOTTOM_LEFT, 20, -20);
+    lv_obj_t* btn_in = ui::nav::text_button(tap_layer, "+", on_zoom_in, NULL);
+    lv_obj_set_size(btn_in, UI_MAP_BTN_W, UI_MAP_BTN_H);
+    lv_obj_align(btn_in, LV_ALIGN_BOTTOM_LEFT, 6, -6);
 
-    lbl_zoom = lv_label_create(parent);
+    lbl_zoom = lv_label_create(tap_layer);
     lv_obj_set_style_text_font(lbl_zoom, UI_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_zoom, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_align(lbl_zoom, LV_ALIGN_BOTTOM_MID, 0, -35);
+    style_overlay_label(lbl_zoom);
+    lv_obj_set_style_pad_hor(lbl_zoom, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(lbl_zoom, 2, LV_PART_MAIN);
+    lv_obj_align(lbl_zoom, LV_ALIGN_BOTTOM_MID, 0, -12);
     lv_label_set_text(lbl_zoom, "5km");
 
-    lv_obj_t* btn_out = ui::nav::text_button(parent, "-", on_zoom_out, NULL);
-    lv_obj_set_size(btn_out, 80, 60);
-    lv_obj_align(btn_out, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
+    lv_obj_t* btn_out = ui::nav::text_button(tap_layer, "-", on_zoom_out, NULL);
+    lv_obj_set_size(btn_out, UI_MAP_BTN_W, UI_MAP_BTN_H);
+    lv_obj_align(btn_out, LV_ALIGN_BOTTOM_RIGHT, -6, -6);
 
-    lbl_dist_info = lv_label_create(parent);
+    lbl_dist_info = lv_label_create(tap_layer);
     lv_obj_set_style_text_font(lbl_dist_info, UI_FONT_BODY, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_dist_info, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(lbl_dist_info, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(lbl_dist_info, LV_OPA_COVER, LV_PART_MAIN);
+    style_overlay_label(lbl_dist_info);
     lv_obj_set_style_pad_all(lbl_dist_info, 4, LV_PART_MAIN);
     lv_obj_set_style_text_align(lbl_dist_info, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(lbl_dist_info, lv_pct(90));
-    lv_obj_align(lbl_dist_info, LV_ALIGN_BOTTOM_MID, 0, -85);
+    lv_obj_align(lbl_dist_info, LV_ALIGN_TOP_MID, 0, 4);
     lv_label_set_text(lbl_dist_info, "Tap a contact for distance");
 
     load_contacts();

@@ -20,7 +20,6 @@ static void on_gps_toggle(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "GPS Settings", on_back);
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 

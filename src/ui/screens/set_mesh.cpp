@@ -16,8 +16,8 @@ static lv_obj_t* lbl_cr = NULL;
 static lv_obj_t* lbl_txpow = NULL;
 static lv_obj_t* lbl_gps_share = NULL;
 
-static const float freqs[] = {868.0, 869.525, 869.618, 915.0, 433.0};
-static const int n_freqs = 5;
+static const float freqs[] = {868.0, 869.525, 869.618, 910.525, 915.0, 433.0};
+static const int n_freqs = 6;
 static const float bws[] = {31.25, 62.5, 125.0, 250.0, 500.0};
 static const int n_bws = 5;
 static const uint8_t sfs[] = {7, 8, 9, 10, 11, 12};
@@ -73,7 +73,6 @@ static void on_gps_share(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Mesh Config", on_back);
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 

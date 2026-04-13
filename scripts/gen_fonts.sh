@@ -100,6 +100,26 @@ npx lv_font_conv --bpp 4 --size 120 \
     --format lvgl --lv-font-name lv_font_montserrat_bold_120 \
     -o "$OUT_DIR/montserrat_bold_120.c" --no-compress
 
+# ---------- T-Deck fonts (smaller sizes with same glyph coverage) ----------
+
+# noto_14 — T-Deck statusbar, secondary info (replaces built-in montserrat_14)
+echo "  noto_14.c"
+npx lv_font_conv --bpp 4 --size 14 \
+    --font "$NOTO" -r "$LATIN" \
+    --font "$FA5" -r "$FA5_GLYPHS" \
+    --font "$SYMBOLS" -r "$SYMBOL_GLYPHS" \
+    --format lvgl --lv-font-name lv_font_noto_14 \
+    -o "$OUT_DIR/noto_14.c" --no-compress
+
+# noto_16 — T-Deck titles, menu labels (replaces built-in montserrat_16)
+echo "  noto_16.c"
+npx lv_font_conv --bpp 4 --size 16 \
+    --font "$NOTO" -r "$LATIN" \
+    --font "$FA5" -r "$FA5_GLYPHS" \
+    --font "$SYMBOLS" -r "$SYMBOL_GLYPHS" \
+    --format lvgl --lv-font-name lv_font_noto_16 \
+    -o "$OUT_DIR/noto_16.c" --no-compress
+
 # Fix include paths (lv_font_conv generates "lvgl/lvgl.h", we need "lvgl.h")
 echo "Fixing include paths..."
 sed -i '' 's|#include "lvgl/lvgl.h"|#include "lvgl.h"|g' "$OUT_DIR"/*.c

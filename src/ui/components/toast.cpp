@@ -34,16 +34,16 @@ void show(const char* text, uint32_t timeout_ms) {
     toast_obj = lv_obj_create(layer);
     lv_obj_set_size(toast_obj, lv_pct(80), LV_SIZE_CONTENT);
     lv_obj_align(toast_obj, LV_ALIGN_TOP_MID, 0, 60);
-    lv_obj_set_style_bg_color(toast_obj, lv_color_hex(EPD_COLOR_FG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(toast_obj, 3, LV_PART_MAIN);
-    lv_obj_set_style_border_color(toast_obj, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(toast_obj, lv_color_hex(EPD_COLOR_PROMPT_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(toast_obj, UI_BORDER_CARD, LV_PART_MAIN);
+    lv_obj_set_style_border_color(toast_obj, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_radius(toast_obj, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_all(toast_obj, 20, LV_PART_MAIN);
     lv_obj_clear_flag(toast_obj, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* lbl = lv_label_create(toast_obj);
     lv_obj_set_style_text_font(lbl, UI_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_PROMPT_TXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(lbl, lv_pct(100));
     lv_label_set_text(lbl, text);

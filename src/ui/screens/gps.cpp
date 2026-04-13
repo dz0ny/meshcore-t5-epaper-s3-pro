@@ -57,7 +57,6 @@ static void update_cb(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "GPS", on_back);
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 

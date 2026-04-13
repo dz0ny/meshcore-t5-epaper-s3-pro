@@ -217,7 +217,7 @@ static void update_card_row(int idx) {
     lv_obj_set_style_bg_opa(card_state_pills[idx], filled_pill ? LV_OPA_COVER : LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_text_color(card_state_labels[idx],
                                 lv_color_hex(filled_pill ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_border_width(card_rows[idx], cards[idx].pending ? 4 : 3, LV_PART_MAIN);
+    lv_obj_set_style_border_width(card_rows[idx], cards[idx].pending ? UI_BORDER_CARD + 1 : UI_BORDER_CARD, LV_PART_MAIN);
     if (!row_visible[idx]) {
         lv_obj_clear_flag(card_rows[idx], LV_OBJ_FLAG_HIDDEN);
         row_visible[idx] = true;
@@ -808,8 +808,8 @@ static void ensure_row(int idx) {
     lv_obj_t* row = lv_obj_create(sensor_list);
     lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_style_bg_color(row, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(row, 3, LV_PART_MAIN);
-    lv_obj_set_style_border_color(row, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, UI_BORDER_CARD, LV_PART_MAIN);
+    lv_obj_set_style_border_color(row, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_radius(row, 20, LV_PART_MAIN);
     lv_obj_set_style_pad_all(row, 18, LV_PART_MAIN);
     lv_obj_set_style_pad_row(row, 14, LV_PART_MAIN);
@@ -839,8 +839,8 @@ static void ensure_row(int idx) {
     lv_obj_set_size(pill, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_bg_opa(pill, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(pill, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_border_width(pill, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_color(pill, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_border_width(pill, UI_BORDER_THIN, LV_PART_MAIN);
+    lv_obj_set_style_border_color(pill, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_radius(pill, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_set_style_pad_hor(pill, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_ver(pill, 6, LV_PART_MAIN);
@@ -934,7 +934,6 @@ static void poll_updates(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Sensors", on_back);
 
     sensor_list = ui::nav::scroll_list(parent);
     lv_obj_set_height(sensor_list, lv_pct(82));

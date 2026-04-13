@@ -139,7 +139,7 @@ static void poll_discovered(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    lbl_filter = ui::nav::back_button_action(parent, "Discovery", on_back, filter_names[filter_mode], on_filter_cycle, NULL);
+    lbl_filter = ui::screen_mgr::set_nav_action(filter_names[filter_mode], on_filter_cycle, NULL);
 
     node_list = ui::nav::scroll_list(parent);
 

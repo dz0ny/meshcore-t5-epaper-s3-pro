@@ -7,10 +7,15 @@
 #define UI_FONT_SMALL       &lv_font_noto_24
 #define UI_FONT_BODY        &lv_font_noto_28
 #define UI_FONT_TITLE       &lv_font_montserrat_bold_30
+#define UI_FONT_NAV         &lv_font_noto_24
 #define UI_FONT_CLOCK_SM    &lv_font_montserrat_bold_80
 #define UI_FONT_CLOCK_LG    &lv_font_montserrat_bold_120
 
 // ---------- Shared components ----------
+
+#define UI_OUTER_WIDTH_PCT   95
+#define UI_OUTER_MARGIN_X    5
+#define UI_NAV_PAD_LEFT      5
 
 // Statusbar
 #define UI_STATUSBAR_HEIGHT  50
@@ -51,8 +56,19 @@
 #define UI_ACTION_BTN_RADIUS 12
 #define UI_ACTION_BTN_BORDER 3
 
+// Borders
+#define UI_BORDER_CARD       3
+#define UI_BORDER_THIN       2
+
+// ---------- Splash screen ----------
+#define UI_SPLASH_TITLE_Y   -60
+#define UI_SPLASH_SUB_Y      60
+#define UI_SPLASH_VER_Y     100
+#define UI_SPLASH_STATUS_Y  160
+
 // ---------- Home screen ----------
 #define UI_HOME_NODE_Y       55
+#define UI_HOME_SHOW_NODE    1
 #define UI_HOME_CLOCK_Y      100
 #define UI_HOME_DATE_Y       225
 #define UI_HOME_MENU_Y       340
@@ -88,3 +104,15 @@
 // ---------- Ping screen ----------
 #define UI_PING_BTN_ROW_Y    360
 #define UI_PING_BTN_ROW_H    90
+
+// ---------- Map screen ----------
+#define UI_MAP_X             5
+#define UI_MAP_Y             130
+#define UI_MAP_W             530
+#define UI_MAP_H             825
+#define UI_MAP_BTN_W         80
+#define UI_MAP_BTN_H         60
+#define UI_MAP_BTN_SIDE      20
+#define UI_MAP_BTN_BOTTOM    -20
+#define UI_MAP_ZOOM_BOTTOM   -35
+#define UI_MAP_INFO_BOTTOM   -85

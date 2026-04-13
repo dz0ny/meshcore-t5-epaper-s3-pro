@@ -7,11 +7,14 @@ Preferences prefs;
 /* clang-format off */
 nvs_param nvs_default[NVS_ID_MAX] = {
     {NVS_ID_BACKLIGHT,      NVS_U8,     "blacklight",   .data = {.u8 = 0}},
+    {NVS_ID_BRIGHTNESS,     NVS_U8,     "brightness",   .data = {.u8 = 1}},
     {NVS_ID_EPD_VCOM,       NVS_U16,    "eps_vcom",     .data = {.u16 = 1000}},
     {NVS_ID_REFRESH_MODE,   NVS_U8,     "refresh_mode", .data = {.u8 = 0} },
     {NVS_ID_SLEEP_TIMEOUT,  NVS_U8,     "sleep_idx",    .data = {.u8 = 3} },
+    {NVS_ID_UI_THEME,       NVS_U8,     "ui_theme",     .data = {.u8 = 0} },
     {NVS_ID_BLE_ENABLED,    NVS_U8,     "ble_on",       .data = {.u8 = 0} },
     {NVS_ID_STATUSBAR_MEMORY, NVS_U8,   "mem_bar",      .data = {.u8 = 0} },
+    {NVS_ID_HIT_AREA_DEBUG, NVS_U8,     "hit_debug",    .data = {.u8 = 0} },
 };
 /* clang-format on */
 

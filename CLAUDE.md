@@ -76,14 +76,20 @@ screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };
 
 ### Layout Constants
 
-| Element | Size/Position |
-|---------|--------------|
-| Statusbar | y=5, height 50px, width 98% |
-| Back button | y=50, height 70px, width 95%, pad_left=5 |
-| scroll_list | 95% width, 85% height, aligned BOTTOM_MID, y_offset=-10 |
-| menu_item / toggle_item | 100% of parent width, 85px height, 15px padding |
-| text_button | 85% width, 80px height, 12px radius, 3px border |
-| ext_click_area | 25px for back button, 15px for action buttons, 10px for list items |
+All layout values live in `src/ui/layout/epaper.h` and `src/ui/layout/tdeck.h` as `UI_*` defines. Always use these defines — never hardcode pixel values.
+
+| Element | Define prefix | e-paper | T-Deck |
+|---------|--------------|---------|--------|
+| Splash title | `UI_SPLASH_TITLE_Y` | -60 | -40 |
+| Splash subtitle | `UI_SPLASH_SUB_Y` | 60 | 20 |
+| Splash version | `UI_SPLASH_VER_Y` | 100 | 50 |
+| Splash status | `UI_SPLASH_STATUS_Y` | 160 | 80 |
+| Statusbar | `UI_STATUSBAR_*` | y=5, h=50 | y=0, h=18 |
+| Back button | `UI_BACK_BTN_*` | y=50, h=70 | y=10, h=24 |
+| scroll_list | `UI_SCROLL_LIST_*` | 85% h, y=-10 | 82% h, y=-1 |
+| menu_item | `UI_MENU_ITEM_*` | 85px h, 15px pad | 40px h, 4px pad |
+| text_button | `UI_TEXT_BTN_*` | 80px h, 12px radius | 44px h, 6px radius |
+| ext_click_area | `UI_EXT_CLICK_*` | 35/25/25 | 20/15/15 |
 
 ### UI Components (ui::nav namespace in nav_button.h)
 

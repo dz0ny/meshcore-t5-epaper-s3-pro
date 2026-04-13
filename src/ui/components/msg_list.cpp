@@ -62,8 +62,8 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     lv_obj_set_style_pad_row(bubble, 2, LV_PART_MAIN);
 
     lv_obj_set_style_bg_color(bubble, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(bubble, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_color(bubble, lv_color_hex(EPD_COLOR_FG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(bubble, UI_BORDER_THIN, LV_PART_MAIN);
+    lv_obj_set_style_border_color(bubble, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
 
     // Sent messages: indent from left to distinguish from received
     if (is_self) {

@@ -26,7 +26,6 @@ static void on_battery(lv_event_t* e) {
 static void create(lv_obj_t* parent) {
     scr = parent;
 
-    ui::nav::back_button(parent, "Status", on_back);
 
     lv_obj_t* menu = lv_obj_create(parent);
     lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);

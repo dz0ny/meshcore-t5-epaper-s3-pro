@@ -11,6 +11,11 @@ namespace ui::port {
 
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;  // no-op on TFT but kept for API compat
 static volatile bool touch_enabled = true;
+static int backlight_mode = 1;
+static const char* mode_names_bl[] = {"On"};
+static int brightness = 2;
+static const char* bright_names[] = {"Low", "Mid", "High"};
+static const int bright_pwm[] = {50, 128, 255};
 
 // ---------- ST7789 SPI driver ----------
 // SPI at 80 MHz — matches trail-mate's proven T-Deck setup for fast flush.
@@ -235,18 +240,46 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
 
 static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     static uint32_t last_key = 0;
+    static uint32_t last_backspace_ms = 0;
+    static uint8_t backspace_repeat_count = 0;
+    static bool backspace_cleared = false;
 
     int c = board::keyboard_read_char();
     if (c > 0) {
+        uint32_t now = millis();
         last_key = (uint32_t)c;
         data->state = LV_INDEV_STATE_PRESSED;
 
         switch (c) {
-            case 0x08: data->key = LV_KEY_BACKSPACE; break;
+            case 0x08:
+                if (last_backspace_ms == 0 || (now - last_backspace_ms) > 250) {
+                    backspace_repeat_count = 1;
+                    backspace_cleared = false;
+                } else {
+                    backspace_repeat_count++;
+                }
+                last_backspace_ms = now;
+
+                if (!backspace_cleared && backspace_repeat_count >= 4) {
+                    lv_group_t *group = lv_group_get_default();
+                    lv_obj_t *focused = group ? lv_group_get_focused(group) : NULL;
+                    if (focused && lv_obj_check_type(focused, &lv_textarea_class)) {
+                        lv_textarea_set_text(focused, "");
+                        backspace_cleared = true;
+                    }
+                }
+
+                data->key = LV_KEY_BACKSPACE;
+                break;
             case 0x0D: data->key = LV_KEY_ENTER; break;
             case 0x1B: data->key = LV_KEY_ESC; break;
             case 0x09: data->key = LV_KEY_NEXT; break;
-            default:   data->key = (uint32_t)c; break;
+            default:
+                last_backspace_ms = 0;
+                backspace_repeat_count = 0;
+                backspace_cleared = false;
+                data->key = (uint32_t)c;
+                break;
         }
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
@@ -261,27 +294,30 @@ static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
 
 static const int TB_SCROLL_PX = 30;  // pixels per trackball tick
 
-// Find the innermost scrollable object on the active screen
+// Find the innermost scrollable object on the active screen.
+// Returns NULL if nothing is scrollable or UI not ready yet.
 static lv_obj_t* find_scrollable() {
     lv_obj_t *scr = lv_screen_active();
     if (!scr) return NULL;
-    // Walk children depth-first, return the first scrollable with overflow
-    for (uint32_t i = 0; i < lv_obj_get_child_count(scr); i++) {
+
+    uint32_t cnt = lv_obj_get_child_count(scr);
+    for (uint32_t i = 0; i < cnt; i++) {
         lv_obj_t *child = lv_obj_get_child(scr, i);
-        if (lv_obj_has_flag(child, LV_OBJ_FLAG_SCROLLABLE) &&
-            lv_obj_get_scroll_bottom(child) > 0) {
-            // Check grandchildren too (scroll_list is usually nested)
-            for (uint32_t j = 0; j < lv_obj_get_child_count(child); j++) {
-                lv_obj_t *gc = lv_obj_get_child(child, j);
-                if (lv_obj_has_flag(gc, LV_OBJ_FLAG_SCROLLABLE) &&
-                    lv_obj_get_scroll_bottom(gc) > 0) {
-                    return gc;
-                }
+        if (!child) continue;
+        if (!lv_obj_has_flag(child, LV_OBJ_FLAG_SCROLLABLE)) continue;
+
+        // Check grandchildren first (scroll_list is usually nested inside a screen container)
+        uint32_t gcnt = lv_obj_get_child_count(child);
+        for (uint32_t j = 0; j < gcnt; j++) {
+            lv_obj_t *gc = lv_obj_get_child(child, j);
+            if (!gc) continue;
+            if (lv_obj_has_flag(gc, LV_OBJ_FLAG_SCROLLABLE)) {
+                return gc;
             }
-            return child;
         }
+        return child;
     }
-    return scr;
+    return NULL;
 }
 
 static void trackball_scroll_cb(lv_timer_t *t) {
@@ -292,20 +328,6 @@ static void trackball_scroll_cb(lv_timer_t *t) {
         lv_obj_t *target = find_scrollable();
         if (target) {
             lv_obj_scroll_by(target, -tb.dx * TB_SCROLL_PX, -tb.dy * TB_SCROLL_PX, LV_ANIM_OFF);
-        }
-    }
-
-    if (tb.clicked) {
-        // Simulate a tap in the center of the screen
-        lv_point_t pt = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-        lv_indev_t *touch = lv_indev_get_next(NULL);
-        if (touch) {
-            lv_indev_set_cursor(touch, NULL);  // ensure no cursor obj
-        }
-        // Use LVGL's click-on-focused approach: send clicked event to focused obj
-        lv_obj_t *focused = lv_screen_active();
-        if (focused) {
-            lv_obj_send_event(focused, LV_EVENT_CLICKED, NULL);
         }
     }
 }
@@ -328,24 +350,12 @@ void init() {
     lv_display_set_flush_cb(disp, disp_flush_cb);
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
 
-    // Phase 5 "Large Partial" strategy: half-screen DMA buffers in internal SRAM.
-    // Internal SRAM has ~3-4x faster bandwidth than PSRAM. The 2x tiling penalty
-    // (two render passes) is cheaper than PSRAM wait-states for full-frame buffers.
-    // 320 * 120 * 2 bytes = 76,800 bytes per buffer — fits in ESP32-S3 internal DMA.
-    size_t buf_size = SCREEN_WIDTH * (SCREEN_HEIGHT / 2) * sizeof(lv_color16_t);
-    void *buf1 = heap_caps_malloc(buf_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-    void *buf2 = heap_caps_malloc(buf_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-    if (!buf1 || !buf2) {
-        // Fallback: PSRAM full-screen if internal DMA too small
-        if (buf1) free(buf1);
-        if (buf2) free(buf2);
-        buf_size = SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(lv_color16_t);
-        buf1 = ps_malloc(buf_size);
-        buf2 = ps_malloc(buf_size);
-        Serial.printf("LVGL: PSRAM full-screen buffers %u bytes\n", (unsigned)buf_size);
-    } else {
-        Serial.printf("LVGL: DMA half-screen internal buffers %u bytes\n", (unsigned)buf_size);
-    }
+    // Full-screen double buffer in PSRAM — plenty of PSRAM available (8MB),
+    // keeps internal DRAM free for stack, heap, and DMA peripherals.
+    size_t buf_size = SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(lv_color16_t);
+    void *buf1 = ps_malloc(buf_size);
+    void *buf2 = ps_malloc(buf_size);
+    Serial.printf("LVGL: PSRAM buffers %u bytes each\n", (unsigned)buf_size);
     lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
     // Touch
@@ -373,6 +383,14 @@ void init() {
     if (board::peri_status[E_PERI_TRACKBALL]) {
         lv_timer_create(trackball_scroll_cb, 30, NULL);  // ~33Hz poll
     }
+
+    int stored_brightness = nvs_param_get_u8(NVS_ID_BRIGHTNESS);
+    if (stored_brightness < 0 || stored_brightness > 2) {
+        stored_brightness = 1;
+    }
+    brightness = stored_brightness;
+
+    apply_backlight();
 }
 
 // ---------- Refresh mode (no-ops on TFT) ----------
@@ -388,40 +406,26 @@ void touch_disable() { touch_enabled = false; }
 
 // ---------- Backlight ----------
 
-static int backlight_mode = 1;
-static const char* mode_names_bl[] = {"Auto", "On", "Off"};
-
-static int brightness = 2;
-static const char* bright_names[] = {"Low", "Mid", "High"};
-static const int bright_pwm[] = {50, 128, 255};
-
 void set_backlight(int mode) {
-    if (mode < 0) mode = 0;
-    if (mode > 2) mode = 2;
-    backlight_mode = mode;
-    if (mode == 2) {
-        analogWrite(TDECK_DISP_BL, 0);
-    } else {
-        analogWrite(TDECK_DISP_BL, bright_pwm[brightness]);
-    }
+    (void)mode;
+    backlight_mode = 1;
+    analogWrite(TDECK_DISP_BL, bright_pwm[brightness]);
 }
 
 void set_brightness(int level) {
     if (level < 0) level = 0;
     if (level > 2) level = 2;
     brightness = level;
-    if (backlight_mode != 2) {
-        analogWrite(TDECK_DISP_BL, bright_pwm[brightness]);
-    }
+    analogWrite(TDECK_DISP_BL, bright_pwm[brightness]);
 }
 
 void apply_backlight() {
     analogWrite(TDECK_DISP_BL, bright_pwm[brightness]);
 }
 
-bool is_backlight_auto() { return backlight_mode == 0; }
+bool is_backlight_auto() { return false; }
 int get_backlight() { return backlight_mode; }
-const char* get_backlight_name() { return mode_names_bl[backlight_mode]; }
+const char* get_backlight_name() { return mode_names_bl[0]; }
 int get_brightness() { return brightness; }
 const char* get_brightness_name() { return bright_names[brightness]; }
 int get_brightness_pwm() { return bright_pwm[brightness]; }

@@ -46,11 +46,11 @@ static void poll_new(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Messages", on_back);
 
-    msg_container = ui::msg_list::create(parent);
-    lv_obj_set_size(msg_container, lv_pct(95), lv_pct(85));
-    lv_obj_align(msg_container, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_t* content = ui::nav::content_area(parent);
+    msg_container = ui::msg_list::create(content);
+    lv_obj_set_size(msg_container, lv_pct(100), lv_pct(100));
+    lv_obj_center(msg_container);
 
     // Load all stored messages
     if (model::message_count == 0) {

@@ -64,7 +64,6 @@ static void on_factory_reset(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Storage", on_back);
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 

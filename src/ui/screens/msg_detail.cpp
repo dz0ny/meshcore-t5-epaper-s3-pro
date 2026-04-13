@@ -35,7 +35,6 @@ static void on_reply(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Message", on_back);
 
     if (msg_idx < 0 || msg_idx >= model::message_count) return;
 

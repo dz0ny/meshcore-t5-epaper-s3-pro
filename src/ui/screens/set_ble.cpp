@@ -35,7 +35,6 @@ static void on_pin_regen(lv_event_t* e) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button(parent, "Bluetooth", on_back);
 
     lv_obj_t* list = ui::nav::scroll_list(parent);
 

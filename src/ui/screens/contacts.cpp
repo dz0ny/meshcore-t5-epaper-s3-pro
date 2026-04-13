@@ -165,7 +165,7 @@ static void poll_contacts(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::nav::back_button_action(parent, "Contacts", on_back, "Discover", on_discovery, NULL);
+    ui::screen_mgr::set_nav_action("Discover", on_discovery, NULL);
     contact_list = ui::nav::scroll_list(parent);
 
     lbl_filter = ui::nav::toggle_item(contact_list, "Filter", filter_names[filter_mode], on_filter_cycle, NULL);

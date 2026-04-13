@@ -122,8 +122,8 @@ lv_obj_t* create() {
     memory_enabled_state = nvs_param_get_u8(NVS_ID_STATUSBAR_MEMORY) != 0;
 
     bar_obj = lv_obj_create(layer);
-    lv_obj_set_size(bar_obj, lv_pct(98), UI_STATUSBAR_HEIGHT);
-    lv_obj_set_pos(bar_obj, UI_STATUSBAR_Y, UI_STATUSBAR_Y);
+    lv_obj_set_size(bar_obj, lv_pct(UI_OUTER_WIDTH_PCT), UI_STATUSBAR_HEIGHT);
+    lv_obj_set_pos(bar_obj, UI_OUTER_MARGIN_X, UI_STATUSBAR_Y);
     lv_obj_set_style_bg_color(bar_obj, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(bar_obj, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(bar_obj, UI_STATUSBAR_PAD, LV_PART_MAIN);
@@ -184,6 +184,32 @@ void set_memory_enabled(bool enabled) {
     sync_memory_visibility();
     if (memory_enabled_state) {
         do_update(model::DIRTY_CLOCK);
+    }
+}
+
+void recreate() {
+    bool was_hidden = bar_obj && lv_obj_has_flag(bar_obj, LV_OBJ_FLAG_HIDDEN);
+
+    if (bar_obj) {
+        lv_obj_delete(bar_obj);
+    }
+
+    bar_obj = NULL;
+    lbl_time = NULL;
+    lbl_battery = NULL;
+    lbl_gps = NULL;
+    lbl_ble = NULL;
+    spacer = NULL;
+    lbl_memory = NULL;
+    cached_time[0] = 0;
+    cached_gps[0] = 0;
+    cached_ble[0] = 0;
+    cached_memory[0] = 0;
+    cached_battery[0] = 0;
+
+    create();
+    if (was_hidden) {
+        hide();
     }
 }
 

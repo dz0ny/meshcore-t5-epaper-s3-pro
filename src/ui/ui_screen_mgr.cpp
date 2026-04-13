@@ -1,5 +1,6 @@
 #include "ui_screen_mgr.h"
 #include "ui_theme.h"
+#include "components/nav_button.h"
 #include <cstring>
 
 // Ported from factory scr_mrg.cpp — kept as C-style linked list, works well.
@@ -18,9 +19,15 @@ enum card_state {
 struct card_t {
     int id;
     lv_obj_t* obj;
+    lv_obj_t* nav_obj;
+    lv_obj_t* nav_action_label;
     card_state st;
     screen_lifecycle_t* life;
     char nav_title[32];
+    char nav_action_text[24];
+    lv_event_cb_t nav_action_cb;
+    void* nav_action_user_data;
+    bool nav_action_enabled;
     card_t* next;
     card_t* prev;
 };
@@ -29,6 +36,7 @@ static card_t* head = NULL;
 static card_t* top_card = NULL;
 static card_t* stack_root = NULL;
 static card_t* stack_top = NULL;
+static card_t* creating_card = NULL;
 
 // No animations on e-paper — partial redraws cause visual artifacts
 static lv_screen_load_anim_t anim_sw   = LV_SCR_LOAD_ANIM_NONE;
@@ -65,14 +73,61 @@ static const char* default_nav_title(int id) {
     }
 }
 
+static bool screen_has_nav(int id) {
+    return id != SCREEN_HOME && id != SCREEN_LOCK;
+}
+
+static void on_default_back(lv_event_t* e) {
+    (void)e;
+    pop(true);
+}
+
+static void rebuild_nav(card_t* card) {
+    if (!card || !card->obj) return;
+
+    if (card->nav_obj) {
+        lv_obj_delete(card->nav_obj);
+        card->nav_obj = NULL;
+        card->nav_action_label = NULL;
+    }
+
+    if (!screen_has_nav(card->id)) return;
+
+    const char* title = card->nav_title[0] ? card->nav_title : default_nav_title(card->id);
+    if (card->nav_action_enabled) {
+        card->nav_obj = ui::nav::back_button_action_ex(
+            card->obj, title, on_default_back, card->nav_action_text,
+            card->nav_action_cb, card->nav_action_user_data, &card->nav_action_label);
+    } else {
+        card->nav_obj = ui::nav::back_button(card->obj, title, on_default_back);
+        card->nav_action_label = NULL;
+    }
+    if (card->nav_obj) {
+        lv_obj_move_foreground(card->nav_obj);
+    }
+}
+
 static lv_obj_t* create_default_screen(card_t* card) {
     lv_obj_t* obj = lv_obj_create(NULL);
     lv_obj_set_size(obj, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_color(obj, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_all(obj, 5, LV_PART_MAIN);
-
+    card->obj = obj;
+    card->nav_obj = NULL;
+    card->nav_action_label = NULL;
+    card->nav_title[0] = 0;
+    card->nav_action_text[0] = 0;
+    card->nav_action_cb = NULL;
+    card->nav_action_user_data = NULL;
+    card->nav_action_enabled = false;
+    rebuild_nav(card);
+    creating_card = card;
     card->life->create(obj);
+    creating_card = NULL;
+    if (card->nav_obj) {
+        lv_obj_move_foreground(card->nav_obj);
+    }
     return obj;
 }
 
@@ -120,9 +175,15 @@ void init() {
     head = (card_t*)lv_malloc(sizeof(card_t));
     head->id = -1;
     head->obj = NULL;
+    head->nav_obj = NULL;
+    head->nav_action_label = NULL;
     head->st = (card_state)-1;
     head->life = NULL;
     head->nav_title[0] = 0;
+    head->nav_action_text[0] = 0;
+    head->nav_action_cb = NULL;
+    head->nav_action_user_data = NULL;
+    head->nav_action_enabled = false;
     head->next = NULL;
     head->prev = NULL;
     top_card = head;
@@ -136,9 +197,15 @@ bool register_screen(int id, screen_lifecycle_t* life) {
     card_t* c = (card_t*)lv_malloc(sizeof(card_t));
     c->id = id;
     c->obj = NULL;
+    c->nav_obj = NULL;
+    c->nav_action_label = NULL;
     c->st = STATE_IDLE;
     c->life = life;
     c->nav_title[0] = 0;
+    c->nav_action_text[0] = 0;
+    c->nav_action_cb = NULL;
+    c->nav_action_user_data = NULL;
+    c->nav_action_enabled = false;
     c->next = NULL;
     c->prev = top_card;
     top_card->next = c;
@@ -171,12 +238,20 @@ bool switch_to(int id, bool anim) {
     // Create new stack entry
     s = (card_t*)lv_malloc(sizeof(card_t));
     s->id = tgt->id;
-    s->obj = create_default_screen(tgt);
-    s->st = STATE_CREATED;
+    s->obj = NULL;
+    s->nav_obj = NULL;
+    s->nav_action_label = NULL;
+    s->st = STATE_IDLE;
     s->life = tgt->life;
     s->nav_title[0] = 0;
+    s->nav_action_text[0] = 0;
+    s->nav_action_cb = NULL;
+    s->nav_action_user_data = NULL;
+    s->nav_action_enabled = false;
     s->prev = NULL;
     s->next = NULL;
+    s->obj = create_default_screen(s);
+    s->st = STATE_CREATED;
     stack_root = s;
     stack_top = s;
 
@@ -198,10 +273,18 @@ bool push(int id, bool anim) {
 
     card_t* s = (card_t*)lv_malloc(sizeof(card_t));
     s->id = tgt->id;
-    s->obj = create_default_screen(tgt);
-    s->st = STATE_CREATED;
+    s->obj = NULL;
+    s->nav_obj = NULL;
+    s->nav_action_label = NULL;
+    s->st = STATE_IDLE;
     s->life = tgt->life;
     s->nav_title[0] = 0;
+    s->nav_action_text[0] = 0;
+    s->nav_action_cb = NULL;
+    s->nav_action_user_data = NULL;
+    s->nav_action_enabled = false;
+    s->obj = create_default_screen(s);
+    s->st = STATE_CREATED;
 
     if (!stack_top) {
         s->prev = NULL;
@@ -244,6 +327,59 @@ bool pop(bool anim) {
         if (cur_obj) lv_obj_delete(cur_obj);
     }
     return true;
+}
+
+void reload_stack() {
+    if (!stack_top) return;
+
+    for (card_t* card = stack_root; card; card = card->next) {
+        lv_obj_t* old_obj = card->obj;
+
+        if (card->st > STATE_INACTIVE) {
+            card->life->exit();
+            card->life->destroy();
+        } else if (card->st > STATE_DESTROYED) {
+            card->life->destroy();
+        }
+
+        if (card == stack_top) {
+            card->obj = create_default_screen(card);
+            card->st = STATE_CREATED;
+        } else {
+            card->obj = NULL;
+            card->st = STATE_DESTROYED;
+        }
+
+        if (old_obj) {
+            lv_obj_delete(old_obj);
+        }
+    }
+
+    activate(stack_top);
+    lv_screen_load(stack_top->obj);
+}
+
+lv_obj_t* set_nav_action(const char* action_text, lv_event_cb_t action_cb, void* action_user_data) {
+    card_t* card = creating_card ? creating_card : stack_top;
+    if (!card) return NULL;
+
+    if (!action_text || !action_cb) {
+        card->nav_action_enabled = false;
+        card->nav_action_text[0] = 0;
+        card->nav_action_cb = NULL;
+        card->nav_action_user_data = NULL;
+    } else {
+        card->nav_action_enabled = true;
+        strncpy(card->nav_action_text, action_text, sizeof(card->nav_action_text) - 1);
+        card->nav_action_text[sizeof(card->nav_action_text) - 1] = 0;
+        card->nav_action_cb = action_cb;
+        card->nav_action_user_data = action_user_data;
+    }
+
+    if (card->obj) {
+        rebuild_nav(card);
+    }
+    return card->nav_action_label;
 }
 
 void set_nav_title(const char* title) {

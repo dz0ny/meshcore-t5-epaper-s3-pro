@@ -127,8 +127,8 @@ static lv_obj_t* create_card(lv_obj_t* parent) {
     lv_obj_set_width(card, lv_pct(100));
     lv_obj_set_height(card, LV_SIZE_CONTENT);
     lv_obj_set_style_bg_color(card, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 3, LV_PART_MAIN);
-    lv_obj_set_style_border_color(card, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_border_width(card, UI_BORDER_CARD, LV_PART_MAIN);
+    lv_obj_set_style_border_color(card, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_radius(card, 20, LV_PART_MAIN);
     lv_obj_set_style_pad_all(card, 18, LV_PART_MAIN);
     lv_obj_set_style_pad_row(card, 10, LV_PART_MAIN);
@@ -480,7 +480,7 @@ void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t typ
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    lbl_auto_action = ui::nav::back_button_action(parent, "Ping", on_back, auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL);
+    lbl_auto_action = ui::screen_mgr::set_nav_action(auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL);
     lv_obj_t* summary_card = create_card(parent);
     lv_obj_set_size(summary_card, lv_pct(95), LV_SIZE_CONTENT);
     lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
