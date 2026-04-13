@@ -64,7 +64,7 @@ static void enable_typing_refresh_mode() {
         saved_refresh_mode = ui::port::get_refresh_mode();
         refresh_mode_overridden = true;
     }
-    ui::port::set_refresh_mode(UI_REFRESH_MODE_FAST);
+    ui::port::set_refresh_mode(UI_REFRESH_MODE_NORMAL);
 }
 
 static void restore_refresh_mode() {
