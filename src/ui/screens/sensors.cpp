@@ -47,6 +47,7 @@ static lv_obj_t* card_state_labels[MAX_CONTACTS] = {};
 static bool row_visible[MAX_CONTACTS] = {};
 
 static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len, uint32_t timestamp = 0);
+static void ensure_row(int idx);
 
 static const uint8_t LPP_BINARY_BOOL = 143;
 static const uint8_t LPP_BINARY_POWER_SWITCH = 144;
@@ -199,7 +200,9 @@ static bool load_persisted_telemetry(SensorCard& card) {
 }
 
 static void update_card_row(int idx) {
-    if (idx < 0 || idx >= card_count || !card_rows[idx]) return;
+    if (idx < 0 || idx >= card_count) return;
+    ensure_row(idx);
+    if (!card_rows[idx]) return;
 
     const char* state_text = "READY";
     bool filled_pill = false;
@@ -211,9 +214,15 @@ static void update_card_row(int idx) {
         state_text = "CACHED";
     }
 
-    lv_label_set_text(card_name_labels[idx], cards[idx].name);
-    lv_label_set_text(card_body_labels[idx], cards[idx].telemetry);
-    lv_label_set_text(card_state_labels[idx], state_text);
+    if (strcmp(lv_label_get_text(card_name_labels[idx]), cards[idx].name) != 0) {
+        lv_label_set_text(card_name_labels[idx], cards[idx].name);
+    }
+    if (strcmp(lv_label_get_text(card_body_labels[idx]), cards[idx].telemetry) != 0) {
+        lv_label_set_text(card_body_labels[idx], cards[idx].telemetry);
+    }
+    if (strcmp(lv_label_get_text(card_state_labels[idx]), state_text) != 0) {
+        lv_label_set_text(card_state_labels[idx], state_text);
+    }
     lv_obj_set_style_bg_opa(card_state_pills[idx], filled_pill ? LV_OPA_COVER : LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_text_color(card_state_labels[idx],
                                 lv_color_hex(filled_pill ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -225,6 +234,10 @@ static void update_card_row(int idx) {
 }
 
 static void rebuild_list() {
+    if (!sensor_list) return;
+    lv_display_t* disp = lv_obj_get_display(sensor_list);
+    lv_display_enable_invalidation(disp, false);
+
     int shown = 0;
 
     for (int i = 0; i < card_count; i++) {
@@ -247,6 +260,10 @@ static void rebuild_list() {
         }
     }
 
+    lv_obj_mark_layout_as_dirty(sensor_list);
+    lv_obj_update_layout(sensor_list);
+    lv_display_enable_invalidation(disp, true);
+    lv_obj_invalidate(sensor_list);
 }
 
 static void append_timestamp(char* out, size_t out_size, int& used, uint32_t timestamp) {
@@ -937,10 +954,6 @@ static void create(lv_obj_t* parent) {
 
     sensor_list = ui::nav::scroll_list(parent);
     lv_obj_set_height(sensor_list, lv_pct(82));
-
-    for (int i = 0; i < MAX_CONTACTS; i++) {
-        ensure_row(i);
-    }
 
     empty_label = lv_label_create(sensor_list);
     lv_obj_set_width(empty_label, lv_pct(100));

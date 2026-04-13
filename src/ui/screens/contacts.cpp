@@ -166,10 +166,9 @@ static void poll_contacts(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    ui::screen_mgr::set_nav_action("Discover", on_discovery, NULL);
+    lbl_filter = ui::screen_mgr::set_nav_actions(filter_names[filter_mode], on_filter_cycle, NULL,
+                                                 "Discover", on_discovery, NULL);
     contact_list = ui::nav::scroll_list(parent);
-
-    lbl_filter = ui::nav::toggle_item(contact_list, "Filter", filter_names[filter_mode], on_filter_cycle, NULL);
 
     empty_label = lv_label_create(contact_list);
     lv_obj_set_width(empty_label, lv_pct(100));

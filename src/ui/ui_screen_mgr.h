@@ -19,6 +19,8 @@ bool push(int id, bool anim);
 bool pop(bool anim);
 void reload_stack();
 lv_obj_t* set_nav_action(const char* action_text, lv_event_cb_t action_cb, void* action_user_data);
+lv_obj_t* set_nav_actions(const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
+                          const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data);
 void set_nav_title(const char* title);
 const char* previous_nav_title(const char* fallback);
 int  top_id();

@@ -21,13 +21,18 @@ struct card_t {
     lv_obj_t* obj;
     lv_obj_t* nav_obj;
     lv_obj_t* nav_action_label;
+    lv_obj_t* nav_action_label_2;
     card_state st;
     screen_lifecycle_t* life;
     char nav_title[32];
     char nav_action_text[24];
+    char nav_action_text_2[24];
     lv_event_cb_t nav_action_cb;
+    lv_event_cb_t nav_action_cb_2;
     void* nav_action_user_data;
+    void* nav_action_user_data_2;
     bool nav_action_enabled;
+    bool nav_action_enabled_2;
     card_t* next;
     card_t* prev;
 };
@@ -89,18 +94,26 @@ static void rebuild_nav(card_t* card) {
         lv_obj_delete(card->nav_obj);
         card->nav_obj = NULL;
         card->nav_action_label = NULL;
+        card->nav_action_label_2 = NULL;
     }
 
     if (!screen_has_nav(card->id)) return;
 
     const char* title = card->nav_title[0] ? card->nav_title : default_nav_title(card->id);
-    if (card->nav_action_enabled) {
-        card->nav_obj = ui::nav::back_button_action_ex(
-            card->obj, title, on_default_back, card->nav_action_text,
-            card->nav_action_cb, card->nav_action_user_data, &card->nav_action_label);
+    if (card->nav_action_enabled || card->nav_action_enabled_2) {
+        card->nav_obj = ui::nav::back_button_actions_ex(
+            card->obj, title, on_default_back,
+            card->nav_action_enabled ? card->nav_action_text : NULL,
+            card->nav_action_enabled ? card->nav_action_cb : NULL,
+            card->nav_action_enabled ? card->nav_action_user_data : NULL,
+            card->nav_action_enabled_2 ? card->nav_action_text_2 : NULL,
+            card->nav_action_enabled_2 ? card->nav_action_cb_2 : NULL,
+            card->nav_action_enabled_2 ? card->nav_action_user_data_2 : NULL,
+            &card->nav_action_label, &card->nav_action_label_2);
     } else {
         card->nav_obj = ui::nav::back_button(card->obj, title, on_default_back);
         card->nav_action_label = NULL;
+        card->nav_action_label_2 = NULL;
     }
     if (card->nav_obj) {
         lv_obj_move_foreground(card->nav_obj);
@@ -116,11 +129,16 @@ static lv_obj_t* create_default_screen(card_t* card) {
     card->obj = obj;
     card->nav_obj = NULL;
     card->nav_action_label = NULL;
+    card->nav_action_label_2 = NULL;
     card->nav_title[0] = 0;
     card->nav_action_text[0] = 0;
+    card->nav_action_text_2[0] = 0;
     card->nav_action_cb = NULL;
+    card->nav_action_cb_2 = NULL;
     card->nav_action_user_data = NULL;
+    card->nav_action_user_data_2 = NULL;
     card->nav_action_enabled = false;
+    card->nav_action_enabled_2 = false;
     rebuild_nav(card);
     creating_card = card;
     card->life->create(obj);
@@ -177,13 +195,18 @@ void init() {
     head->obj = NULL;
     head->nav_obj = NULL;
     head->nav_action_label = NULL;
+    head->nav_action_label_2 = NULL;
     head->st = (card_state)-1;
     head->life = NULL;
     head->nav_title[0] = 0;
     head->nav_action_text[0] = 0;
+    head->nav_action_text_2[0] = 0;
     head->nav_action_cb = NULL;
+    head->nav_action_cb_2 = NULL;
     head->nav_action_user_data = NULL;
+    head->nav_action_user_data_2 = NULL;
     head->nav_action_enabled = false;
+    head->nav_action_enabled_2 = false;
     head->next = NULL;
     head->prev = NULL;
     top_card = head;
@@ -199,13 +222,18 @@ bool register_screen(int id, screen_lifecycle_t* life) {
     c->obj = NULL;
     c->nav_obj = NULL;
     c->nav_action_label = NULL;
+    c->nav_action_label_2 = NULL;
     c->st = STATE_IDLE;
     c->life = life;
     c->nav_title[0] = 0;
     c->nav_action_text[0] = 0;
+    c->nav_action_text_2[0] = 0;
     c->nav_action_cb = NULL;
+    c->nav_action_cb_2 = NULL;
     c->nav_action_user_data = NULL;
+    c->nav_action_user_data_2 = NULL;
     c->nav_action_enabled = false;
+    c->nav_action_enabled_2 = false;
     c->next = NULL;
     c->prev = top_card;
     top_card->next = c;
@@ -241,13 +269,18 @@ bool switch_to(int id, bool anim) {
     s->obj = NULL;
     s->nav_obj = NULL;
     s->nav_action_label = NULL;
+    s->nav_action_label_2 = NULL;
     s->st = STATE_IDLE;
     s->life = tgt->life;
     s->nav_title[0] = 0;
     s->nav_action_text[0] = 0;
+    s->nav_action_text_2[0] = 0;
     s->nav_action_cb = NULL;
+    s->nav_action_cb_2 = NULL;
     s->nav_action_user_data = NULL;
+    s->nav_action_user_data_2 = NULL;
     s->nav_action_enabled = false;
+    s->nav_action_enabled_2 = false;
     s->prev = NULL;
     s->next = NULL;
     s->obj = create_default_screen(s);
@@ -276,13 +309,18 @@ bool push(int id, bool anim) {
     s->obj = NULL;
     s->nav_obj = NULL;
     s->nav_action_label = NULL;
+    s->nav_action_label_2 = NULL;
     s->st = STATE_IDLE;
     s->life = tgt->life;
     s->nav_title[0] = 0;
     s->nav_action_text[0] = 0;
+    s->nav_action_text_2[0] = 0;
     s->nav_action_cb = NULL;
+    s->nav_action_cb_2 = NULL;
     s->nav_action_user_data = NULL;
+    s->nav_action_user_data_2 = NULL;
     s->nav_action_enabled = false;
+    s->nav_action_enabled_2 = false;
     s->obj = create_default_screen(s);
     s->st = STATE_CREATED;
 
@@ -360,20 +398,38 @@ void reload_stack() {
 }
 
 lv_obj_t* set_nav_action(const char* action_text, lv_event_cb_t action_cb, void* action_user_data) {
+    return set_nav_actions(NULL, NULL, NULL, action_text, action_cb, action_user_data);
+}
+
+lv_obj_t* set_nav_actions(const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
+                          const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data) {
     card_t* card = creating_card ? creating_card : stack_top;
     if (!card) return NULL;
 
-    if (!action_text || !action_cb) {
+    if (!first_action_text || !first_action_cb) {
         card->nav_action_enabled = false;
         card->nav_action_text[0] = 0;
         card->nav_action_cb = NULL;
         card->nav_action_user_data = NULL;
     } else {
         card->nav_action_enabled = true;
-        strncpy(card->nav_action_text, action_text, sizeof(card->nav_action_text) - 1);
+        strncpy(card->nav_action_text, first_action_text, sizeof(card->nav_action_text) - 1);
         card->nav_action_text[sizeof(card->nav_action_text) - 1] = 0;
-        card->nav_action_cb = action_cb;
-        card->nav_action_user_data = action_user_data;
+        card->nav_action_cb = first_action_cb;
+        card->nav_action_user_data = first_action_user_data;
+    }
+
+    if (!second_action_text || !second_action_cb) {
+        card->nav_action_enabled_2 = false;
+        card->nav_action_text_2[0] = 0;
+        card->nav_action_cb_2 = NULL;
+        card->nav_action_user_data_2 = NULL;
+    } else {
+        card->nav_action_enabled_2 = true;
+        strncpy(card->nav_action_text_2, second_action_text, sizeof(card->nav_action_text_2) - 1);
+        card->nav_action_text_2[sizeof(card->nav_action_text_2) - 1] = 0;
+        card->nav_action_cb_2 = second_action_cb;
+        card->nav_action_user_data_2 = second_action_user_data;
     }
 
     if (card->obj) {

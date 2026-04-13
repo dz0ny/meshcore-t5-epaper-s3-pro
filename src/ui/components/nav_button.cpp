@@ -110,6 +110,35 @@ static void create_back_content(lv_obj_t* parent, const char* title) {
     lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
 }
 
+static lv_obj_t* create_nav_action_button(lv_obj_t* parent, const char* action_text,
+                                          lv_event_cb_t action_cb, void* action_user_data,
+                                          lv_obj_t** action_label_out) {
+    lv_obj_t* action = lv_obj_create(parent);
+    lv_obj_set_size(action, LV_SIZE_CONTENT, UI_ACTION_BTN_H);
+    lv_obj_set_style_bg_color(action, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_border_width(action, UI_ACTION_BTN_BORDER, LV_PART_MAIN);
+    lv_obj_set_style_border_color(action, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
+    lv_obj_set_style_radius(action, UI_ACTION_BTN_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(action, UI_ACTION_BTN_PAD_H, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(action, UI_ACTION_BTN_PAD_V, LV_PART_MAIN);
+    lv_obj_clear_flag(action, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(action, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(action, action_cb, LV_EVENT_CLICKED, action_user_data);
+    lv_obj_set_ext_click_area(action, UI_EXT_CLICK_ACTION);
+
+    lv_obj_t* label = lv_label_create(action);
+    lv_obj_set_style_text_font(label, UI_FONT_TITLE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_label_set_text(label, action_text);
+    lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_center(label);
+
+    if (action_label_out) {
+        *action_label_out = label;
+    }
+    return action;
+}
+
 lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     ui::screen_mgr::set_nav_title(title);
 
@@ -142,6 +171,16 @@ lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
 lv_obj_t* back_button_action_ex(lv_obj_t* parent, const char* title, lv_event_cb_t back_cb,
                                 const char* action_text, lv_event_cb_t action_cb, void* action_user_data,
                                 lv_obj_t** action_label_out) {
+    return back_button_actions_ex(parent, title, back_cb,
+                                  NULL, NULL, NULL,
+                                  action_text, action_cb, action_user_data,
+                                  NULL, action_label_out);
+}
+
+lv_obj_t* back_button_actions_ex(lv_obj_t* parent, const char* title, lv_event_cb_t back_cb,
+                                 const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
+                                 const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data,
+                                 lv_obj_t** first_action_label_out, lv_obj_t** second_action_label_out) {
     ui::screen_mgr::set_nav_title(title);
 
     lv_obj_t* row = create_back_hit_row(parent, NULL, NULL);
@@ -174,29 +213,28 @@ lv_obj_t* back_button_action_ex(lv_obj_t* parent, const char* title, lv_event_cb
 
     create_back_content(back, ui::screen_mgr::previous_nav_title(title));
 
-    lv_obj_t* action = lv_obj_create(row);
-    lv_obj_set_size(action, LV_SIZE_CONTENT, UI_ACTION_BTN_H);
-    lv_obj_align(action, LV_ALIGN_RIGHT_MID, 0, 0);
-    lv_obj_set_style_bg_color(action, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(action, UI_ACTION_BTN_BORDER, LV_PART_MAIN);
-    lv_obj_set_style_border_color(action, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-    lv_obj_set_style_radius(action, UI_ACTION_BTN_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_pad_hor(action, UI_ACTION_BTN_PAD_H, LV_PART_MAIN);
-    lv_obj_set_style_pad_ver(action, UI_ACTION_BTN_PAD_V, LV_PART_MAIN);
-    lv_obj_clear_flag(action, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(action, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(action, action_cb, LV_EVENT_CLICKED, action_user_data);
-    lv_obj_set_ext_click_area(action, UI_EXT_CLICK_ACTION);
+    lv_obj_t* actions = lv_obj_create(row);
+    lv_obj_set_size(actions, LV_SIZE_CONTENT, lv_pct(100));
+    lv_obj_align(actions, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_set_style_bg_opa(actions, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(actions, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(actions, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(actions, 4, LV_PART_MAIN);
+    lv_obj_clear_flag(actions, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(actions, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(actions, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    lv_obj_t* label = lv_label_create(action);
-    lv_obj_set_style_text_font(label, UI_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_label_set_text(label, action_text);
-    lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
-    lv_obj_center(label);
-
-    if (action_label_out) {
-        *action_label_out = label;
+    if (first_action_text && first_action_cb) {
+        create_nav_action_button(actions, first_action_text, first_action_cb, first_action_user_data,
+                                 first_action_label_out);
+    } else if (first_action_label_out) {
+        *first_action_label_out = NULL;
+    }
+    if (second_action_text && second_action_cb) {
+        create_nav_action_button(actions, second_action_text, second_action_cb, second_action_user_data,
+                                 second_action_label_out);
+    } else if (second_action_label_out) {
+        *second_action_label_out = NULL;
     }
     return row;
 }
