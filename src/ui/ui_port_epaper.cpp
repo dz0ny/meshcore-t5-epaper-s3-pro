@@ -286,11 +286,10 @@ void init() {
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
 
     // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
-    // Double buffered in PSRAM — CPU renders to buf2 while buf1 flushes to e-paper.
+    // Single buffered in PSRAM to reduce memory pressure on the S3.
     size_t buf_size = pixel_count;  // 1 byte per pixel for L8
     void *buf1 = ps_calloc(1, buf_size);
-    void *buf2 = ps_calloc(1, buf_size);
-    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_buffers(disp, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
