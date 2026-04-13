@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 28 px
  * Bpp: 4
- * Opts: --bpp 4 --size 28 --font /tmp/NotoSans-Medium.ttf -r 0x20-0x7F,0xA0-0x24F,0x2000-0x206F --font /Users/dz0ny/t-paper/.pio/libdeps/t-paper/lvgl/scripts/built_in_font/FontAwesome5-Solid+Brands+Regular.woff -r 0xF005,0xF00C,0xF00D,0xF053,0xF054,0xF071,0xF0E7,0xF11C,0xF124,0xF240,0xF241,0xF242,0xF243,0xF244,0xF293,0xF294,0xF3C5,0xF55A,0xF689,0xF8A2 --font /tmp/NotoSansSymbols2.ttf -r 0x2605,0x2606 --format lvgl --lv-font-name lv_font_noto_28 -o /Users/dz0ny/t-paper/src/fonts/noto_28.c --no-compress
+ * Opts: --bpp 4 --size 28 --font /Users/dz0ny/t-paper/assets/fonts/NotoSans-Medium.ttf -r 0x20-0x7F,0xA0-0x24F,0x2000-0x206F --font /Users/dz0ny/t-paper/.pio/libdeps/lilygo-t5-epaper-pro/lvgl/scripts/built_in_font/FontAwesome5-Solid+Brands+Regular.woff -r 0xF005,0xF00C,0xF00D,0xF053,0xF054,0xF071,0xF0E7,0xF11C,0xF124,0xF240,0xF241,0xF242,0xF243,0xF244,0xF293,0xF294,0xF3C5,0xF55A,0xF689,0xF8A2 --font /Users/dz0ny/t-paper/assets/fonts/NotoSansSymbols2.ttf -r 0x2605,0x2606 --format lvgl --lv-font-name lv_font_noto_28 -o /Users/dz0ny/t-paper/src/fonts/noto_28.c --no-compress
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

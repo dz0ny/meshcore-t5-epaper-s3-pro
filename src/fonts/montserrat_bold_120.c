@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 120 px
  * Bpp: 4
- * Opts: --bpp 4 --size 120 --font /tmp/Montserrat-Bold.ttf -r 0x20-0x3A --format lvgl --lv-font-name lv_font_montserrat_bold_120 -o /Users/dz0ny/t-paper/src/fonts/montserrat_bold_120.c --no-compress
+ * Opts: --bpp 4 --size 120 --font /Users/dz0ny/t-paper/assets/fonts/Montserrat-Bold.ttf -r 0x20-0x3A --format lvgl --lv-font-name lv_font_montserrat_bold_120 -o /Users/dz0ny/t-paper/src/fonts/montserrat_bold_120.c --no-compress
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
