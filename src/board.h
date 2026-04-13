@@ -230,6 +230,8 @@ namespace board {
 
     // Keyboard
     int keyboard_read_char();
+    void keyboard_set_backlight(uint8_t level);  // 0-255
+    uint8_t keyboard_get_backlight();
 
     // Trackball
     struct TrackballState {

@@ -15,15 +15,35 @@ TouchDrvGT911 touch;
 volatile bool home_button_pressed = false;
 
 // ---------- Trackball ISR state ----------
+// Debounce: ignore edges within TB_DEBOUNCE_US of the last edge (per axis).
+// Meshtastic uses TB_THRESHOLD=3; we debounce in time instead for smoother feel.
+
+static constexpr uint32_t TB_DEBOUNCE_US = 800;  // microseconds
 
 static volatile int8_t tb_dx = 0;
 static volatile int8_t tb_dy = 0;
 static volatile bool tb_clicked = false;
+static volatile uint32_t tb_last_up = 0;
+static volatile uint32_t tb_last_down = 0;
+static volatile uint32_t tb_last_left = 0;
+static volatile uint32_t tb_last_right = 0;
 
-static void IRAM_ATTR tb_up_isr()    { tb_dy--; }
-static void IRAM_ATTR tb_down_isr()  { tb_dy++; }
-static void IRAM_ATTR tb_left_isr()  { tb_dx--; }
-static void IRAM_ATTR tb_right_isr() { tb_dx++; }
+static void IRAM_ATTR tb_up_isr() {
+    uint32_t now = micros();
+    if (now - tb_last_up > TB_DEBOUNCE_US) { tb_dy--; tb_last_up = now; }
+}
+static void IRAM_ATTR tb_down_isr() {
+    uint32_t now = micros();
+    if (now - tb_last_down > TB_DEBOUNCE_US) { tb_dy++; tb_last_down = now; }
+}
+static void IRAM_ATTR tb_left_isr() {
+    uint32_t now = micros();
+    if (now - tb_last_left > TB_DEBOUNCE_US) { tb_dx--; tb_last_left = now; }
+}
+static void IRAM_ATTR tb_right_isr() {
+    uint32_t now = micros();
+    if (now - tb_last_right > TB_DEBOUNCE_US) { tb_dx++; tb_last_right = now; }
+}
 static void IRAM_ATTR tb_click_isr() { tb_clicked = true; }
 
 // ---------- Detail init functions ----------
@@ -86,7 +106,8 @@ bool trackball_init() {
 }
 
 bool sd_init() {
-    if (!SD.begin(BOARD_SD_CS)) {
+    // 75MHz SD SPI — matches Meshtastic T-Deck config for fast file I/O
+    if (!SD.begin(BOARD_SD_CS, SPI, 75000000U)) {
         Serial.println("SD card mount failed");
         return false;
     }
@@ -163,11 +184,15 @@ void init() {
 
 // ---------- Battery (ADC-based) ----------
 
+// ADC multiplier 2.11 — Meshtastic uses this to correct for voltage divider
+// tolerance (nominal 2.0 from 100k/100k, but real-world ~2.11).
+static constexpr float ADC_MULTIPLIER = 2.11f;
+
 static int read_battery_mv() {
     analogSetPinAttenuation(TDECK_BAT_ADC, ADC_11db);
     int mv = analogReadMilliVolts(TDECK_BAT_ADC);
     if (mv <= 0) return 0;
-    return mv * 2;  // voltage divider
+    return (int)(mv * ADC_MULTIPLIER);
 }
 
 static uint16_t mv_to_percent(int mv) {
@@ -231,6 +256,10 @@ void rtc_get_date(uint8_t* year, uint8_t* month, uint8_t* day, uint8_t* week) {
 
 // ---------- Keyboard ----------
 
+// Keyboard I2C commands (from Meshtastic/LilyGo reference)
+static constexpr uint8_t KB_CMD_BRIGHTNESS = 0x01;
+static uint8_t kb_backlight_level = 0;
+
 int keyboard_read_char() {
     if (!peri_status[E_PERI_KEYBOARD]) return -1;
     Wire.requestFrom((uint8_t)TDECK_KB_ADDR, (uint8_t)1);
@@ -239,6 +268,19 @@ int keyboard_read_char() {
         if (c != 0) return (int)c;
     }
     return -1;
+}
+
+void keyboard_set_backlight(uint8_t level) {
+    if (!peri_status[E_PERI_KEYBOARD]) return;
+    kb_backlight_level = level;
+    Wire.beginTransmission(TDECK_KB_ADDR);
+    Wire.write(KB_CMD_BRIGHTNESS);
+    Wire.write(level);
+    Wire.endTransmission();
+}
+
+uint8_t keyboard_get_backlight() {
+    return kb_backlight_level;
 }
 
 // ---------- Trackball ----------

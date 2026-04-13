@@ -133,7 +133,13 @@
 #define LV_USE_ARC        0
 #define LV_USE_BAR        0
 #define LV_USE_BUTTON     1
-#define LV_USE_BUTTONMATRIX 1   /* required by keyboard */
+#if defined(BOARD_TDECK)
+#define LV_USE_BUTTONMATRIX 0   /* not needed — physical keyboard */
+#define LV_USE_KEYBOARD   0
+#else
+#define LV_USE_BUTTONMATRIX 1   /* required by on-screen keyboard */
+#define LV_USE_KEYBOARD   1
+#endif
 #define LV_USE_CALENDAR   0
 #define LV_USE_CANVAS     1
 #define LV_USE_CHART      0
@@ -141,7 +147,6 @@
 #define LV_USE_DROPDOWN   0
 #define LV_USE_IMAGE      1  /* required by canvas */
 #define LV_USE_IMAGEBUTTON 0
-#define LV_USE_KEYBOARD   1
 #define LV_USE_LABEL      1
 #define LV_USE_LED        0
 #define LV_USE_LINE       1

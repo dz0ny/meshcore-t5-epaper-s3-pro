@@ -332,12 +332,12 @@ static void create(lv_obj_t* parent) {
         lv_obj_add_flag(recipient_list, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(editor_card, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ta, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        if (kb) lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(editor_card, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ta, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        if (kb) lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(send_btn, LV_OBJ_FLAG_HIDDEN);
     }
 }
