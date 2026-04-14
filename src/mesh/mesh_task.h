@@ -20,6 +20,12 @@ bool send_to_name(const char* name, const char* text);
 
 // Send a broadcast to the public channel.
 bool send_public(const char* text);
+bool send_channel(uint8_t channel_idx, const char* text);
+
+struct ChannelEntry {
+    uint8_t idx;
+    char name[32];
+};
 
 // Get the node name.
 const char* node_name();
@@ -35,6 +41,7 @@ uint32_t get_packets_sent();
 
 // Push all known contacts to the bridge queue (for UI to display).
 void push_all_contacts();
+int get_channels(ChannelEntry* dest, int max_num);
 
 // Discovery: get recently heard nodes (not yet contacts)
 struct DiscoveredNode {

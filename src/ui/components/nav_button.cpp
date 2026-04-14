@@ -181,6 +181,19 @@ lv_obj_t* back_button_actions_ex(lv_obj_t* parent, const char* title, lv_event_c
                                  const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
                                  const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data,
                                  lv_obj_t** first_action_label_out, lv_obj_t** second_action_label_out) {
+    return back_button_three_actions_ex(parent, title, back_cb,
+                                        first_action_text, first_action_cb, first_action_user_data,
+                                        second_action_text, second_action_cb, second_action_user_data,
+                                        NULL, NULL, NULL,
+                                        first_action_label_out, second_action_label_out, NULL);
+}
+
+lv_obj_t* back_button_three_actions_ex(lv_obj_t* parent, const char* title, lv_event_cb_t back_cb,
+                                       const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
+                                       const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data,
+                                       const char* third_action_text, lv_event_cb_t third_action_cb, void* third_action_user_data,
+                                       lv_obj_t** first_action_label_out, lv_obj_t** second_action_label_out,
+                                       lv_obj_t** third_action_label_out) {
     ui::screen_mgr::set_nav_title(title);
 
     lv_obj_t* row = create_back_hit_row(parent, NULL, NULL);
@@ -235,6 +248,12 @@ lv_obj_t* back_button_actions_ex(lv_obj_t* parent, const char* title, lv_event_c
                                  second_action_label_out);
     } else if (second_action_label_out) {
         *second_action_label_out = NULL;
+    }
+    if (third_action_text && third_action_cb) {
+        create_nav_action_button(actions, third_action_text, third_action_cb, third_action_user_data,
+                                 third_action_label_out);
+    } else if (third_action_label_out) {
+        *third_action_label_out = NULL;
     }
     return row;
 }

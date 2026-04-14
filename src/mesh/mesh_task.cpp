@@ -193,11 +193,15 @@ bool send_to_name(const char* name, const char* text) {
 }
 
 bool send_public(const char* text) {
+    return send_channel(0, text);
+}
+
+bool send_channel(uint8_t channel_idx, const char* text) {
     if (!the_mesh_ptr || !mesh_mutex || !text) return false;
     bool ok = false;
     if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
         ChannelDetails ch;
-        if (the_mesh_ptr->getChannel(0, ch)) {
+        if (the_mesh_ptr->getChannel(channel_idx, ch) && ch.name[0]) {
             ok = the_mesh_ptr->sendGroupMessage(
                 rtc_clock.getCurrentTime(), ch.channel,
                 the_mesh_ptr->getNodeName(), text, strlen(text));
@@ -616,6 +620,25 @@ void push_all_contacts() {
         }
         xSemaphoreGive(mesh_mutex);
     }
+}
+
+int get_channels(ChannelEntry* dest, int max_num) {
+    if (!dest || max_num <= 0 || !the_mesh_ptr || !mesh_mutex) return 0;
+    int count = 0;
+    if (xSemaphoreTake(mesh_mutex, pdMS_TO_TICKS(500))) {
+        for (int i = 0; i < MAX_GROUP_CHANNELS && count < max_num; i++) {
+            ChannelDetails ch;
+            if (!the_mesh_ptr->getChannel(i, ch) || !ch.name[0]) {
+                continue;
+            }
+            dest[count].idx = (uint8_t)i;
+            strncpy(dest[count].name, ch.name, sizeof(dest[count].name) - 1);
+            dest[count].name[sizeof(dest[count].name) - 1] = 0;
+            count++;
+        }
+        xSemaphoreGive(mesh_mutex);
+    }
+    return count;
 }
 
 } // namespace mesh::task

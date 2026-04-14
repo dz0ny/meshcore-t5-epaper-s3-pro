@@ -17,6 +17,12 @@ lv_obj_t* back_button_actions_ex(lv_obj_t* parent, const char* title, lv_event_c
                                  const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
                                  const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data,
                                  lv_obj_t** first_action_label_out, lv_obj_t** second_action_label_out);
+lv_obj_t* back_button_three_actions_ex(lv_obj_t* parent, const char* title, lv_event_cb_t back_cb,
+                                       const char* first_action_text, lv_event_cb_t first_action_cb, void* first_action_user_data,
+                                       const char* second_action_text, lv_event_cb_t second_action_cb, void* second_action_user_data,
+                                       const char* third_action_text, lv_event_cb_t third_action_cb, void* third_action_user_data,
+                                       lv_obj_t** first_action_label_out, lv_obj_t** second_action_label_out,
+                                       lv_obj_t** third_action_label_out);
 
 // Create a menu item row: icon + label, fills width.
 lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label, lv_event_cb_t cb, void* user_data);

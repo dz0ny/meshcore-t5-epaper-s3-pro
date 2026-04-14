@@ -26,19 +26,33 @@ static lv_obj_t* kb = NULL;
 static lv_obj_t* send_btn = NULL;
 static lv_obj_t* editor_card = NULL;
 static lv_obj_t* char_count = NULL;
+static lv_obj_t* lbl_filter_fav = NULL;
+static lv_obj_t* lbl_filter_channels = NULL;
+static lv_obj_t* lbl_filter_people = NULL;
 static int saved_refresh_mode = UI_REFRESH_MODE_NORMAL;
 static bool refresh_mode_overridden = false;
 
 static char recipient_name[32] = {};
 static bool recipient_chosen = false;
 static bool recipient_is_channel = false;
+static uint8_t recipient_channel_idx = 0;
+
+enum PickFilter {
+    PICK_FILTER_FAVORITES = 0,
+    PICK_FILTER_CHANNELS = 1,
+    PICK_FILTER_PEOPLE = 2,
+};
+
+static PickFilter current_filter = PICK_FILTER_PEOPLE;
 
 // Contact/channel list for picker
 struct PickEntry {
     char name[32];
     bool is_channel;
+    uint8_t channel_idx;
+    uint8_t flags;
 };
-static PickEntry pick_entries[MAX_CONTACTS + MAX_GROUP_CHANNELS + 1];  // contacts + channels + public
+static PickEntry pick_entries[MAX_CONTACTS + MAX_GROUP_CHANNELS];
 static int pick_count = 0;
 
 void set_recipient(const char* name) {
@@ -47,10 +61,12 @@ void set_recipient(const char* name) {
         recipient_name[31] = 0;
         recipient_chosen = true;
         recipient_is_channel = false;
+        recipient_channel_idx = 0;
     } else {
         recipient_name[0] = 0;
         recipient_chosen = false;
         recipient_is_channel = false;
+        recipient_channel_idx = 0;
     }
 }
 
@@ -58,6 +74,34 @@ static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void show_editor();
 static void show_picker();
+static void render_recipient_list();
+
+static void set_filter_button_state(lv_obj_t* label, bool active) {
+    if (!label) return;
+    lv_obj_t* button = lv_obj_get_parent(label);
+    if (!button) return;
+    lv_obj_set_style_bg_color(button, lv_color_hex(active ? EPD_COLOR_TEXT : EPD_COLOR_BG), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(active ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_border_color(button, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
+}
+
+static void sync_filter_nav() {
+    set_filter_button_state(lbl_filter_fav, current_filter == PICK_FILTER_FAVORITES);
+    set_filter_button_state(lbl_filter_channels, current_filter == PICK_FILTER_CHANNELS);
+    set_filter_button_state(lbl_filter_people, current_filter == PICK_FILTER_PEOPLE);
+}
+
+static bool entry_matches_filter(const PickEntry& entry) {
+    switch (current_filter) {
+        case PICK_FILTER_FAVORITES:
+            return !entry.is_channel && (entry.flags & 0x01) != 0;
+        case PICK_FILTER_CHANNELS:
+            return entry.is_channel;
+        case PICK_FILTER_PEOPLE:
+        default:
+            return !entry.is_channel;
+    }
+}
 
 static void enable_typing_refresh_mode() {
     if (!refresh_mode_overridden) {
@@ -107,6 +151,7 @@ static void on_entry_pick(lv_event_t* e) {
     if (idx >= 0 && idx < pick_count) {
         strncpy(recipient_name, pick_entries[idx].name, sizeof(recipient_name) - 1);
         recipient_is_channel = pick_entries[idx].is_channel;
+        recipient_channel_idx = pick_entries[idx].channel_idx;
         recipient_chosen = true;
         show_editor();
     }
@@ -117,7 +162,7 @@ static void on_send(lv_event_t* e) {
     if (!text || !text[0] || !recipient_chosen) return;
 
     bool sent = recipient_is_channel
-        ? mesh::task::send_public(text)
+        ? mesh::task::send_channel(recipient_channel_idx, text)
         : mesh::task::send_to_name(recipient_name, text);
 
     if (sent && model::message_count < MAX_STORED_MESSAGES) {
@@ -164,6 +209,24 @@ static void on_recipient_click(lv_event_t* e) {
     }
 }
 
+static void set_filter(PickFilter filter) {
+    current_filter = filter;
+    sync_filter_nav();
+    render_recipient_list();
+}
+
+static void on_filter_favorites(lv_event_t* e) {
+    set_filter(PICK_FILTER_FAVORITES);
+}
+
+static void on_filter_channels(lv_event_t* e) {
+    set_filter(PICK_FILTER_CHANNELS);
+}
+
+static void on_filter_people(lv_event_t* e) {
+    set_filter(PICK_FILTER_PEOPLE);
+}
+
 static void show_editor() {
     update_recipient_card();
 
@@ -192,21 +255,69 @@ static void show_picker() {
 static void load_entries() {
     pick_count = 0;
 
-    // Public channel is always first
-    strncpy(pick_entries[pick_count].name, "Public", 31);
-    pick_entries[pick_count].is_channel = true;
-    pick_count++;
+    mesh::task::ChannelEntry channels[MAX_GROUP_CHANNELS] = {};
+    int channel_count = mesh::task::get_channels(channels, MAX_GROUP_CHANNELS);
+    for (int i = 0; i < channel_count && pick_count < (int)(sizeof(pick_entries) / sizeof(pick_entries[0])); i++) {
+        strncpy(pick_entries[pick_count].name, channels[i].name, sizeof(pick_entries[pick_count].name) - 1);
+        pick_entries[pick_count].name[sizeof(pick_entries[pick_count].name) - 1] = 0;
+        pick_entries[pick_count].is_channel = true;
+        pick_entries[pick_count].channel_idx = channels[i].idx;
+        pick_entries[pick_count].flags = 0;
+        pick_count++;
+    }
 
     // Then contacts — only chat nodes and rooms, not relays/sensors
     mesh::task::push_all_contacts();
     mesh::bridge::ContactUpdate cu;
-    while (mesh::bridge::pop_contact(cu) && pick_count < 65) {
+    while (mesh::bridge::pop_contact(cu) && pick_count < (int)(sizeof(pick_entries) / sizeof(pick_entries[0]))) {
         if (cu.type == ADV_TYPE_REPEATER || cu.type == ADV_TYPE_SENSOR) continue;
         strncpy(pick_entries[pick_count].name, cu.name, 31);
         pick_entries[pick_count].name[31] = 0;
         pick_entries[pick_count].is_channel = false;
+        pick_entries[pick_count].channel_idx = 0;
+        pick_entries[pick_count].flags = cu.flags;
         ui::text::strip_emoji(pick_entries[pick_count].name);
         pick_count++;
+    }
+}
+
+static void render_recipient_list() {
+    if (!recipient_list) return;
+
+    lv_obj_clean(recipient_list);
+
+    int shown = 0;
+    for (int i = 0; i < pick_count; i++) {
+        if (!entry_matches_filter(pick_entries[i])) continue;
+
+        char label[40];
+        if (pick_entries[i].is_channel) {
+            snprintf(label, sizeof(label), "# %s", pick_entries[i].name);
+        } else if ((pick_entries[i].flags & 0x01) != 0) {
+            snprintf(label, sizeof(label), "\xE2\x98\x85 %s", pick_entries[i].name);
+        } else {
+            strncpy(label, pick_entries[i].name, sizeof(label) - 1);
+            label[sizeof(label) - 1] = 0;
+        }
+
+        ui::nav::menu_item(recipient_list, NULL, label, on_entry_pick, (void*)(intptr_t)i);
+        shown++;
+    }
+
+    if (shown == 0) {
+        lv_obj_t* empty = lv_label_create(recipient_list);
+        lv_obj_set_width(empty, lv_pct(100));
+        lv_obj_set_flex_grow(empty, 1);
+        lv_obj_set_style_text_font(empty, UI_FONT_TITLE, LV_PART_MAIN);
+        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        if (current_filter == PICK_FILTER_FAVORITES) {
+            lv_label_set_text(empty, "\n\nNo favorites yet");
+        } else if (current_filter == PICK_FILTER_CHANNELS) {
+            lv_label_set_text(empty, "\n\nNo channels yet");
+        } else {
+            lv_label_set_text(empty, "\n\nNo contacts yet");
+        }
     }
 }
 
@@ -214,6 +325,12 @@ static void create(lv_obj_t* parent) {
     scr = parent;
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(parent, LV_SCROLLBAR_MODE_OFF);
+
+    ui::nav::back_button_three_actions_ex(parent, "Compose", on_back,
+        "Fav", on_filter_favorites, NULL,
+        "Chan", on_filter_channels, NULL,
+        "Ppl", on_filter_people, NULL,
+        &lbl_filter_fav, &lbl_filter_channels, &lbl_filter_people);
 
     // --- Recipient card ---
     recipient_card = lv_obj_create(parent);
@@ -298,20 +415,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_clear_flag(recipient_list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
 
     load_entries();
-    if (pick_count == 0) {
-        lv_obj_t* empty = lv_label_create(recipient_list);
-        lv_obj_set_width(empty, lv_pct(100));
-        lv_obj_set_flex_grow(empty, 1);
-        lv_obj_set_style_text_font(empty, UI_FONT_TITLE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(empty, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-        lv_label_set_text(empty, "\n\nNo contacts yet");
-    } else {
-        for (int i = 0; i < pick_count; i++) {
-            ui::nav::menu_item(recipient_list, NULL, pick_entries[i].name,
-                on_entry_pick, (void*)(intptr_t)i);
-        }
-    }
+    sync_filter_nav();
+    render_recipient_list();
 
     // --- Editor card (Message title + char count) ---
 #ifdef BOARD_TDECK
@@ -445,11 +550,16 @@ static void destroy() {
     send_btn = NULL;
     editor_card = NULL;
     char_count = NULL;
+    lbl_filter_fav = NULL;
+    lbl_filter_channels = NULL;
+    lbl_filter_people = NULL;
     saved_refresh_mode = UI_REFRESH_MODE_NORMAL;
     refresh_mode_overridden = false;
     recipient_name[0] = 0;
     recipient_chosen = false;
     recipient_is_channel = false;
+    recipient_channel_idx = 0;
+    current_filter = PICK_FILTER_PEOPLE;
     pick_count = 0;
 }
 
