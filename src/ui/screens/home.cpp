@@ -62,8 +62,6 @@ static void create(lv_obj_t* parent) {
     // Home screen uses absolute positioning — disable flex from screen manager
     lv_obj_set_layout(parent, LV_LAYOUT_NONE);
 
-    // DEBUG: clock/date disabled to test menu touch alignment
-#if 0
     // Node name (mesh identity) — hidden on small screens
 #if UI_HOME_SHOW_NODE
     lbl_node_name = lv_label_create(parent);
@@ -87,7 +85,6 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text_fmt(lbl_date, "%02d/%02d/20%02d",
         model::clock.day, model::clock.month, model::clock.year);
-#endif
 
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
