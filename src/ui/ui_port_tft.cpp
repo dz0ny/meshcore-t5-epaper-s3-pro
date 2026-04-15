@@ -227,6 +227,10 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
         next_poll = now + 30;
         if (board::touch.isPressed() && touch_enabled) {
             if (board::touch.getPoint(&x, &y, 1)) {
+                if (x < 0) x = 0;
+                else if (x >= SCREEN_WIDTH) x = SCREEN_WIDTH - 1;
+                if (y < 0) y = 0;
+                else if (y >= SCREEN_HEIGHT) y = SCREEN_HEIGHT - 1;
                 last_state = LV_INDEV_STATE_PRESSED;
             }
         } else {

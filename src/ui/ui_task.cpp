@@ -23,9 +23,9 @@
 #include "screens/battery.h"
 #include "screens/mesh_settings.h"
 #include "screens/status.h"
-#include "screens/settings_preferences.h"
 #include "screens/settings_debug.h"
 #include "screens/settings_device.h"
+#include "screens/touch_debug.h"
 #include "screens/set_display.h"
 #include "screens/set_gps.h"
 #include "screens/set_mesh.h"
@@ -457,9 +457,9 @@ void start(int core) {
     ui::screen_mgr::register_screen(18, &ui::screen::map::lifecycle);
     ui::screen_mgr::register_screen(19, &ui::screen::sensors::lifecycle);
     ui::screen_mgr::register_screen(20, &ui::screen::ping::lifecycle);
-    ui::screen_mgr::register_screen(21, &ui::screen::settings_preferences::lifecycle);
     ui::screen_mgr::register_screen(22, &ui::screen::settings_debug::lifecycle);
     ui::screen_mgr::register_screen(23, &ui::screen::settings_device::lifecycle);
+    ui::screen_mgr::register_screen(24, &ui::screen::touch_debug::lifecycle);
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);
 

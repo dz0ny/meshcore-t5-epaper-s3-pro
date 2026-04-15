@@ -7,7 +7,7 @@
 #define UI_FONT_SMALL       &lv_font_noto_24
 #define UI_FONT_BODY        &lv_font_noto_28
 #define UI_FONT_TITLE       &lv_font_montserrat_bold_30
-#define UI_FONT_NAV         &lv_font_noto_24
+#define UI_FONT_NAV         &lv_font_noto_28
 #define UI_FONT_CLOCK_SM    &lv_font_montserrat_bold_80
 #define UI_FONT_CLOCK_LG    &lv_font_montserrat_bold_120
 
@@ -18,19 +18,19 @@
 #define UI_NAV_PAD_LEFT      5
 
 // Statusbar
-#define UI_STATUSBAR_HEIGHT  50
+#define UI_STATUSBAR_HEIGHT  40
 #define UI_STATUSBAR_Y       5
 #define UI_STATUSBAR_PAD     5
 #define UI_STATUSBAR_COL_PAD 8
 
 // Screen top padding — push content below the statusbar overlay
-#define UI_STATUSBAR_BOTTOM  (UI_STATUSBAR_Y + UI_STATUSBAR_HEIGHT)
+#define UI_STATUSBAR_BOTTOM  (UI_STATUSBAR_Y + UI_STATUSBAR_HEIGHT - 5)
 
 // Back button
 #define UI_BACK_BTN_HEIGHT   70
 
 // Gap between nav bar and content container (flex row gap)
-#define UI_NAV_CONTENT_GAP   10
+#define UI_NAV_CONTENT_GAP   0
 #define UI_BACK_BTN_PAD_TOP  10
 #define UI_BACK_BTN_PAD_BOTTOM 10
 #define UI_BACK_BTN_COL_PAD  8

@@ -58,6 +58,10 @@ static void create(lv_obj_t* parent) {
     sync_hit_hint(ui::nav::hit_area_debug_enabled());
 
     lbl_memory = ui::nav::toggle_item(list, "Memory Bar", ui::statusbar::memory_enabled() ? "On" : "Off", on_memory_toggle, NULL);
+
+    ui::nav::menu_item(list, NULL, "Touch Debug", [](lv_event_t* e) {
+        ui::screen_mgr::push(SCREEN_TOUCH_DEBUG, true);
+    }, NULL);
 }
 
 static void entry() {}

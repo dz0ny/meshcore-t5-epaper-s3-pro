@@ -73,6 +73,7 @@ enum screen_id {
     SCREEN_SETTINGS_PREFERENCES = 21,
     SCREEN_SETTINGS_DEBUG       = 22,
     SCREEN_SETTINGS_DEVICE      = 23,
+    SCREEN_TOUCH_DEBUG          = 24,
 };
 
 // ---------- Font declarations ----------

@@ -76,7 +76,6 @@ static const char* default_nav_title(int id) {
         case SCREEN_MAP: return "Map";
         case SCREEN_SENSORS: return "Sensors";
         case SCREEN_PING: return "Ping";
-        case SCREEN_SETTINGS_PREFERENCES: return "Preferences";
         case SCREEN_SETTINGS_DEBUG: return "Debug";
         case SCREEN_SETTINGS_DEVICE: return "Device";
         default: return "";
