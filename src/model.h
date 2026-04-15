@@ -75,11 +75,62 @@ struct Clock {
     int8_t  tz_offset_hours;        // auto-calculated from GPS longitude
 };
 
+static constexpr int MAX_CONTACT_ENTRIES = 100;
+static constexpr int MAX_DISCOVERY_ENTRIES = 16;
+static constexpr int MAX_TELEMETRY_ENTRIES = 32;
+static constexpr int MAX_TRACE_ENTRIES = 16;
+
+struct ContactEntry {
+    char name[32];
+    uint8_t pub_key[32];
+    uint8_t type;
+    uint8_t flags;
+    bool has_path;
+    int32_t gps_lat;
+    int32_t gps_lon;
+};
+
+struct DiscoveryEntry {
+    char name[32];
+    uint8_t pubkey_prefix[7];
+    uint8_t path_len;
+    uint32_t recv_timestamp;
+};
+
+struct TelemetryEntry {
+    bool valid;
+    uint8_t pub_key_prefix[7];
+    uint8_t data[96];
+    uint8_t len;
+    uint32_t timestamp;
+    uint32_t seq;
+};
+
+struct TraceEntry {
+    bool valid;
+    uint32_t tag;
+    uint8_t hop_count;
+    int8_t snr_there_q4;
+    int8_t snr_back_q4;
+    uint32_t timestamp;
+    uint32_t seq;
+};
+
 // Global state — written by updaters, read by UI
 extern GPS     gps;
 extern Battery battery;
 extern Mesh    mesh;
 extern Clock   clock;
+extern ContactEntry contacts[MAX_CONTACT_ENTRIES];
+extern int contact_count;
+extern uint32_t contacts_revision;
+extern DiscoveryEntry discovery[MAX_DISCOVERY_ENTRIES];
+extern int discovery_count;
+extern uint32_t discovery_revision;
+extern TelemetryEntry telemetry[MAX_TELEMETRY_ENTRIES];
+extern uint32_t telemetry_revision;
+extern TraceEntry traces[MAX_TRACE_ENTRIES];
+extern uint32_t trace_revision;
 
 // Sleep config
 struct Sleep {
@@ -113,6 +164,13 @@ void note_incoming_message(const char* from_name, const char* text);
 void clear_unread_messages();
 void mark_dirty(uint32_t flags);
 uint32_t take_dirty();
+void ingest_bridge_events();
+void refresh_contacts();
+void refresh_discovery();
+const ContactEntry* find_contact_by_prefix(const uint8_t* prefix, int prefix_len = 7);
+const ContactEntry* find_contact_by_name(const char* name);
+const TelemetryEntry* find_telemetry(const uint8_t* prefix, int prefix_len = 7);
+const TraceEntry* find_trace(uint32_t tag);
 
 // Call from background tasks to refresh the model
 void update_gps();

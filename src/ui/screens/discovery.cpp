@@ -5,8 +5,7 @@
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/text_utils.h"
-#include "../../mesh/mesh_task.h"
-#include "../../mesh/mesh_bridge.h"
+#include "../../model.h"
 
 namespace ui::screen::discovery {
 
@@ -16,11 +15,10 @@ static lv_obj_t* lbl_filter = NULL;
 static lv_obj_t* node_rows[16] = {};
 static lv_obj_t* node_row_labels[16] = {};
 static lv_obj_t* node_row_values[16] = {};
+static int row_node_idx[16] = {};
 static bool row_visible[16] = {};
 static lv_obj_t* empty_label = NULL;
-
-static mesh::task::DiscoveredNode nodes[16];
-static int node_count = 0;
+static uint32_t last_discovery_revision = 0;
 static int filter_mode = 0;
 static const char* filter_names[] = {"New", "Added", "All"};
 
@@ -29,21 +27,24 @@ static void rebuild_list();
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 
 static void on_node_click(lv_event_t* e) {
-    int idx = (int)(intptr_t)lv_event_get_user_data(e);
-    if (idx >= 0 && idx < node_count) {
+    int row_idx = (int)(intptr_t)lv_event_get_user_data(e);
+    if (row_idx >= 0 && row_idx < model::discovery_count) {
+        int idx = row_node_idx[row_idx];
+        if (idx < 0 || idx >= model::discovery_count) return;
+
         char clean_name[32];
-        strncpy(clean_name, nodes[idx].name, sizeof(clean_name) - 1);
+        strncpy(clean_name, model::discovery[idx].name, sizeof(clean_name) - 1);
         clean_name[31] = 0;
         ui::text::strip_emoji(clean_name);
 
         ui::screen::contact_detail::set_contact(
-            clean_name, 0, 0, 0, false, nodes[idx].pubkey_prefix);
+            clean_name, 0, 0, 0, false, model::discovery[idx].pubkey_prefix);
         ui::screen_mgr::push(SCREEN_CONTACT_DETAIL, true);
     }
 }
 
-static bool passes_filter(const mesh::task::DiscoveredNode& node) {
-    bool already_added = mesh::task::is_contact(node.pubkey_prefix);
+static bool passes_filter(const model::DiscoveryEntry& node) {
+    bool already_added = model::find_contact_by_prefix(node.pubkey_prefix) != NULL;
     switch (filter_mode) {
         case 0: return !already_added;
         case 1: return already_added;
@@ -69,6 +70,7 @@ static void ensure_row(int idx) {
     node_rows[idx] = hit;
     node_row_labels[idx] = label;
     node_row_values[idx] = value;
+    row_node_idx[idx] = -1;
     row_visible[idx] = false;
     lv_obj_add_flag(hit, LV_OBJ_FLAG_HIDDEN);
 }
@@ -88,14 +90,14 @@ static void rebuild_list() {
 
     int shown = 0;
 
-    for (int i = 0; i < node_count; i++) {
-        if (!passes_filter(nodes[i])) continue;
+    for (int i = 0; i < model::discovery_count; i++) {
+        if (!passes_filter(model::discovery[i])) continue;
         char clean_name[32];
-        strncpy(clean_name, nodes[i].name, sizeof(clean_name) - 1);
+        strncpy(clean_name, model::discovery[i].name, sizeof(clean_name) - 1);
         clean_name[31] = 0;
         ui::text::strip_emoji(clean_name);
 
-        bool already_added = mesh::task::is_contact(nodes[i].pubkey_prefix);
+        bool already_added = model::find_contact_by_prefix(model::discovery[i].pubkey_prefix) != NULL;
         if (strcmp(lv_label_get_text(node_row_labels[shown]), clean_name) != 0) {
             lv_label_set_text(node_row_labels[shown], clean_name);
         }
@@ -107,6 +109,7 @@ static void rebuild_list() {
             lv_obj_clear_flag(node_rows[shown], LV_OBJ_FLAG_HIDDEN);
             row_visible[shown] = true;
         }
+        row_node_idx[shown] = i;
         shown++;
     }
 
@@ -115,6 +118,7 @@ static void rebuild_list() {
             lv_obj_add_flag(node_rows[i], LV_OBJ_FLAG_HIDDEN);
             row_visible[i] = false;
         }
+        row_node_idx[i] = -1;
     }
 
     if (empty_label) {
@@ -134,9 +138,8 @@ static void rebuild_list() {
 
 void process_events() {
     if (!node_list) return;
-    if (!mesh::bridge::discovery_changed) return;
-    mesh::bridge::discovery_changed = false;
-    node_count = mesh::task::get_discovered(nodes, 16);
+    if (last_discovery_revision == model::discovery_revision) return;
+    last_discovery_revision = model::discovery_revision;
     rebuild_list();
 }
 
@@ -157,9 +160,9 @@ static void create(lv_obj_t* parent) {
 }
 
 static void entry() {
-    node_count = mesh::task::get_discovered(nodes, 16);
-    rebuild_list();
-    mesh::bridge::discovery_changed = false;
+    last_discovery_revision = 0;
+    model::refresh_discovery();
+    process_events();
 }
 
 static void exit_fn() {
@@ -174,8 +177,10 @@ static void destroy() {
         node_rows[i] = NULL;
         node_row_labels[i] = NULL;
         node_row_values[i] = NULL;
+        row_node_idx[i] = -1;
         row_visible[i] = false;
     }
+    last_discovery_revision = 0;
 }
 
 screen_lifecycle_t lifecycle = { create, entry, exit_fn, destroy };

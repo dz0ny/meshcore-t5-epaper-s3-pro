@@ -259,6 +259,8 @@ static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 static void on_add(lv_event_t* e) {
     if (has_pubkey) {
         bool ok = mesh::task::add_contact_by_prefix(contact_pubkey);
+        model::refresh_contacts();
+        model::refresh_discovery();
         ui::toast::show(ok ? "Contact added" : "Add failed");
     }
     ui::screen_mgr::pop(true);
@@ -267,6 +269,8 @@ static void on_add(lv_event_t* e) {
 static void on_remove(lv_event_t* e) {
     if (has_pubkey) {
         mesh::task::remove_contact_by_prefix(contact_pubkey);
+        model::refresh_contacts();
+        model::refresh_discovery();
         ui::toast::show("Contact removed");
     }
     ui::screen_mgr::pop(true);
@@ -275,6 +279,7 @@ static void on_remove(lv_event_t* e) {
 static void on_favorite(lv_event_t* e) {
     if (has_pubkey) {
         contact_is_favorite = mesh::task::toggle_favorite(contact_pubkey);
+        model::refresh_contacts();
         if (lbl_nav_action) {
             lv_label_set_text(lbl_nav_action, favorite_action_label(contact_is_favorite));
         }
@@ -400,16 +405,31 @@ static void create(lv_obj_t* parent) {
         if (is_existing) {
             bool can_chat = (contact_type == ADV_TYPE_CHAT || contact_type == ADV_TYPE_ROOM);
             bool can_ping = has_pubkey;
+
+            lv_obj_t* btn_row = lv_obj_create(content_list);
+            lv_obj_set_width(btn_row, lv_pct(100));
+            lv_obj_set_height(btn_row, UI_TEXT_BTN_HEIGHT);
+            lv_obj_set_style_bg_opa(btn_row, LV_OPA_0, LV_PART_MAIN);
+            lv_obj_set_style_border_width(btn_row, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(btn_row, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_column(btn_row, UI_MENU_ITEM_PAD, LV_PART_MAIN);
+            lv_obj_clear_flag(btn_row, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_flex_flow(btn_row, LV_FLEX_FLOW_ROW);
+            lv_obj_set_flex_align(btn_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
             if (can_chat) {
-                lv_obj_t* msg_btn = ui::nav::text_button(content_list, "Send Message", on_send_message, NULL);
-                lv_obj_set_size(msg_btn, lv_pct(100), UI_TEXT_BTN_HEIGHT);
+                lv_obj_t* msg_btn = ui::nav::text_button(btn_row, "Chat", on_send_message, NULL);
+                lv_obj_set_height(msg_btn, lv_pct(100));
+                lv_obj_set_flex_grow(msg_btn, 1);
             }
             if (can_ping) {
-                lv_obj_t* ping_btn = ui::nav::text_button(content_list, "Ping", on_ping, NULL);
-                lv_obj_set_size(ping_btn, lv_pct(100), UI_TEXT_BTN_HEIGHT);
+                lv_obj_t* ping_btn = ui::nav::text_button(btn_row, "Ping", on_ping, NULL);
+                lv_obj_set_height(ping_btn, lv_pct(100));
+                lv_obj_set_flex_grow(ping_btn, 1);
             }
-            lv_obj_t* rm_btn = ui::nav::text_button(content_list, "Remove Contact", on_remove, NULL);
-            lv_obj_set_size(rm_btn, lv_pct(100), UI_TEXT_BTN_HEIGHT);
+            lv_obj_t* rm_btn = ui::nav::text_button(btn_row, LV_SYMBOL_TRASH, on_remove, NULL);
+            lv_obj_set_height(rm_btn, lv_pct(100));
+            lv_obj_set_flex_grow(rm_btn, 0);
         } else {
             lv_obj_t* add_btn = ui::nav::text_button(content_list, "Add Contact", on_add, NULL);
             lv_obj_set_size(add_btn, lv_pct(100), UI_TEXT_BTN_HEIGHT);

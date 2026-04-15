@@ -14,41 +14,32 @@ TouchDrvGT911 touch;
 
 volatile bool home_button_pressed = false;
 
-// ---------- Trackball ISR state ----------
-// Debounce: ignore edges within TB_DEBOUNCE_US of the last edge (per axis).
-// Meshtastic uses TB_THRESHOLD=3; we debounce in time instead for smoother feel.
+// ---------- Trackball polling state ----------
+// Polling with press-edge detection (like trail-mate).
+static constexpr uint32_t TB_DEBOUNCE_MS = 22;
+static constexpr uint32_t TB_REPEAT_MS = 80;
 
-static constexpr uint32_t TB_DEBOUNCE_US = 800;  // microseconds
-
-static volatile int8_t tb_dx = 0;
-static volatile int8_t tb_dy = 0;
-static volatile bool tb_clicked = false;
+static bool tb_up_state = false, tb_down_state = false;
+static bool tb_left_state = false, tb_right_state = false;
+static bool tb_click_state = false, tb_click_consumed = false;
+static uint32_t tb_up_ms = 0, tb_down_ms = 0, tb_left_ms = 0, tb_right_ms = 0;
+static uint32_t tb_click_ms = 0, tb_last_dir_ms = 0;
 volatile uint32_t tb_isr_up_total = 0;
 volatile uint32_t tb_isr_down_total = 0;
 volatile uint32_t tb_isr_left_total = 0;
 volatile uint32_t tb_isr_right_total = 0;
-static volatile uint32_t tb_last_up = 0;
-static volatile uint32_t tb_last_down = 0;
-static volatile uint32_t tb_last_left = 0;
-static volatile uint32_t tb_last_right = 0;
 
-static void IRAM_ATTR tb_up_isr() {
-    uint32_t now = micros();
-    if (now - tb_last_up > TB_DEBOUNCE_US) { tb_dy--; tb_last_up = now; tb_isr_up_total++; }
+static bool tb_edge(bool pressed, bool& state, uint32_t& ms, uint32_t now) {
+    if (pressed != state) {
+        state = pressed;
+        if (pressed && (now - ms) >= TB_DEBOUNCE_MS) {
+            ms = now;
+            return true;
+        }
+        ms = now;
+    }
+    return false;
 }
-static void IRAM_ATTR tb_down_isr() {
-    uint32_t now = micros();
-    if (now - tb_last_down > TB_DEBOUNCE_US) { tb_dy++; tb_last_down = now; tb_isr_down_total++; }
-}
-static void IRAM_ATTR tb_left_isr() {
-    uint32_t now = micros();
-    if (now - tb_last_left > TB_DEBOUNCE_US) { tb_dx--; tb_last_left = now; tb_isr_left_total++; }
-}
-static void IRAM_ATTR tb_right_isr() {
-    uint32_t now = micros();
-    if (now - tb_last_right > TB_DEBOUNCE_US) { tb_dx++; tb_last_right = now; tb_isr_right_total++; }
-}
-static void IRAM_ATTR tb_click_isr() { tb_clicked = true; }
 
 // ---------- Detail init functions ----------
 
@@ -98,14 +89,7 @@ bool trackball_init() {
     pinMode(TDECK_TB_LEFT, INPUT_PULLUP);
     pinMode(TDECK_TB_RIGHT, INPUT_PULLUP);
     pinMode(TDECK_TB_CLICK, INPUT_PULLUP);
-
-    attachInterrupt(digitalPinToInterrupt(TDECK_TB_UP), tb_up_isr, FALLING);
-    attachInterrupt(digitalPinToInterrupt(TDECK_TB_DOWN), tb_down_isr, FALLING);
-    attachInterrupt(digitalPinToInterrupt(TDECK_TB_LEFT), tb_left_isr, FALLING);
-    attachInterrupt(digitalPinToInterrupt(TDECK_TB_RIGHT), tb_right_isr, FALLING);
-    attachInterrupt(digitalPinToInterrupt(TDECK_TB_CLICK), tb_click_isr, FALLING);
-
-    Serial.println("Trackball init OK");
+    Serial.println("Trackball init OK (polling)");
     return true;
 }
 
@@ -290,15 +274,44 @@ uint8_t keyboard_get_backlight() {
 // ---------- Trackball ----------
 
 TrackballState trackball_read() {
-    TrackballState s;
-    noInterrupts();
-    s.dx = tb_dx;
-    s.dy = tb_dy;
-    s.clicked = tb_clicked;
-    tb_dx = 0;
-    tb_dy = 0;
-    tb_clicked = false;
-    interrupts();
+    TrackballState s = {0, 0, false};
+    uint32_t now = millis();
+
+    bool up = (digitalRead(TDECK_TB_UP) == LOW);
+    bool dn = (digitalRead(TDECK_TB_DOWN) == LOW);
+    bool lt = (digitalRead(TDECK_TB_LEFT) == LOW);
+    bool rt = (digitalRead(TDECK_TB_RIGHT) == LOW);
+
+    bool up_e = tb_edge(up, tb_up_state, tb_up_ms, now);
+    bool dn_e = tb_edge(dn, tb_down_state, tb_down_ms, now);
+    bool lt_e = tb_edge(lt, tb_left_state, tb_left_ms, now);
+    bool rt_e = tb_edge(rt, tb_right_state, tb_right_ms, now);
+
+    if (up_e) tb_isr_up_total++;
+    if (dn_e) tb_isr_down_total++;
+    if (lt_e) tb_isr_left_total++;
+    if (rt_e) tb_isr_right_total++;
+
+    if ((up_e || dn_e || lt_e || rt_e) && (now - tb_last_dir_ms) >= TB_REPEAT_MS) {
+        if (up_e) { s.dy = -1; tb_last_dir_ms = now; }
+        if (dn_e) { s.dy =  1; tb_last_dir_ms = now; }
+        if (lt_e) { s.dx = -1; tb_last_dir_ms = now; }
+        if (rt_e) { s.dx =  1; tb_last_dir_ms = now; }
+    }
+
+    bool click = (digitalRead(TDECK_TB_CLICK) == LOW);
+    if (click != tb_click_state) {
+        tb_click_state = click;
+        tb_click_ms = now;
+    }
+    if (!tb_click_state && (now - tb_click_ms) >= TB_DEBOUNCE_MS) {
+        tb_click_consumed = false;
+    }
+    if (tb_click_state && !tb_click_consumed && (now - tb_click_ms) >= TB_DEBOUNCE_MS) {
+        s.clicked = true;
+        tb_click_consumed = true;
+    }
+
     return s;
 }
 

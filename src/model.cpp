@@ -9,6 +9,7 @@
 #include "mesh/companion/target.h"
 #include <helpers/sensors/LocationProvider.h>
 #include "nvs_param.h"
+#include "sd_log.h"
 
 namespace model {
 
@@ -16,8 +17,167 @@ GPS     gps = {};
 Battery battery = {};
 Mesh    mesh = {};
 Clock   clock = {};
+ContactEntry contacts[MAX_CONTACT_ENTRIES] = {};
+int contact_count = 0;
+uint32_t contacts_revision = 0;
+DiscoveryEntry discovery[MAX_DISCOVERY_ENTRIES] = {};
+int discovery_count = 0;
+uint32_t discovery_revision = 0;
+TelemetryEntry telemetry[MAX_TELEMETRY_ENTRIES] = {};
+uint32_t telemetry_revision = 0;
+TraceEntry traces[MAX_TRACE_ENTRIES] = {};
+uint32_t trace_revision = 0;
 static portMUX_TYPE dirty_lock = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t dirty_flags = DIRTY_NONE;
+static uint32_t telemetry_seq = 0;
+static uint32_t trace_seq = 0;
+
+static int find_contact_index_by_prefix_internal(const uint8_t* prefix, int prefix_len) {
+    if (!prefix || prefix_len <= 0) return -1;
+    for (int i = 0; i < contact_count; i++) {
+        if (memcmp(contacts[i].pub_key, prefix, prefix_len) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int find_contact_index_by_name_internal(const char* name) {
+    if (!name || !name[0]) return -1;
+    for (int i = 0; i < contact_count; i++) {
+        if (strcmp(contacts[i].name, name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static bool apply_contact_update(const mesh::bridge::ContactUpdate& cu) {
+    int idx = find_contact_index_by_prefix_internal(cu.pub_key, 7);
+    if (idx < 0) {
+        if (contact_count >= MAX_CONTACT_ENTRIES) return false;
+        idx = contact_count++;
+        memset(&contacts[idx], 0, sizeof(contacts[idx]));
+    }
+
+    ContactEntry& entry = contacts[idx];
+    bool changed = false;
+    bool has_path = (cu.path_len != 0xFF && cu.path_len > 0);
+
+    if (strncmp(entry.name, cu.name, sizeof(entry.name)) != 0) {
+        strncpy(entry.name, cu.name, sizeof(entry.name) - 1);
+        entry.name[sizeof(entry.name) - 1] = 0;
+        changed = true;
+    }
+    if (memcmp(entry.pub_key, cu.pub_key, sizeof(entry.pub_key)) != 0) {
+        memcpy(entry.pub_key, cu.pub_key, sizeof(entry.pub_key));
+        changed = true;
+    }
+    if (entry.type != cu.type) {
+        entry.type = cu.type;
+        changed = true;
+    }
+    if (entry.flags != cu.flags) {
+        entry.flags = cu.flags;
+        changed = true;
+    }
+    if (entry.has_path != has_path) {
+        entry.has_path = has_path;
+        changed = true;
+    }
+    if (entry.gps_lat != cu.gps_lat) {
+        entry.gps_lat = cu.gps_lat;
+        changed = true;
+    }
+    if (entry.gps_lon != cu.gps_lon) {
+        entry.gps_lon = cu.gps_lon;
+        changed = true;
+    }
+
+    return changed;
+}
+
+static int find_telemetry_index_internal(const uint8_t* prefix, int prefix_len) {
+    if (!prefix || prefix_len <= 0) return -1;
+    for (int i = 0; i < MAX_TELEMETRY_ENTRIES; i++) {
+        if (!telemetry[i].valid) continue;
+        if (memcmp(telemetry[i].pub_key_prefix, prefix, prefix_len) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void store_telemetry(const mesh::bridge::TelemetryResponse& tr) {
+    int idx = find_telemetry_index_internal(tr.pub_key_prefix, 7);
+    if (idx < 0) {
+        idx = -1;
+        for (int i = 0; i < MAX_TELEMETRY_ENTRIES; i++) {
+            if (!telemetry[i].valid) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) {
+            uint32_t oldest_seq = telemetry[0].seq;
+            idx = 0;
+            for (int i = 1; i < MAX_TELEMETRY_ENTRIES; i++) {
+                if (telemetry[i].seq < oldest_seq) {
+                    oldest_seq = telemetry[i].seq;
+                    idx = i;
+                }
+            }
+        }
+    }
+
+    telemetry[idx].valid = true;
+    memcpy(telemetry[idx].pub_key_prefix, tr.pub_key_prefix, sizeof(telemetry[idx].pub_key_prefix));
+    telemetry[idx].len = tr.len;
+    memcpy(telemetry[idx].data, tr.data, tr.len);
+    telemetry[idx].timestamp = (uint32_t)time(nullptr);
+    telemetry[idx].seq = ++telemetry_seq;
+}
+
+static int find_trace_index_internal(uint32_t tag) {
+    for (int i = 0; i < MAX_TRACE_ENTRIES; i++) {
+        if (!traces[i].valid) continue;
+        if (traces[i].tag == tag) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void store_trace(const mesh::bridge::TraceResponse& tr) {
+    int idx = find_trace_index_internal(tr.tag);
+    if (idx < 0) {
+        idx = -1;
+        for (int i = 0; i < MAX_TRACE_ENTRIES; i++) {
+            if (!traces[i].valid) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) {
+            uint32_t oldest_seq = traces[0].seq;
+            idx = 0;
+            for (int i = 1; i < MAX_TRACE_ENTRIES; i++) {
+                if (traces[i].seq < oldest_seq) {
+                    oldest_seq = traces[i].seq;
+                    idx = i;
+                }
+            }
+        }
+    }
+
+    traces[idx].valid = true;
+    traces[idx].tag = tr.tag;
+    traces[idx].hop_count = tr.hop_count;
+    traces[idx].snr_there_q4 = tr.snr_there_q4;
+    traces[idx].snr_back_q4 = tr.snr_back_q4;
+    traces[idx].timestamp = millis();
+    traces[idx].seq = ++trace_seq;
+}
 
 void mark_dirty(uint32_t flags) {
     portENTER_CRITICAL(&dirty_lock);
@@ -31,6 +191,109 @@ uint32_t take_dirty() {
     dirty_flags = DIRTY_NONE;
     portEXIT_CRITICAL(&dirty_lock);
     return flags;
+}
+
+void refresh_contacts() {
+    memset(contacts, 0, sizeof(contacts));
+    contact_count = 0;
+
+    mesh::task::push_all_contacts();
+
+    mesh::bridge::ContactUpdate cu;
+    while (mesh::bridge::pop_contact(cu)) {
+        apply_contact_update(cu);
+    }
+
+    contacts_revision++;
+}
+
+void refresh_discovery() {
+    mesh::task::DiscoveredNode nodes[MAX_DISCOVERY_ENTRIES] = {};
+    int count = mesh::task::get_discovered(nodes, MAX_DISCOVERY_ENTRIES);
+
+    memset(discovery, 0, sizeof(discovery));
+    discovery_count = count;
+    for (int i = 0; i < discovery_count; i++) {
+        strncpy(discovery[i].name, nodes[i].name, sizeof(discovery[i].name) - 1);
+        discovery[i].name[sizeof(discovery[i].name) - 1] = 0;
+        memcpy(discovery[i].pubkey_prefix, nodes[i].pubkey_prefix, sizeof(discovery[i].pubkey_prefix));
+        discovery[i].path_len = nodes[i].path_len;
+        discovery[i].recv_timestamp = nodes[i].recv_timestamp;
+    }
+
+    discovery_revision++;
+}
+
+void ingest_bridge_events() {
+    mesh::bridge::MessageIn message = {};
+    while (mesh::bridge::pop_message(message)) {
+        if (messages && message_count < MAX_STORED_MESSAGES) {
+            auto& msg = messages[message_count];
+            if (message.sender_name[0]) strncpy(msg.sender, message.sender_name, sizeof(msg.sender) - 1);
+            if (message.text[0]) strncpy(msg.text, message.text, sizeof(msg.text) - 1);
+            msg.hour = clock.hour;
+            msg.minute = clock.minute;
+            msg.is_self = false;
+            message_count++;
+        }
+
+        sd_log::mark_dirty();
+        note_incoming_message(message.sender_name[0] ? message.sender_name : nullptr,
+                              message.text[0] ? message.text : nullptr);
+    }
+
+    bool contacts_changed = false;
+    mesh::bridge::ContactUpdate contact = {};
+    while (mesh::bridge::pop_contact(contact)) {
+        contacts_changed |= apply_contact_update(contact);
+    }
+    if (contacts_changed) {
+        contacts_revision++;
+    }
+
+    bool telemetry_changed = false;
+    mesh::bridge::TelemetryResponse telemetry_response = {};
+    while (mesh::bridge::pop_telemetry(telemetry_response)) {
+        store_telemetry(telemetry_response);
+        telemetry_changed = true;
+    }
+    if (telemetry_changed) {
+        telemetry_revision++;
+    }
+
+    bool trace_changed = false;
+    mesh::bridge::TraceResponse trace = {};
+    while (mesh::bridge::pop_trace(trace)) {
+        store_trace(trace);
+        trace_changed = true;
+    }
+    if (trace_changed) {
+        trace_revision++;
+    }
+
+    if (mesh::bridge::take_discovery_changed()) {
+        refresh_discovery();
+    }
+}
+
+const ContactEntry* find_contact_by_prefix(const uint8_t* prefix, int prefix_len) {
+    int idx = find_contact_index_by_prefix_internal(prefix, prefix_len);
+    return idx >= 0 ? &contacts[idx] : nullptr;
+}
+
+const ContactEntry* find_contact_by_name(const char* name) {
+    int idx = find_contact_index_by_name_internal(name);
+    return idx >= 0 ? &contacts[idx] : nullptr;
+}
+
+const TelemetryEntry* find_telemetry(const uint8_t* prefix, int prefix_len) {
+    int idx = find_telemetry_index_internal(prefix, prefix_len);
+    return idx >= 0 ? &telemetry[idx] : nullptr;
+}
+
+const TraceEntry* find_trace(uint32_t tag) {
+    int idx = find_trace_index_internal(tag);
+    return idx >= 0 ? &traces[idx] : nullptr;
 }
 
 void update_gps() {

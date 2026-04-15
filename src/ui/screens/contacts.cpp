@@ -5,9 +5,9 @@
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/text_utils.h"
-#include "../../mesh/mesh_bridge.h"
-#include "../../mesh/mesh_task.h"
+#include "../../model.h"
 #include <helpers/AdvertDataHelpers.h>
+#include <cstdio>
 
 namespace ui::screen::contacts {
 
@@ -19,6 +19,7 @@ static lv_obj_t* contact_rows[MAX_CONTACTS] = {};
 static lv_obj_t* contact_row_labels[MAX_CONTACTS] = {};
 static int row_contact_idx[MAX_CONTACTS] = {};
 static lv_obj_t* empty_label = NULL;
+static uint32_t last_contacts_revision = 0;
 
 // Filter: 0=Chat, 1=Relay, 2=Favorite, 3=All
 static int filter_mode = 0;
@@ -89,6 +90,23 @@ static void prune_rows(int keep_count) {
     }
 }
 
+static void load_contacts_from_model() {
+    display_count = 0;
+    for (int i = 0; i < model::contact_count && display_count < MAX_CONTACTS; i++) {
+        const model::ContactEntry& src = model::contacts[i];
+        strncpy(displayed[display_count].name, src.name, sizeof(displayed[display_count].name) - 1);
+        displayed[display_count].name[sizeof(displayed[display_count].name) - 1] = 0;
+        ui::text::strip_emoji(displayed[display_count].name);
+        memcpy(displayed[display_count].pub_key, src.pub_key, sizeof(displayed[display_count].pub_key));
+        displayed[display_count].type = src.type;
+        displayed[display_count].flags = src.flags;
+        displayed[display_count].has_path = src.has_path;
+        displayed[display_count].gps_lat = src.gps_lat;
+        displayed[display_count].gps_lon = src.gps_lon;
+        display_count++;
+    }
+}
+
 static void rebuild_list() {
     if (!contact_list) return;
     lv_display_t* disp = lv_obj_get_display(contact_list);
@@ -139,38 +157,11 @@ static void rebuild_list() {
 
 void process_events() {
     if (!contact_list) return;
+    if (last_contacts_revision == model::contacts_revision) return;
 
-    mesh::bridge::ContactUpdate cu;
-    bool changed = false;
-    while (mesh::bridge::pop_contact(cu)) {
-        bool found = false;
-        for (int i = 0; i < display_count; i++) {
-            if (strcmp(displayed[i].name, cu.name) == 0) {
-                memcpy(displayed[i].pub_key, cu.pub_key, 32);
-                displayed[i].type = cu.type;
-                displayed[i].flags = cu.flags;
-                displayed[i].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
-                displayed[i].gps_lat = cu.gps_lat;
-                displayed[i].gps_lon = cu.gps_lon;
-                found = true;
-                break;
-            }
-        }
-        if (!found && display_count < MAX_CONTACTS) {
-            strncpy(displayed[display_count].name, cu.name, 31);
-            displayed[display_count].name[31] = 0;
-            ui::text::strip_emoji(displayed[display_count].name);
-            memcpy(displayed[display_count].pub_key, cu.pub_key, 32);
-            displayed[display_count].type = cu.type;
-            displayed[display_count].flags = cu.flags;
-            displayed[display_count].has_path = (cu.path_len != 0xFF && cu.path_len > 0);
-            displayed[display_count].gps_lat = cu.gps_lat;
-            displayed[display_count].gps_lon = cu.gps_lon;
-            display_count++;
-        }
-        changed = true;
-    }
-    if (changed) rebuild_list();
+    load_contacts_from_model();
+    last_contacts_revision = model::contacts_revision;
+    rebuild_list();
 }
 
 static void create(lv_obj_t* parent) {
@@ -199,9 +190,8 @@ static void create(lv_obj_t* parent) {
 }
 
 static void entry() {
-    display_count = 0;
-    rebuild_list();
-    mesh::task::push_all_contacts();
+    last_contacts_revision = 0;
+    model::refresh_contacts();
     process_events();
 }
 
@@ -214,6 +204,7 @@ static void destroy() {
     lbl_filter = NULL;
     lbl_count = NULL;
     empty_label = NULL;
+    last_contacts_revision = 0;
     for (int i = 0; i < MAX_CONTACTS; i++) {
         contact_rows[i] = NULL;
         contact_row_labels[i] = NULL;

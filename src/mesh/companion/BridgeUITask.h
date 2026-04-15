@@ -2,9 +2,6 @@
 
 #include "AbstractUITask.h"
 #include "../mesh_bridge.h"
-#include "../../model.h"
-#include "../../sd_log.h"
-
 // UITask implementation that routes companion radio events to our bridge queues.
 // This replaces the display-based UITask from companion_radio.
 class BridgeUITask : public AbstractUITask {
@@ -24,23 +21,6 @@ public:
         mi.is_channel = false;  // both direct and channel come through here
         mi.timestamp = 0;
         mesh::bridge::push_message(mi);
-
-        // Store in model for persistent display
-        if (model::message_count < MAX_STORED_MESSAGES) {
-            auto& msg = model::messages[model::message_count];
-            if (from_name) strncpy(msg.sender, from_name, sizeof(msg.sender) - 1);
-            if (text) strncpy(msg.text, text, sizeof(msg.text) - 1);
-            msg.hour = model::clock.hour;
-            msg.minute = model::clock.minute;
-            msg.is_self = false;
-            model::message_count++;
-        }
-
-        // Mark for SD flush on next silence window
-        sd_log::mark_dirty();
-
-        // Track for lock screen
-        model::note_incoming_message(from_name, text);
 
         Serial.printf("BRIDGE: msg from '%s': %s\n", from_name ? from_name : "?", text ? text : "?");
     }
@@ -66,7 +46,7 @@ public:
 
     void notify(UIEventType t) override {
         if (t == UIEventType::newContactMessage) {
-            mesh::bridge::discovery_changed = true;
+            mesh::bridge::mark_discovery_changed();
         }
     }
 

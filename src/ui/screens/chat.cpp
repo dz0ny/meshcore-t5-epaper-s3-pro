@@ -5,7 +5,6 @@
 #include "../components/nav_button.h"
 #include "../components/msg_list.h"
 #include "../../model.h"
-#include "../../mesh/mesh_bridge.h"
 
 namespace ui::screen::chat {
 
@@ -21,12 +20,6 @@ void process_events() {
     if (!msg_container) return;
 
     bool changed = false;
-
-    // Also drain the bridge queue into model (in case BridgeUITask stored them)
-    mesh::bridge::MessageIn mi;
-    while (mesh::bridge::pop_message(mi)) {
-        // already stored in model by BridgeUITask
-    }
 
     // Rebuild if a message was deleted (indices shifted)
     if (last_displayed > model::message_count) {

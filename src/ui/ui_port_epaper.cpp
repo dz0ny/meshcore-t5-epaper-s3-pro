@@ -27,6 +27,13 @@ static bool cycle_force_full_refresh = false;
 static bool cycle_had_updates = false;
 static bool cycle_panel_powered = false;
 static int cycle_temperature = 0;
+static uint32_t cycle_dirty_pixels = 0;
+static uint16_t cycle_dirty_areas = 0;
+static uint32_t cycle_started_ms = 0;
+static uint32_t partial_refresh_count_since_full = 0;
+static uint32_t accumulated_partial_pixels_since_full = 0;
+static const uint32_t MAX_PARTIAL_REFRESHES_BEFORE_FULL = 96;
+static const uint32_t MAX_ACCUMULATED_COVERAGE_BEFORE_FULL = 3;
 struct FullRefreshStamp {
     uint8_t year;
     uint8_t month;
@@ -111,10 +118,28 @@ static void note_full_refresh_done() {
     last_full_refresh = current_refresh_stamp();
 }
 
+static uint32_t display_pixel_count() {
+    return (uint32_t)epd_rotated_display_width() * (uint32_t)epd_rotated_display_height();
+}
+
+static bool should_force_budget_full_refresh() {
+    uint32_t total_pixels = display_pixel_count();
+    if (partial_refresh_count_since_full >= MAX_PARTIAL_REFRESHES_BEFORE_FULL) {
+        return true;
+    }
+    if (total_pixels == 0) {
+        return false;
+    }
+    return accumulated_partial_pixels_since_full >= (total_pixels * MAX_ACCUMULATED_COVERAGE_BEFORE_FULL);
+}
+
 static void render_start_cb(lv_event_t *event) {
     (void)event;
-    cycle_force_full_refresh = should_do_hourly_full_refresh();
+    cycle_force_full_refresh = should_do_hourly_full_refresh() || should_force_budget_full_refresh();
     cycle_had_updates = false;
+    cycle_dirty_pixels = 0;
+    cycle_dirty_areas = 0;
+    cycle_started_ms = millis();
     if (!cycle_panel_powered) {
         epd_poweron();
         cycle_panel_powered = true;
@@ -124,10 +149,27 @@ static void render_start_cb(lv_event_t *event) {
 
 static void render_ready_cb(lv_event_t *event) {
     (void)event;
+    uint32_t elapsed_ms = millis() - cycle_started_ms;
     if (cycle_force_full_refresh && cycle_had_updates) {
         checkError(epd_hl_update_screen(&board::hl, MODE_GC16, cycle_temperature));
         note_full_refresh_done();
         sync_packed_prev_frame(epd_hl_get_framebuffer(&board::hl), epd_width(), epd_height());
+        partial_refresh_count_since_full = 0;
+        accumulated_partial_pixels_since_full = 0;
+    } else if (cycle_had_updates) {
+        partial_refresh_count_since_full++;
+        accumulated_partial_pixels_since_full += cycle_dirty_pixels;
+    }
+    if (cycle_had_updates) {
+        uint32_t total_pixels = display_pixel_count();
+        uint32_t coverage_pct = total_pixels == 0 ? 0 : (accumulated_partial_pixels_since_full * 100) / total_pixels;
+        Serial.printf("EPD: %s pass areas=%u px=%lu t=%lums partials=%lu coverage=%lu%%\n",
+                      cycle_force_full_refresh ? "full" : "partial",
+                      cycle_dirty_areas,
+                      (unsigned long)cycle_dirty_pixels,
+                      (unsigned long)elapsed_ms,
+                      (unsigned long)partial_refresh_count_since_full,
+                      (unsigned long)coverage_pct);
     }
     if (cycle_panel_powered) {
         epd_poweroff();
@@ -135,6 +177,8 @@ static void render_ready_cb(lv_event_t *event) {
     }
     cycle_force_full_refresh = false;
     cycle_had_updates = false;
+    cycle_dirty_pixels = 0;
+    cycle_dirty_areas = 0;
 }
 
 static void round_invalidate_area_cb(lv_event_t *event) {
@@ -276,6 +320,8 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     }
 
     cycle_had_updates = true;
+    cycle_dirty_pixels += area_px;
+    cycle_dirty_areas++;
 
     // Partial area rect in rotated coordinates — epdiy handles rotation internally
     EpdRect update_rect = {
@@ -546,6 +592,8 @@ void full_refresh() {
     epd_poweroff();
     sync_packed_prev_frame(epd_hl_get_framebuffer(&board::hl), epd_width(), epd_height());
     note_full_refresh_done();
+    partial_refresh_count_since_full = 0;
+    accumulated_partial_pixels_since_full = 0;
 }
 
 void full_clean() {
@@ -555,6 +603,8 @@ void full_clean() {
     for (int i = 0; i < 10; i++) epd_push_pixels(epd_full_screen(), t, 1);
     for (int i = 0; i < 2; i++)  epd_push_pixels(epd_full_screen(), t, 2);
     epd_poweroff();
+    partial_refresh_count_since_full = 0;
+    accumulated_partial_pixels_since_full = 0;
 }
 
 void touch_enable()  { touch_enabled = true; }

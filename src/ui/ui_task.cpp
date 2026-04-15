@@ -13,6 +13,7 @@
 #include "components/statusbar.h"
 #include "../board.h"
 #include "../model.h"
+#include "../mesh/mesh_bridge.h"
 #include "../mesh/mesh_task.h"
 #include "screens/home.h"
 #include "screens/contacts.h"
@@ -169,6 +170,12 @@ static void pump_active_screen_events() {
         case SCREEN_SENSORS:
             ui::screen::sensors::process_events();
             break;
+        case SCREEN_MAP:
+            ui::screen::map::process_events();
+            break;
+        case SCREEN_PING:
+            ui::screen::ping::process_events();
+            break;
         default:
             break;
     }
@@ -183,11 +190,33 @@ static uint32_t lvgl_idle_period_ms(bool is_locked) {
     return 160;
 }
 
-static uint32_t ui_loop_delay_ms(bool is_locked, uint32_t lvgl_period_ms) {
-    if (is_locked) return 20;
-    if (lvgl_period_ms <= 20) return 5;
-    if (lvgl_period_ms <= 80) return 15;
-    return 30;
+static uint32_t wait_until_deadline(unsigned long deadline_ms, unsigned long now_ms) {
+    if (deadline_ms == 0 || deadline_ms <= now_ms) return 0;
+    return (uint32_t)(deadline_ms - now_ms);
+}
+
+static uint32_t smaller_wait(uint32_t current_ms, uint32_t candidate_ms) {
+    return candidate_ms < current_ms ? candidate_ms : current_ms;
+}
+
+static uint32_t next_loop_wait_ms(bool is_locked, uint32_t lvgl_period_ms) {
+    unsigned long now = millis();
+    uint32_t wait_ms = lvgl_period_ms;
+
+    wait_ms = smaller_wait(wait_ms, wait_until_deadline(next_clock_update, now));
+    if (is_locked) {
+        wait_ms = smaller_wait(wait_ms, wait_until_deadline(next_lock_battery_update, now));
+        wait_ms = smaller_wait(wait_ms, wait_until_deadline(next_lock_mesh_update, now));
+    } else {
+        wait_ms = smaller_wait(wait_ms, wait_until_deadline(next_gps_update, now));
+        wait_ms = smaller_wait(wait_ms, wait_until_deadline(next_battery_update, now));
+        wait_ms = smaller_wait(wait_ms, wait_until_deadline(next_mesh_update, now));
+    }
+    if (backlight_off_at > 0) {
+        wait_ms = smaller_wait(wait_ms, wait_until_deadline(backlight_off_at, now));
+    }
+
+    return wait_ms;
 }
 
 static void ui_task_fn(void* param) {
@@ -203,6 +232,8 @@ static void ui_task_fn(void* param) {
     pca_btn.setup(0, true, false);  // pin unused, active-low, no internal pull-up
     pca_btn.attachClick(on_pca_click);
 #endif
+
+    mesh::bridge::set_ui_task_handle(xTaskGetCurrentTaskHandle());
 
     while (1) {
 #ifdef BOARD_EPAPER
@@ -272,6 +303,7 @@ static void ui_task_fn(void* param) {
             next_lock_mesh_update = millis() + 300000;
         }
 
+        model::ingest_bridge_events();
         dispatch_dirty(model::take_dirty());
         pump_active_screen_events();
 
@@ -304,7 +336,12 @@ static void ui_task_fn(void* param) {
             ui::screen_mgr::pop(false);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(ui_loop_delay_ms(is_locked, lvgl_period_ms)));
+        uint32_t wait_ms = next_loop_wait_ms(is_locked, lvgl_period_ms);
+        if (wait_ms == 0) {
+            taskYIELD();
+        } else {
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(wait_ms));
+        }
     }
 }
 

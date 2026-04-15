@@ -4,6 +4,7 @@
 
 namespace ui::screen::map {
 
+void process_events();
 extern screen_lifecycle_t lifecycle;
 
 } // namespace ui::screen::map

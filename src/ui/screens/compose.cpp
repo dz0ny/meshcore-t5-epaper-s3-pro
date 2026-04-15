@@ -9,7 +9,6 @@
 #include "../../model.h"
 #include "../../sd_log.h"
 #include "../../mesh/mesh_task.h"
-#include "../../mesh/mesh_bridge.h"
 #include <helpers/AdvertDataHelpers.h>
 
 namespace ui::screen::compose {
@@ -411,15 +410,14 @@ static void load_entries() {
     }
 
     // Then contacts — only chat nodes and rooms, not relays/sensors
-    mesh::task::push_all_contacts();
-    mesh::bridge::ContactUpdate cu;
-    while (mesh::bridge::pop_contact(cu) && pick_count < (int)(sizeof(pick_entries) / sizeof(pick_entries[0]))) {
-        if (cu.type == ADV_TYPE_REPEATER || cu.type == ADV_TYPE_SENSOR) continue;
-        strncpy(pick_entries[pick_count].name, cu.name, sizeof(pick_entries[pick_count].name) - 1);
+    for (int i = 0; i < model::contact_count && pick_count < (int)(sizeof(pick_entries) / sizeof(pick_entries[0])); i++) {
+        const model::ContactEntry& contact = model::contacts[i];
+        if (contact.type == ADV_TYPE_REPEATER || contact.type == ADV_TYPE_SENSOR) continue;
+        strncpy(pick_entries[pick_count].name, contact.name, sizeof(pick_entries[pick_count].name) - 1);
         pick_entries[pick_count].name[sizeof(pick_entries[pick_count].name) - 1] = 0;
         pick_entries[pick_count].is_channel = false;
         pick_entries[pick_count].channel_idx = 0;
-        pick_entries[pick_count].flags = cu.flags;
+        pick_entries[pick_count].flags = contact.flags;
         ui::text::strip_emoji(pick_entries[pick_count].name);
         pick_count++;
     }
@@ -840,6 +838,7 @@ static void create(lv_obj_t* parent) {
     create_epaper_editor_panel(parent);
 #endif
 
+    model::refresh_contacts();
     load_entries();
     sync_filter_nav();
     render_recipient_list();

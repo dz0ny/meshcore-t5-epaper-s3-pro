@@ -9,6 +9,12 @@ QueueHandle_t trace_queue = NULL;
 SemaphoreHandle_t status_mutex = NULL;
 MeshStatus status = {};
 volatile bool discovery_changed = false;
+static TaskHandle_t ui_task_handle = NULL;
+
+static void notify_ui_task() {
+    if (!ui_task_handle) return;
+    xTaskNotifyGive(ui_task_handle);
+}
 
 void init() {
     contact_queue = xQueueCreate(128, sizeof(ContactUpdate));
@@ -20,18 +26,22 @@ void init() {
 
 void push_contact(const ContactUpdate& c) {
     xQueueSend(contact_queue, &c, 0); // don't block
+    notify_ui_task();
 }
 
 void push_message(const MessageIn& m) {
     xQueueSend(message_queue, &m, 0);
+    notify_ui_task();
 }
 
 void push_telemetry(const TelemetryResponse& t) {
     xQueueSend(telemetry_queue, &t, 0);
+    notify_ui_task();
 }
 
 void push_trace(const TraceResponse& t) {
     xQueueSend(trace_queue, &t, 0);
+    notify_ui_task();
 }
 
 void update_status(const MeshStatus& s) {
@@ -39,6 +49,15 @@ void update_status(const MeshStatus& s) {
         status = s;
         xSemaphoreGive(status_mutex);
     }
+}
+
+void set_ui_task_handle(TaskHandle_t handle) {
+    ui_task_handle = handle;
+}
+
+void mark_discovery_changed() {
+    discovery_changed = true;
+    notify_ui_task();
 }
 
 bool pop_contact(ContactUpdate& c) {
@@ -55,6 +74,12 @@ bool pop_telemetry(TelemetryResponse& t) {
 
 bool pop_trace(TraceResponse& t) {
     return xQueueReceive(trace_queue, &t, 0) == pdTRUE;
+}
+
+bool take_discovery_changed() {
+    bool changed = discovery_changed;
+    discovery_changed = false;
+    return changed;
 }
 
 MeshStatus get_status() {

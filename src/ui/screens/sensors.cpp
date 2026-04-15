@@ -10,8 +10,8 @@
 #include "../components/nav_button.h"
 #include "../components/text_utils.h"
 #include "../components/toast.h"
+#include "../../model.h"
 #include "../../sd_log.h"
-#include "../../mesh/mesh_bridge.h"
 #include "../../mesh/mesh_task.h"
 #include <helpers/AdvertDataHelpers.h>
 #include <helpers/sensors/LPPDataHelpers.h>
@@ -32,12 +32,15 @@ struct SensorCard {
     bool pending;
     uint32_t pending_since_ms;
     uint32_t telemetry_timestamp;
+    uint32_t applied_telemetry_seq;
     char last_telemetry[192];
     char telemetry[192];
 };
 
 static SensorCard cards[MAX_CONTACTS] = {};
 static int card_count = 0;
+static uint32_t last_contacts_revision = 0;
+static uint32_t last_telemetry_revision = 0;
 static lv_obj_t* card_rows[MAX_CONTACTS] = {};
 static lv_obj_t* card_name_labels[MAX_CONTACTS] = {};
 static lv_obj_t* card_body_labels[MAX_CONTACTS] = {};
@@ -214,6 +217,16 @@ static SensorCard* find_card(const uint8_t* pub_key_prefix) {
     return NULL;
 }
 
+static int find_card_index(const uint8_t* pub_key_prefix) {
+    if (!pub_key_prefix) return -1;
+    for (int i = 0; i < card_count; i++) {
+        if (memcmp(cards[i].pub_key, pub_key_prefix, 7) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static void format_default_body(SensorCard& card) {
     card.telemetry_timestamp = 0;
     card.pending_since_ms = 0;
@@ -227,6 +240,19 @@ static bool load_persisted_telemetry(SensorCard& card) {
     uint32_t timestamp = 0;
     if (!sd_log::get_telemetry(card.pub_key, data, &len, sizeof(data), &timestamp)) return false;
     decode_telemetry(card, data, len, timestamp);
+    return true;
+}
+
+static bool apply_cached_telemetry(SensorCard& card) {
+    const model::TelemetryEntry* telemetry = model::find_telemetry(card.pub_key);
+    if (!telemetry || !telemetry->valid || telemetry->seq <= card.applied_telemetry_seq) {
+        return false;
+    }
+
+    card.pending = false;
+    decode_telemetry(card, telemetry->data, telemetry->len, telemetry->timestamp);
+    card.applied_telemetry_seq = telemetry->seq;
+    sd_log::store_telemetry(telemetry->pub_key_prefix, telemetry->data, telemetry->len);
     return true;
 }
 
@@ -1085,55 +1111,71 @@ static void ensure_row(int idx) {
     lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void upsert_contact(const mesh::bridge::ContactUpdate& cu) {
-    if (!is_sensor_contact(cu.type, cu.flags)) return;
+static bool sync_cards_from_model() {
+    bool changed = false;
+    bool keep[MAX_CONTACTS] = {};
 
-    SensorCard* existing = find_card(cu.pub_key);
-    if (existing) {
-        strncpy(existing->name, cu.name, sizeof(existing->name) - 1);
-        existing->name[sizeof(existing->name) - 1] = 0;
-        ui::text::strip_emoji(existing->name);
-        existing->type = cu.type;
-        if (!existing->pending && !load_persisted_telemetry(*existing)) {
-            format_default_body(*existing);
+    for (int i = 0; i < model::contact_count; i++) {
+        const model::ContactEntry& contact = model::contacts[i];
+        if (!is_sensor_contact(contact.type, contact.flags)) continue;
+
+        int idx = find_card_index(contact.pub_key);
+        if (idx < 0) {
+            if (card_count >= MAX_CONTACTS) continue;
+            idx = card_count++;
+            memset(&cards[idx], 0, sizeof(cards[idx]));
+            memcpy(cards[idx].pub_key, contact.pub_key, sizeof(cards[idx].pub_key));
+            if (!load_persisted_telemetry(cards[idx])) {
+                format_default_body(cards[idx]);
+            }
+            changed = true;
         }
-        return;
+
+        keep[idx] = true;
+        if (strncmp(cards[idx].name, contact.name, sizeof(cards[idx].name)) != 0) {
+            strncpy(cards[idx].name, contact.name, sizeof(cards[idx].name) - 1);
+            cards[idx].name[sizeof(cards[idx].name) - 1] = 0;
+            ui::text::strip_emoji(cards[idx].name);
+            changed = true;
+        }
+        if (cards[idx].type != contact.type) {
+            cards[idx].type = contact.type;
+            changed = true;
+        }
+        if (apply_cached_telemetry(cards[idx])) {
+            changed = true;
+        }
     }
 
-    if (card_count >= MAX_CONTACTS) return;
-
-    SensorCard& card = cards[card_count];
-    memset(&card, 0, sizeof(card));
-    strncpy(card.name, cu.name, sizeof(card.name) - 1);
-    card.name[sizeof(card.name) - 1] = 0;
-    ui::text::strip_emoji(card.name);
-    memcpy(card.pub_key, cu.pub_key, sizeof(card.pub_key));
-    card.type = cu.type;
-    if (!load_persisted_telemetry(card)) {
-        format_default_body(card);
+    for (int i = card_count - 1; i >= 0; i--) {
+        if (keep[i]) continue;
+        for (int j = i; j < card_count - 1; j++) {
+            cards[j] = cards[j + 1];
+        }
+        memset(&cards[card_count - 1], 0, sizeof(cards[card_count - 1]));
+        card_count--;
+        changed = true;
     }
-    card_count++;
+
+    return changed;
 }
 
 void process_events() {
     if (!sensor_list) return;
 
     bool changed = false;
-    mesh::bridge::ContactUpdate cu;
-    while (mesh::bridge::pop_contact(cu)) {
-        upsert_contact(cu);
-        changed = true;
+    if (last_contacts_revision != model::contacts_revision) {
+        changed |= sync_cards_from_model();
+        last_contacts_revision = model::contacts_revision;
     }
 
-    mesh::bridge::TelemetryResponse tr;
-    while (mesh::bridge::pop_telemetry(tr)) {
-        SensorCard* card = find_card(tr.pub_key_prefix);
-        if (!card) continue;
-        card->pending = false;
-        uint32_t timestamp = (uint32_t)time(nullptr);
-        decode_telemetry(*card, tr.data, tr.len, timestamp);
-        sd_log::store_telemetry(tr.pub_key_prefix, tr.data, tr.len);
-        changed = true;
+    if (last_telemetry_revision != model::telemetry_revision) {
+        for (int i = 0; i < card_count; i++) {
+            if (apply_cached_telemetry(cards[i])) {
+                changed = true;
+            }
+        }
+        last_telemetry_revision = model::telemetry_revision;
     }
 
     uint32_t now = millis();
@@ -1175,7 +1217,9 @@ static void entry() {
     }
     ui::port::set_refresh_mode(UI_REFRESH_MODE_NORMAL);
     card_count = 0;
-    mesh::task::push_all_contacts();
+    last_contacts_revision = 0;
+    last_telemetry_revision = 0;
+    model::refresh_contacts();
     rebuild_list();
     process_events();
 }
@@ -1191,6 +1235,8 @@ static void destroy() {
     scr = NULL;
     sensor_list = NULL;
     empty_label = NULL;
+    last_contacts_revision = 0;
+    last_telemetry_revision = 0;
     for (int i = 0; i < MAX_CONTACTS; i++) {
         memset(&cards[i], 0, sizeof(cards[i]));
         card_rows[i] = NULL;

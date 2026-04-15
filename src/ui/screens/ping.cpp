@@ -13,7 +13,6 @@
 #include "../components/geo_utils.h"
 #include "../components/toast.h"
 #include "../../sd_log.h"
-#include "../../mesh/mesh_bridge.h"
 #include "../../mesh/mesh_task.h"
 #include "../../model.h"
 #include <helpers/AdvertDataHelpers.h>
@@ -27,7 +26,6 @@ static lv_obj_t* lbl_status = NULL;
 static lv_obj_t* lbl_route = NULL;
 static lv_obj_t* history_rows[24] = {};
 static lv_obj_t* history_labels[24] = {};
-static lv_timer_t* poll_timer = NULL;
 
 static char contact_name[32];
 static int32_t contact_lat = 0;
@@ -64,6 +62,8 @@ static bool pending_retried_flood = false;
 static bool pending_relay = false;
 static uint32_t pending_since_ms = 0;
 static uint32_t pending_trace_tag = 0;
+static uint32_t pending_telemetry_seq = 0;
+static uint32_t pending_trace_seq = 0;
 static bool auto_ping_enabled = false;
 static uint32_t next_auto_ping_at = 0;
 
@@ -311,6 +311,8 @@ static void finish_ping(const PingEntry& entry, const char* status_line) {
     pending_relay = false;
     pending_since_ms = 0;
     pending_trace_tag = 0;
+    pending_telemetry_seq = 0;
+    pending_trace_seq = 0;
 
     insert_history(entry);
     persist_history();
@@ -333,6 +335,7 @@ static bool begin_ping(bool force_flood) {
         ping_pending = true;
         pending_relay = true;
         pending_trace_tag = tag;
+        pending_trace_seq = model::trace_revision;
         pending_since_ms = millis();
         update_status_text("Tracing relay...");
         return true;
@@ -348,6 +351,8 @@ static bool begin_ping(bool force_flood) {
     ping_pending = true;
     pending_relay = false;
     pending_force_flood = force_flood;
+    const model::TelemetryEntry* telemetry = model::find_telemetry(contact_pubkey);
+    pending_telemetry_seq = telemetry ? telemetry->seq : 0;
     pending_since_ms = millis();
     update_status_text(force_flood ? "Flood ping..." : (contact_has_path ? "Direct ping..." : "Flood ping..."));
     return true;
@@ -384,8 +389,10 @@ static void on_clear(lv_event_t* e) {
     update_status_text("History cleared");
 }
 
-static void handle_telemetry_response(const mesh::bridge::TelemetryResponse& tr) {
-    if (memcmp(tr.pub_key_prefix, contact_pubkey, 7) != 0 || !ping_pending || pending_relay) {
+static void handle_telemetry_response(const model::TelemetryEntry& telemetry) {
+    if (!ping_pending || pending_relay || !telemetry.valid ||
+        memcmp(telemetry.pub_key_prefix, contact_pubkey, 7) != 0 ||
+        telemetry.seq <= pending_telemetry_seq) {
         return;
     }
 
@@ -403,8 +410,9 @@ static void handle_telemetry_response(const mesh::bridge::TelemetryResponse& tr)
     finish_ping(entry, status);
 }
 
-static void handle_trace_response(const mesh::bridge::TraceResponse& tr) {
-    if (!ping_pending || !pending_relay || tr.tag != pending_trace_tag) {
+static void handle_trace_response(const model::TraceEntry& trace) {
+    if (!ping_pending || !pending_relay || !trace.valid ||
+        trace.tag != pending_trace_tag || trace.seq <= pending_trace_seq) {
         return;
     }
 
@@ -413,9 +421,9 @@ static void handle_trace_response(const mesh::bridge::TraceResponse& tr) {
     entry.timed_out = false;
     entry.relay = true;
     entry.duration_ms = millis() - pending_since_ms;
-    entry.hop_count = tr.hop_count;
-    entry.snr_there_q4 = tr.snr_there_q4;
-    entry.snr_back_q4 = tr.snr_back_q4;
+    entry.hop_count = trace.hop_count;
+    entry.snr_there_q4 = trace.snr_there_q4;
+    entry.snr_back_q4 = trace.snr_back_q4;
     entry.timestamp = (uint32_t)time(NULL);
 
     char status[96];
@@ -449,15 +457,17 @@ static void handle_timeout() {
     finish_ping(entry, "Ping timed out");
 }
 
-static void poll_updates(lv_timer_t* t) {
-    mesh::bridge::TelemetryResponse telemetry;
-    while (mesh::bridge::pop_telemetry(telemetry)) {
-        handle_telemetry_response(telemetry);
+void process_events() {
+    if (!scr) return;
+
+    const model::TelemetryEntry* telemetry = model::find_telemetry(contact_pubkey);
+    if (telemetry) {
+        handle_telemetry_response(*telemetry);
     }
 
-    mesh::bridge::TraceResponse trace;
-    while (mesh::bridge::pop_trace(trace)) {
-        handle_trace_response(trace);
+    const model::TraceEntry* trace = model::find_trace(pending_trace_tag);
+    if (trace) {
+        handle_trace_response(*trace);
     }
 
     handle_timeout();
@@ -539,18 +549,18 @@ static void entry() {
     pending_relay = false;
     pending_since_ms = 0;
     pending_trace_tag = 0;
+    pending_telemetry_seq = 0;
+    pending_trace_seq = 0;
     next_auto_ping_at = 0;
     rebuild_history();
     start_ping();
-    poll_timer = lv_timer_create(poll_updates, 250, NULL);
+    process_events();
 }
 
 static void exit_fn() {
-    if (poll_timer) {
-        lv_timer_del(poll_timer);
-        poll_timer = NULL;
-    }
     ping_pending = false;
+    pending_telemetry_seq = 0;
+    pending_trace_seq = 0;
     next_auto_ping_at = 0;
 }
 

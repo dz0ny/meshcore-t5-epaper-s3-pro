@@ -11,8 +11,6 @@
 #include "../components/geo_utils.h"
 #include "../components/text_utils.h"
 #include "../../model.h"
-#include "../../mesh/mesh_bridge.h"
-#include "../../mesh/mesh_task.h"
 
 namespace ui::screen::map {
 
@@ -20,11 +18,14 @@ static lv_obj_t* scr = NULL;
 static lv_obj_t* canvas_obj = NULL;
 static lv_obj_t* tap_layer = NULL;
 static lv_obj_t* lbl_zoom = NULL;
-static lv_timer_t* poll_timer = NULL;
 static lv_obj_t* grid_label = NULL;
 static lv_obj_t* no_fix_label = NULL;
 static lv_obj_t* contact_taps[32] = {};
 static lv_obj_t* contact_name_labels[32] = {};
+static uint32_t last_contacts_revision = 0;
+static double last_gps_lat = 0.0;
+static double last_gps_lon = 0.0;
+static bool last_gps_fix = false;
 
 // Zoom levels in km radius
 static const double zoom_levels[] = {0.5, 1.0, 5.0, 20.0, 50.0};
@@ -104,15 +105,14 @@ static void on_contact_tap(lv_event_t* e) {
 
 static void load_contacts() {
     contact_count = 0;
-    mesh::task::push_all_contacts();
-    mesh::bridge::ContactUpdate cu;
-    while (mesh::bridge::pop_contact(cu) && contact_count < 32) {
-        if (cu.gps_lat == 0 && cu.gps_lon == 0) continue;
-        strncpy(contacts[contact_count].name, cu.name, 31);
+    for (int i = 0; i < model::contact_count && contact_count < 32; i++) {
+        const model::ContactEntry& contact = model::contacts[i];
+        if (contact.gps_lat == 0 && contact.gps_lon == 0) continue;
+        strncpy(contacts[contact_count].name, contact.name, 31);
         contacts[contact_count].name[31] = 0;
         ui::text::strip_emoji(contacts[contact_count].name);
-        contacts[contact_count].lat = cu.gps_lat / 1e6;
-        contacts[contact_count].lon = cu.gps_lon / 1e6;
+        contacts[contact_count].lat = contact.gps_lat / 1e6;
+        contacts[contact_count].lon = contact.gps_lon / 1e6;
         contacts[contact_count].px = -1;
         contacts[contact_count].py = -1;
         contact_count++;
@@ -309,9 +309,23 @@ static void rebuild_map() {
     lv_obj_invalidate(canvas_obj);
 }
 
-static void poll_update(lv_timer_t* t) {
-    load_contacts();
+void process_events() {
+    if (!canvas_obj) return;
+
+    bool gps_changed = (last_gps_fix != model::gps.has_fix) ||
+                       (fabs(last_gps_lat - model::gps.lat) > 0.00001) ||
+                       (fabs(last_gps_lon - model::gps.lng) > 0.00001);
+    bool contacts_changed = last_contacts_revision != model::contacts_revision;
+    if (!gps_changed && !contacts_changed) return;
+
+    if (contacts_changed) {
+        load_contacts();
+        last_contacts_revision = model::contacts_revision;
+    }
     rebuild_map();
+    last_gps_fix = model::gps.has_fix;
+    last_gps_lat = model::gps.lat;
+    last_gps_lon = model::gps.lng;
 }
 
 static void create(lv_obj_t* parent) {
@@ -408,13 +422,15 @@ static void create(lv_obj_t* parent) {
 }
 
 static void entry() {
-    load_contacts();
-    rebuild_map();
-    poll_timer = lv_timer_create(poll_update, 5000, NULL);
+    last_contacts_revision = 0;
+    last_gps_fix = !model::gps.has_fix;
+    last_gps_lat = 0.0;
+    last_gps_lon = 0.0;
+    model::refresh_contacts();
+    process_events();
 }
 
 static void exit_fn() {
-    if (poll_timer) { lv_timer_del(poll_timer); poll_timer = NULL; }
 }
 
 static void destroy() {
@@ -429,6 +445,10 @@ static void destroy() {
     map_cx = 0;
     map_cy = 0;
     contact_count = 0;
+    last_contacts_revision = 0;
+    last_gps_lat = 0.0;
+    last_gps_lon = 0.0;
+    last_gps_fix = false;
     for (int i = 0; i < 32; i++) {
         contact_taps[i] = NULL;
         contact_name_labels[i] = NULL;

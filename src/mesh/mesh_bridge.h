@@ -3,6 +3,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
+#include <freertos/task.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -79,12 +80,15 @@ void push_message(const MessageIn& m);
 void push_telemetry(const TelemetryResponse& t);
 void push_trace(const TraceResponse& t);
 void update_status(const MeshStatus& s);
+void set_ui_task_handle(TaskHandle_t handle);
+void mark_discovery_changed();
 
 // Called from UI task (core 1)
 bool pop_contact(ContactUpdate& c);
 bool pop_message(MessageIn& m);
 bool pop_telemetry(TelemetryResponse& t);
 bool pop_trace(TraceResponse& t);
+bool take_discovery_changed();
 MeshStatus get_status();
 
 } // namespace mesh::bridge
