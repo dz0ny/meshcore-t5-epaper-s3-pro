@@ -239,6 +239,7 @@ namespace board {
         bool clicked;
     };
     TrackballState trackball_read();
+    extern volatile uint32_t tb_isr_up_total, tb_isr_down_total, tb_isr_left_total, tb_isr_right_total;
 }
 
 #else

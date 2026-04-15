@@ -1,5 +1,6 @@
 #include "msg_list.h"
 #include "text_utils.h"
+#include "../ui_port.h"
 #include "../ui_theme.h"
 #include "../ui_screen_mgr.h"
 #include "../screens/msg_detail.h"
@@ -46,6 +47,7 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     if (msg_idx >= 0) {
         lv_obj_add_flag(wrapper, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(wrapper, on_msg_click, LV_EVENT_CLICKED, (void*)(intptr_t)msg_idx);
+        ui::port::keyboard_focus_register(wrapper);
     }
     lv_obj_set_flex_flow(wrapper, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(wrapper, UI_MSG_WRAP_ROW_PAD, LV_PART_MAIN);

@@ -1,4 +1,5 @@
 #include "nav_button.h"
+#include "../ui_port.h"
 #include "../ui_screen_mgr.h"
 #include "../ui_theme.h"
 #include "../../nvs_param.h"
@@ -148,6 +149,7 @@ static lv_obj_t* create_hit_row(lv_obj_t* parent, lv_event_cb_t cb, void* user_d
     lv_obj_add_flag(hit, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(hit, cb, LV_EVENT_CLICKED, user_data);
     lv_obj_set_ext_click_area(hit, UI_EXT_CLICK_LIST);
+    ui::port::keyboard_focus_register(hit);
     return hit;
 }
 
@@ -159,6 +161,7 @@ static lv_obj_t* create_back_hit_row(lv_obj_t* parent, lv_event_cb_t cb, void* u
     if (cb) {
         lv_obj_add_flag(hit, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(hit, cb, LV_EVENT_CLICKED, user_data);
+        ui::port::keyboard_focus_register(hit);
     } else {
         lv_obj_clear_flag(hit, LV_OBJ_FLAG_CLICKABLE);
     }
@@ -195,6 +198,7 @@ static lv_obj_t* create_nav_action_button(lv_obj_t* parent, const char* action_t
     lv_obj_add_flag(action, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(action, action_cb, LV_EVENT_CLICKED, action_user_data);
     lv_obj_set_ext_click_area(action, UI_EXT_CLICK_ACTION);
+    ui::port::keyboard_focus_register(action);
 #ifdef BOARD_TDECK
     lv_obj_add_event_cb(action, on_action_focus_feedback, LV_EVENT_FOCUSED, action);
     lv_obj_add_event_cb(action, on_action_focus_feedback, LV_EVENT_DEFOCUSED, action);
@@ -294,6 +298,7 @@ lv_obj_t* back_button_three_actions_ex(lv_obj_t* parent, const char* title, lv_e
     lv_obj_add_flag(back, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(back, back_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_set_ext_click_area(back, UI_EXT_CLICK_BACK);
+    ui::port::keyboard_focus_register(back);
     lv_obj_set_flex_flow(back, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(back, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 #ifdef BOARD_TDECK
@@ -433,6 +438,7 @@ lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, user_data);
     lv_obj_set_ext_click_area(btn, UI_EXT_CLICK_ACTION);
+    ui::port::keyboard_focus_register(btn);
 #ifdef BOARD_TDECK
     lv_obj_add_event_cb(btn, on_row_focus_feedback, LV_EVENT_FOCUSED, btn);
     lv_obj_add_event_cb(btn, on_row_focus_feedback, LV_EVENT_DEFOCUSED, btn);

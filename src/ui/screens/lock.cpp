@@ -66,6 +66,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_add_flag(lbl_unread, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_ext_click_area(lbl_unread, 30);
     lv_obj_add_event_cb(lbl_unread, on_unread_click, LV_EVENT_CLICKED, NULL);
+    ui::port::keyboard_focus_register(lbl_unread);
 
     lbl_info = lv_label_create(parent);
     lv_obj_set_style_text_font(lbl_info, UI_FONT_BODY, LV_PART_MAIN);

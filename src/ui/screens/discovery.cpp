@@ -12,7 +12,6 @@ namespace ui::screen::discovery {
 
 static lv_obj_t* scr = NULL;
 static lv_obj_t* node_list = NULL;
-static lv_timer_t* poll_timer = NULL;
 static lv_obj_t* lbl_filter = NULL;
 static lv_obj_t* node_rows[16] = {};
 static lv_obj_t* node_row_labels[16] = {};
@@ -133,7 +132,8 @@ static void rebuild_list() {
     ui::port::keyboard_focus_invalidate();
 }
 
-static void poll_discovered(lv_timer_t* t) {
+void process_events() {
+    if (!node_list) return;
     if (!mesh::bridge::discovery_changed) return;
     mesh::bridge::discovery_changed = false;
     node_count = mesh::task::get_discovered(nodes, 16);
@@ -160,11 +160,9 @@ static void entry() {
     node_count = mesh::task::get_discovered(nodes, 16);
     rebuild_list();
     mesh::bridge::discovery_changed = false;
-    poll_timer = lv_timer_create(poll_discovered, 500, NULL);
 }
 
 static void exit_fn() {
-    if (poll_timer) { lv_timer_del(poll_timer); poll_timer = NULL; }
 }
 
 static void destroy() {

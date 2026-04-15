@@ -15,7 +15,6 @@ static lv_obj_t* scr = NULL;
 static lv_obj_t* contact_list = NULL;
 static lv_obj_t* lbl_filter = NULL;
 static lv_obj_t* lbl_count = NULL;
-static lv_timer_t* poll_timer = NULL;
 static lv_obj_t* contact_rows[MAX_CONTACTS] = {};
 static lv_obj_t* contact_row_labels[MAX_CONTACTS] = {};
 static int row_contact_idx[MAX_CONTACTS] = {};
@@ -138,7 +137,9 @@ static void rebuild_list() {
     ui::port::keyboard_focus_invalidate();
 }
 
-static void poll_contacts(lv_timer_t* t) {
+void process_events() {
+    if (!contact_list) return;
+
     mesh::bridge::ContactUpdate cu;
     bool changed = false;
     while (mesh::bridge::pop_contact(cu)) {
@@ -201,12 +202,10 @@ static void entry() {
     display_count = 0;
     rebuild_list();
     mesh::task::push_all_contacts();
-    poll_timer = lv_timer_create(poll_contacts, 2000, NULL);
-    poll_contacts(NULL);
+    process_events();
 }
 
 static void exit_fn() {
-    if (poll_timer) { lv_timer_del(poll_timer); poll_timer = NULL; }
 }
 
 static void destroy() {

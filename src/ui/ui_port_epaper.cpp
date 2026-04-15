@@ -35,9 +35,11 @@ struct FullRefreshStamp {
     bool valid;
 };
 static FullRefreshStamp last_full_refresh = {};
-static lv_obj_t *keyboard_scroll_root = NULL;
 static lv_obj_t *keyboard_screen_root = NULL;
 static bool keyboard_focus_dirty = true;
+static const size_t MAX_KEYBOARD_FOCUSABLES = 1024;
+static lv_obj_t *keyboard_focusables[MAX_KEYBOARD_FOCUSABLES] = {};
+static size_t keyboard_focusable_count = 0;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -324,60 +326,57 @@ static bool obj_accepts_group_focus(lv_obj_t *obj) {
     return obj && (lv_obj_has_flag(obj, LV_OBJ_FLAG_CLICKABLE) || lv_obj_check_type(obj, &lv_textarea_class));
 }
 
-static void add_group_targets(lv_group_t *group, lv_obj_t *parent) {
-    if (!group || !parent || !lv_obj_is_valid(parent) || !lv_obj_is_visible(parent)) return;
+static bool obj_is_focus_candidate_on_screen(lv_obj_t *obj, lv_obj_t *screen) {
+    if (!obj || !screen || !lv_obj_is_valid(obj) || !lv_obj_is_visible(obj)) return false;
+    if (lv_obj_get_screen(obj) != screen) return false;
+    return obj_accepts_group_focus(obj);
+}
 
-    uint32_t cnt = lv_obj_get_child_count(parent);
-    for (uint32_t i = 0; i < cnt; i++) {
-        lv_obj_t *child = lv_obj_get_child(parent, i);
-        if (!child || !lv_obj_is_valid(child) || !lv_obj_is_visible(child)) continue;
+static void compact_keyboard_focus_registry() {
+    size_t write = 0;
+    for (size_t i = 0; i < keyboard_focusable_count; i++) {
+        lv_obj_t *obj = keyboard_focusables[i];
+        if (!obj || !lv_obj_is_valid(obj)) continue;
 
-        if (obj_accepts_group_focus(child)) {
-            if (lv_obj_get_group(child) != group) {
-                lv_group_add_obj(group, child);
+        bool duplicate = false;
+        for (size_t j = 0; j < write; j++) {
+            if (keyboard_focusables[j] == obj) {
+                duplicate = true;
+                break;
             }
-            lv_obj_add_flag(child, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
         }
+        if (duplicate) continue;
 
-        add_group_targets(group, child);
+        keyboard_focusables[write++] = obj;
+    }
+    for (size_t i = write; i < keyboard_focusable_count; i++) {
+        keyboard_focusables[i] = NULL;
+    }
+    keyboard_focusable_count = write;
+}
+
+static void add_registered_group_targets(lv_group_t *group, lv_obj_t *screen) {
+    if (!group || !screen) return;
+
+    for (size_t i = 0; i < keyboard_focusable_count; i++) {
+        lv_obj_t *obj = keyboard_focusables[i];
+        if (!obj_is_focus_candidate_on_screen(obj, screen)) continue;
+
+        if (lv_obj_get_group(obj) != group) {
+            lv_group_add_obj(group, obj);
+        }
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     }
 }
 
-static lv_obj_t *find_scrollable() {
-    lv_obj_t *scr = lv_screen_active();
-    if (!scr) return NULL;
+static lv_obj_t *find_first_registered_focus_target(lv_obj_t *screen) {
+    if (!screen) return NULL;
 
-    uint32_t cnt = lv_obj_get_child_count(scr);
-    for (uint32_t i = 0; i < cnt; i++) {
-        lv_obj_t *child = lv_obj_get_child(scr, i);
-        if (!child || !lv_obj_is_valid(child) || !lv_obj_is_visible(child)) continue;
-        if (!lv_obj_has_flag(child, LV_OBJ_FLAG_SCROLLABLE)) continue;
-
-        uint32_t gcnt = lv_obj_get_child_count(child);
-        for (uint32_t j = 0; j < gcnt; j++) {
-            lv_obj_t *gc = lv_obj_get_child(child, j);
-            if (!gc || !lv_obj_is_valid(gc) || !lv_obj_is_visible(gc)) continue;
-            if (lv_obj_has_flag(gc, LV_OBJ_FLAG_SCROLLABLE)) {
-                return gc;
-            }
+    for (size_t i = 0; i < keyboard_focusable_count; i++) {
+        lv_obj_t *obj = keyboard_focusables[i];
+        if (obj_is_focus_candidate_on_screen(obj, screen)) {
+            return obj;
         }
-        return child;
-    }
-    return NULL;
-}
-
-static lv_obj_t *find_first_group_target(lv_obj_t *parent) {
-    if (!parent || !lv_obj_is_valid(parent) || !lv_obj_is_visible(parent)) return NULL;
-
-    uint32_t cnt = lv_obj_get_child_count(parent);
-    for (uint32_t i = 0; i < cnt; i++) {
-        lv_obj_t *child = lv_obj_get_child(parent, i);
-        if (!child || !lv_obj_is_valid(child) || !lv_obj_is_visible(child)) continue;
-        if (obj_accepts_group_focus(child)) {
-            return child;
-        }
-        lv_obj_t *nested = find_first_group_target(child);
-        if (nested) return nested;
     }
     return NULL;
 }
@@ -393,7 +392,9 @@ static void ensure_keyboard_focus_target() {
     }
 
     lv_obj_t *focused = lv_group_get_focused(group);
-    if (!keyboard_focus_dirty && (!focused || !lv_obj_is_valid(focused) || !lv_obj_is_visible(focused))) {
+    if (!keyboard_focus_dirty &&
+        (!focused || !lv_obj_is_valid(focused) || !lv_obj_is_visible(focused) ||
+         lv_obj_get_screen(focused) != screen || !obj_accepts_group_focus(focused))) {
         keyboard_focus_dirty = true;
     }
 
@@ -401,26 +402,19 @@ static void ensure_keyboard_focus_target() {
         return;
     }
 
-    lv_obj_t *scrollable = find_scrollable();
-    lv_obj_t *focus_root = scrollable ? scrollable : screen;
-    if (focus_root && (!lv_obj_is_valid(focus_root) || !lv_obj_is_visible(focus_root))) {
-        focus_root = NULL;
-    }
-
-    keyboard_scroll_root = focus_root;
+    compact_keyboard_focus_registry();
     lv_group_remove_all_objs(group);
 
-    if (focus_root) {
-        add_group_targets(group, focus_root);
+    if (screen) {
+        add_registered_group_targets(group, screen);
     }
 
-    focused = lv_group_get_focused(group);
-    if ((!focused || !lv_obj_is_valid(focused) || !lv_obj_is_visible(focused)) && focus_root) {
-        lv_obj_t *first = find_first_group_target(focus_root);
-        if (first) {
-            lv_group_focus_obj(first);
-            lv_obj_scroll_to_view_recursive(first, LV_ANIM_OFF);
-        }
+    lv_obj_t *target = obj_is_focus_candidate_on_screen(focused, screen) ?
+                       focused :
+                       find_first_registered_focus_target(screen);
+    if (target) {
+        lv_group_focus_obj(target);
+        lv_obj_scroll_to_view_recursive(target, LV_ANIM_OFF);
     }
 
     keyboard_focus_dirty = false;
@@ -568,8 +562,28 @@ void touch_disable() { touch_enabled = false; }
 
 void keyboard_focus_invalidate() {
     keyboard_focus_dirty = true;
-    keyboard_scroll_root = NULL;
     keyboard_screen_root = NULL;
+}
+
+void keyboard_focus_register(lv_obj_t* obj) {
+    if (!obj || !lv_obj_is_valid(obj)) return;
+
+    for (size_t i = 0; i < keyboard_focusable_count; i++) {
+        if (keyboard_focusables[i] == obj) {
+            keyboard_focus_dirty = true;
+            return;
+        }
+    }
+
+    if (keyboard_focusable_count >= MAX_KEYBOARD_FOCUSABLES) {
+        compact_keyboard_focus_registry();
+        if (keyboard_focusable_count >= MAX_KEYBOARD_FOCUSABLES) {
+            return;
+        }
+    }
+
+    keyboard_focusables[keyboard_focusable_count++] = obj;
+    keyboard_focus_dirty = true;
 }
 
 // Backlight mode: 0=Auto, 1=On, 2=Off

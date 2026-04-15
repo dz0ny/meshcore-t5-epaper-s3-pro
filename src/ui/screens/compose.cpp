@@ -536,6 +536,7 @@ static lv_obj_t* create_filter_tab(lv_obj_t* parent, const char* text, PickFilte
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn, on_filter_pick, LV_EVENT_CLICKED, (void*)(intptr_t)filter);
     lv_obj_set_ext_click_area(btn, UI_EXT_CLICK_ACTION);
+    ui::port::keyboard_focus_register(btn);
 
     lv_obj_t* label = lv_label_create(btn);
     lv_obj_set_style_text_font(label, UI_FONT_SMALL, LV_PART_MAIN);
@@ -620,6 +621,7 @@ static void create_epaper_editor_panel(lv_obj_t* parent) {
     lv_obj_add_flag(editor_summary_card, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(editor_summary_card, on_recipient_click, LV_EVENT_CLICKED, NULL);
     lv_obj_set_ext_click_area(editor_summary_card, UI_EXT_CLICK_ACTION);
+    ui::port::keyboard_focus_register(editor_summary_card);
 
     lv_obj_t* summary_title = lv_label_create(editor_summary_card);
     lv_obj_set_style_text_font(summary_title, UI_FONT_SMALL, LV_PART_MAIN);
@@ -677,6 +679,7 @@ static void create_epaper_editor_panel(lv_obj_t* parent) {
     lv_obj_add_event_cb(ta, on_ta_focus, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(ta, on_ta_blur, LV_EVENT_DEFOCUSED, NULL);
     lv_obj_add_event_cb(ta, on_ta_change, LV_EVENT_VALUE_CHANGED, NULL);
+    ui::port::keyboard_focus_register(ta);
 
 #if UI_COMPOSE_SHOW_KB
     if (!board::peri_status[E_PERI_KEYBOARD]) {
@@ -724,6 +727,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_add_flag(recipient_card, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(recipient_card, on_recipient_click, LV_EVENT_CLICKED, NULL);
     lv_obj_set_ext_click_area(recipient_card, 15);
+    ui::port::keyboard_focus_register(recipient_card);
 
     lbl_to = lv_label_create(recipient_card);
     lv_obj_set_width(lbl_to, lv_pct(85));
@@ -805,6 +809,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_add_event_cb(ta, on_ta_focus, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(ta, on_ta_blur, LV_EVENT_DEFOCUSED, NULL);
     lv_obj_add_event_cb(ta, on_ta_change, LV_EVENT_VALUE_CHANGED, NULL);
+    ui::port::keyboard_focus_register(ta);
 
 #if UI_COMPOSE_SHOW_KB
     if (!board::peri_status[E_PERI_KEYBOARD]) {

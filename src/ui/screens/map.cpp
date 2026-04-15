@@ -4,6 +4,7 @@
 #include <esp_heap_caps.h>
 #include "map.h"
 #include "../ui_theme.h"
+#include "../ui_port.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/toast.h"
@@ -377,6 +378,7 @@ static void create(lv_obj_t* parent) {
         lv_obj_set_ext_click_area(contact_taps[i], 15);
         lv_obj_add_event_cb(contact_taps[i], on_contact_tap, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         lv_obj_add_flag(contact_taps[i], LV_OBJ_FLAG_HIDDEN);
+        ui::port::keyboard_focus_register(contact_taps[i]);
 
         contact_name_labels[i] = lv_label_create(tap_layer);
         lv_obj_set_style_text_font(contact_name_labels[i], UI_FONT_SMALL, LV_PART_MAIN);

@@ -23,6 +23,10 @@ static constexpr uint32_t TB_DEBOUNCE_US = 800;  // microseconds
 static volatile int8_t tb_dx = 0;
 static volatile int8_t tb_dy = 0;
 static volatile bool tb_clicked = false;
+volatile uint32_t tb_isr_up_total = 0;
+volatile uint32_t tb_isr_down_total = 0;
+volatile uint32_t tb_isr_left_total = 0;
+volatile uint32_t tb_isr_right_total = 0;
 static volatile uint32_t tb_last_up = 0;
 static volatile uint32_t tb_last_down = 0;
 static volatile uint32_t tb_last_left = 0;
@@ -30,19 +34,19 @@ static volatile uint32_t tb_last_right = 0;
 
 static void IRAM_ATTR tb_up_isr() {
     uint32_t now = micros();
-    if (now - tb_last_up > TB_DEBOUNCE_US) { tb_dy--; tb_last_up = now; }
+    if (now - tb_last_up > TB_DEBOUNCE_US) { tb_dy--; tb_last_up = now; tb_isr_up_total++; }
 }
 static void IRAM_ATTR tb_down_isr() {
     uint32_t now = micros();
-    if (now - tb_last_down > TB_DEBOUNCE_US) { tb_dy++; tb_last_down = now; }
+    if (now - tb_last_down > TB_DEBOUNCE_US) { tb_dy++; tb_last_down = now; tb_isr_down_total++; }
 }
 static void IRAM_ATTR tb_left_isr() {
     uint32_t now = micros();
-    if (now - tb_last_left > TB_DEBOUNCE_US) { tb_dx--; tb_last_left = now; }
+    if (now - tb_last_left > TB_DEBOUNCE_US) { tb_dx--; tb_last_left = now; tb_isr_left_total++; }
 }
 static void IRAM_ATTR tb_right_isr() {
     uint32_t now = micros();
-    if (now - tb_last_right > TB_DEBOUNCE_US) { tb_dx++; tb_last_right = now; }
+    if (now - tb_last_right > TB_DEBOUNCE_US) { tb_dx++; tb_last_right = now; tb_isr_right_total++; }
 }
 static void IRAM_ATTR tb_click_isr() { tb_clicked = true; }
 

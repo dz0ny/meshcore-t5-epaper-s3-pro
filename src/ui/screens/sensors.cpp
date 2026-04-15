@@ -21,7 +21,6 @@ namespace ui::screen::sensors {
 static lv_obj_t* scr = NULL;
 static lv_obj_t* sensor_list = NULL;
 static lv_obj_t* empty_label = NULL;
-static lv_timer_t* poll_timer = NULL;
 static const uint32_t TELEMETRY_TIMEOUT_MS = 15000;
 static int saved_refresh_mode = UI_REFRESH_MODE_NORMAL;
 static bool refresh_mode_overridden = false;
@@ -970,6 +969,7 @@ static void ensure_row(int idx) {
     lv_obj_add_event_cb(row, on_card_click, LV_EVENT_LONG_PRESSED, (void*)(intptr_t)idx);
     lv_obj_set_ext_click_area(row, 10);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_COLUMN);
+    ui::port::keyboard_focus_register(row);
 
     lv_obj_t* header = lv_obj_create(row);
     lv_obj_set_size(header, lv_pct(100), LV_SIZE_CONTENT);
@@ -1115,7 +1115,9 @@ static void upsert_contact(const mesh::bridge::ContactUpdate& cu) {
     card_count++;
 }
 
-static void poll_updates(lv_timer_t* t) {
+void process_events() {
+    if (!sensor_list) return;
+
     bool changed = false;
     mesh::bridge::ContactUpdate cu;
     while (mesh::bridge::pop_contact(cu)) {
@@ -1175,12 +1177,10 @@ static void entry() {
     card_count = 0;
     mesh::task::push_all_contacts();
     rebuild_list();
-    poll_timer = lv_timer_create(poll_updates, 500, NULL);
-    poll_updates(NULL);
+    process_events();
 }
 
 static void exit_fn() {
-    if (poll_timer) { lv_timer_del(poll_timer); poll_timer = NULL; }
     if (refresh_mode_overridden) {
         ui::port::set_refresh_mode(saved_refresh_mode);
         refresh_mode_overridden = false;

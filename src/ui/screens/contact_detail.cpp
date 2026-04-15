@@ -305,6 +305,7 @@ static void create(lv_obj_t* parent) {
     }
 
     content_list = ui::nav::scroll_list(parent);
+    lv_obj_set_style_pad_row(content_list, UI_MENU_ITEM_PAD, LV_PART_MAIN);
 #ifdef BOARD_TDECK
     lv_obj_set_style_pad_top(content_list, 4, LV_PART_MAIN);
 #endif

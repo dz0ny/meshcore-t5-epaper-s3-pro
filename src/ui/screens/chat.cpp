@@ -11,15 +11,15 @@ namespace ui::screen::chat {
 
 static lv_obj_t* scr = NULL;
 static lv_obj_t* msg_container = NULL;
-static lv_timer_t* poll_timer = NULL;
 static int last_displayed = 0;
 
 static void on_back(lv_event_t* e) {
     ui::screen_mgr::pop(true);
 }
 
-// Check for new messages from model
-static void poll_new(lv_timer_t* t) {
+void process_events() {
+    if (!msg_container) return;
+
     bool changed = false;
 
     // Also drain the bridge queue into model (in case BridgeUITask stored them)
@@ -82,11 +82,10 @@ static void create(lv_obj_t* parent) {
 }
 
 static void entry() {
-    poll_timer = lv_timer_create(poll_new, 2000, NULL);
+    process_events();
 }
 
 static void exit_fn() {
-    if (poll_timer) { lv_timer_del(poll_timer); poll_timer = NULL; }
 }
 
 static void destroy() {

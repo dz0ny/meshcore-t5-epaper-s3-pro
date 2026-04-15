@@ -155,6 +155,41 @@ static void dispatch_dirty(uint32_t flags) {
     }
 }
 
+static void pump_active_screen_events() {
+    switch (ui::screen_mgr::top_id()) {
+        case SCREEN_CHAT:
+            ui::screen::chat::process_events();
+            break;
+        case SCREEN_CONTACTS:
+            ui::screen::contacts::process_events();
+            break;
+        case SCREEN_DISCOVERY:
+            ui::screen::discovery::process_events();
+            break;
+        case SCREEN_SENSORS:
+            ui::screen::sensors::process_events();
+            break;
+        default:
+            break;
+    }
+}
+
+static uint32_t lvgl_idle_period_ms(bool is_locked) {
+    if (is_locked) return 500;
+
+    uint32_t inactive_ms = lv_display_get_inactive_time(NULL);
+    if (inactive_ms < 5000) return 20;
+    if (inactive_ms < 30000) return 80;
+    return 160;
+}
+
+static uint32_t ui_loop_delay_ms(bool is_locked, uint32_t lvgl_period_ms) {
+    if (is_locked) return 20;
+    if (lvgl_period_ms <= 20) return 5;
+    if (lvgl_period_ms <= 80) return 15;
+    return 30;
+}
+
 static void ui_task_fn(void* param) {
 #ifndef BOARD_TDECK
     // BOOT button (GPIO 0): short press toggles lock, long press powers off
@@ -238,6 +273,7 @@ static void ui_task_fn(void* param) {
         }
 
         dispatch_dirty(model::take_dirty());
+        pump_active_screen_events();
 
         // Reset activity on any touch + auto backlight at night
         if (touch_pressed) {
@@ -257,13 +293,8 @@ static void ui_task_fn(void* param) {
             backlight_off_at = 0;
         }
 
-        // Let LVGL handle its own timing — returns immediately if period hasn't elapsed.
-        // On lock screen: slow poll to save power.
-        if (is_locked) {
-            lv_timer_handler_run_in_period(500);
-        } else {
-            lv_timer_handler_run_in_period(20);
-        }
+        uint32_t lvgl_period_ms = lvgl_idle_period_ms(is_locked);
+        lv_timer_handler_run_in_period(lvgl_period_ms);
 
         // After LVGL processed events: if lock screen was touched but LVGL
         // didn't navigate away (user tapped outside the unread label), wake to the previous screen.
@@ -273,7 +304,7 @@ static void ui_task_fn(void* param) {
             ui::screen_mgr::pop(false);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5));  // yield to other tasks
+        vTaskDelay(pdMS_TO_TICKS(ui_loop_delay_ms(is_locked, lvgl_period_ms)));
     }
 }
 

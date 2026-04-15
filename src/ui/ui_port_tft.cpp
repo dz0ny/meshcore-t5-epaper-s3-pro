@@ -396,6 +396,12 @@ static void trackball_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
         board::TrackballState tb = board::trackball_read();
         lv_obj_t *screen = lv_screen_active();
 
+        if (tb.dx != 0 || tb.dy != 0 || tb.clicked) {
+            Serial.printf("TB: dx=%d dy=%d click=%d | ISR totals U=%lu D=%lu L=%lu R=%lu\n",
+                tb.dx, tb.dy, tb.clicked,
+                board::tb_isr_up_total, board::tb_isr_down_total, board::tb_isr_left_total, board::tb_isr_right_total);
+        }
+
         // Up/Down: content navigation (clears nav focus)
         if (screen && tb.dy != 0) {
             // Clear nav-band focus
@@ -554,6 +560,7 @@ void full_clean()   {}
 void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
 void keyboard_focus_invalidate() {}
+void keyboard_focus_register(lv_obj_t* obj) { (void)obj; }
 
 // ---------- Backlight ----------
 
