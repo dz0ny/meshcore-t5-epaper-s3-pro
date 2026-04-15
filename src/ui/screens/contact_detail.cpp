@@ -427,12 +427,11 @@ static void create(lv_obj_t* parent) {
                 lv_obj_set_height(ping_btn, lv_pct(100));
                 lv_obj_set_flex_grow(ping_btn, 1);
             }
-            lv_obj_t* rm_btn = ui::nav::text_button(btn_row, LV_SYMBOL_TRASH, on_remove, NULL);
-            lv_obj_set_height(rm_btn, lv_pct(100));
+            lv_obj_t* rm_btn = ui::nav::text_button(btn_row, "Rm", on_remove, NULL);
+            lv_obj_set_size(rm_btn, LV_SIZE_CONTENT, lv_pct(100));
             lv_obj_set_flex_grow(rm_btn, 0);
         } else {
-            lv_obj_t* add_btn = ui::nav::text_button(content_list, "Add Contact", on_add, NULL);
-            lv_obj_set_size(add_btn, lv_pct(100), UI_TEXT_BTN_HEIGHT);
+            ui::nav::text_button(content_list, "Add", on_add, NULL);
         }
     }
 }
