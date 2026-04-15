@@ -94,15 +94,15 @@ If the board is not detected, hold `BOOT` and tap `RESET`.
 ### Local Build
 
 ```bash
-# PlatformIO environment name: lilygo-t5-epaper-pro
-uvx platformio run -e lilygo-t5-epaper-pro
+# PlatformIO environment name: t5-epaper
+uvx platformio run -e t5-epaper
 ```
 
 Flash over USB:
 
 ```bash
-# PlatformIO environment name: lilygo-t5-epaper-pro
-uvx platformio run -e lilygo-t5-epaper-pro -t upload
+# PlatformIO environment name: t5-epaper
+uvx platformio run -e t5-epaper -t upload
 ```
 
 ## Hardware

@@ -25,10 +25,16 @@
 #define UI_STATUSBAR_PAD     1
 #define UI_STATUSBAR_COL_PAD 2
 
+// Screen top padding — push content below the statusbar overlay
+#define UI_STATUSBAR_BOTTOM  (UI_STATUSBAR_Y + UI_STATUSBAR_HEIGHT)
+
 // Back button
-#define UI_BACK_BTN_Y        10
 #define UI_BACK_BTN_HEIGHT   28
-#define UI_BACK_BTN_PAD_V    0
+
+// Gap between nav bar and content container (flex row gap)
+#define UI_NAV_CONTENT_GAP   0
+#define UI_BACK_BTN_PAD_TOP  0
+#define UI_BACK_BTN_PAD_BOTTOM 2
 #define UI_BACK_BTN_COL_PAD  3
 
 // Menu / list items
@@ -42,9 +48,18 @@
 #define UI_TEXT_BTN_RADIUS   6
 #define UI_TEXT_BTN_BORDER   2
 
-// Scroll list
-#define UI_SCROLL_LIST_H     86
-#define UI_SCROLL_LIST_Y    -1
+// Nav band detection (screen-coordinate bottom of nav area)
+#define UI_NAV_BAND_BOTTOM   (UI_STATUSBAR_BOTTOM + UI_BACK_BTN_HEIGHT)
+
+// Message list
+#define UI_MSG_LIST_PAD      1
+#define UI_MSG_LIST_ROW_PAD  2
+#define UI_MSG_WRAP_ROW_PAD  1
+#define UI_MSG_BUBBLE_WIDTH  96
+#define UI_MSG_BUBBLE_PAD    4
+#define UI_MSG_BUBBLE_RADIUS 6
+#define UI_MSG_BUBBLE_ROW_PAD 1
+#define UI_MSG_SELF_INDENT   32
 
 // Extended click areas
 #define UI_EXT_CLICK_BACK    30
@@ -82,13 +97,13 @@
 #define UI_LOCK_DATE_Y       72
 
 // ---------- Compose screen ----------
-#define UI_COMPOSE_RECIPIENT_Y   36
+#define UI_COMPOSE_RECIPIENT_Y   0
 #define UI_COMPOSE_RECIPIENT_H   28
-#define UI_COMPOSE_LIST_Y        66
+#define UI_COMPOSE_LIST_Y        28
 #define UI_COMPOSE_LIST_H        166
-#define UI_COMPOSE_EDITOR_Y      66
+#define UI_COMPOSE_EDITOR_Y      28
 #define UI_COMPOSE_EDITOR_H      16
-#define UI_COMPOSE_TA_Y          84
+#define UI_COMPOSE_TA_Y          46
 #define UI_COMPOSE_TA_H          92
 #define UI_COMPOSE_SEND_BOTTOM   -4
 #define UI_COMPOSE_SHOW_KB       0
@@ -104,12 +119,12 @@
 #define UI_CONTACT_DETAIL_H  100
 
 // ---------- Ping screen ----------
-#define UI_PING_BTN_ROW_Y    160
+#define UI_PING_BTN_ROW_Y    111
 #define UI_PING_BTN_ROW_H    45
 
 // ---------- Map screen ----------
 #define UI_MAP_X             UI_OUTER_MARGIN_X
-#define UI_MAP_Y             33
+#define UI_MAP_Y             0
 #define UI_MAP_W             316
 #define UI_MAP_H             206
 #define UI_MAP_BTN_W         32

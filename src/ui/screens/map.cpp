@@ -30,14 +30,14 @@ static const double zoom_levels[] = {0.5, 1.0, 5.0, 20.0, 50.0};
 static const int n_zoom = 5;
 static int zoom_idx = 2;  // default 5km
 
-// Map area dimensions
-static const int MAP_W = UI_MAP_W;
-static const int MAP_H = UI_MAP_H;
-static const int MAP_CX = MAP_W / 2;
-static const int MAP_CY = MAP_H / 2;
+static int map_w = 0;
+static int map_h = 0;
+static int map_cx = 0;
+static int map_cy = 0;
 
 // Canvas buffer in PSRAM (L8 = 1 byte per pixel)
 static uint8_t* canvas_buf = NULL;
+static size_t canvas_buf_size = 0;
 
 struct MapContact {
     char name[32];
@@ -124,8 +124,8 @@ static void draw_filled_circle(int cx, int cy, int r, uint8_t color) {
             if (dx * dx + dy * dy <= r * r) {
                 int x = cx + dx;
                 int y = cy + dy;
-                if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H) {
-                    canvas_buf[y * MAP_W + x] = color;
+                if (x >= 0 && x < map_w && y >= 0 && y < map_h) {
+                    canvas_buf[y * map_w + x] = color;
                 }
             }
         }
@@ -133,28 +133,28 @@ static void draw_filled_circle(int cx, int cy, int r, uint8_t color) {
 }
 
 static void draw_hline_dashed(int y, uint8_t color) {
-    if (y < 0 || y >= MAP_H) return;
-    for (int x = 0; x < MAP_W; x++) {
-        if ((x / 4) % 2 == 0) canvas_buf[y * MAP_W + x] = color;
+    if (y < 0 || y >= map_h) return;
+    for (int x = 0; x < map_w; x++) {
+        if ((x / 4) % 2 == 0) canvas_buf[y * map_w + x] = color;
     }
 }
 
 static void draw_vline_dashed(int x, uint8_t color) {
-    if (x < 0 || x >= MAP_W) return;
-    for (int y = 0; y < MAP_H; y++) {
-        if ((y / 4) % 2 == 0) canvas_buf[y * MAP_W + x] = color;
+    if (x < 0 || x >= map_w) return;
+    for (int y = 0; y < map_h; y++) {
+        if ((y / 4) % 2 == 0) canvas_buf[y * map_w + x] = color;
     }
 }
 
 static void draw_hline(int y, uint8_t color) {
-    if (y < 0 || y >= MAP_H) return;
-    memset(&canvas_buf[y * MAP_W], color, MAP_W);
+    if (y < 0 || y >= map_h) return;
+    memset(&canvas_buf[y * map_w], color, map_w);
 }
 
 static void draw_vline(int x, uint8_t color) {
-    if (x < 0 || x >= MAP_W) return;
-    for (int y = 0; y < MAP_H; y++) {
-        canvas_buf[y * MAP_W + x] = color;
+    if (x < 0 || x >= map_w) return;
+    for (int y = 0; y < map_h; y++) {
+        canvas_buf[y * map_w + x] = color;
     }
 }
 
@@ -194,7 +194,7 @@ static void hide_contact_overlays() {
 }
 
 static void rebuild_map() {
-    if (!canvas_obj || !canvas_buf) return;
+    if (!canvas_obj || !canvas_buf || map_w <= 0 || map_h <= 0) return;
 
     double my_lat = model::gps.lat;
     double my_lon = model::gps.lng;
@@ -209,10 +209,10 @@ static void rebuild_map() {
         lv_label_set_text(lbl_zoom, zbuf);
     }
 
-    memset(canvas_buf, map_bg_color(), MAP_W * MAP_H);
+    memset(canvas_buf, map_bg_color(), canvas_buf_size);
 
-    double scale_y = MAP_H / (zoom_km * 2.0);
-    double scale_x = MAP_W / (zoom_km * 2.0);
+    double scale_y = map_h / (zoom_km * 2.0);
+    double scale_x = map_w / (zoom_km * 2.0);
     double cos_lat = cos(my_lat * ui::geo::DEG_TO_RAD);
     if (cos_lat < 0.01) cos_lat = 0.01;
 
@@ -226,19 +226,19 @@ static void rebuild_map() {
     int grid_px_y = (int)(grid_km * scale_y);
     int grid_px_x = (int)(grid_km * scale_x);
     if (grid_px_y > 20 && grid_px_x > 20) {
-        for (int gy = grid_px_y; MAP_CY + gy < MAP_H; gy += grid_px_y) {
-            draw_hline_dashed_thick(MAP_CY + gy, UI_BORDER_CARD, map_grid_color());
-            draw_hline_dashed_thick(MAP_CY - gy, UI_BORDER_CARD, map_grid_color());
+        for (int gy = grid_px_y; map_cy + gy < map_h; gy += grid_px_y) {
+            draw_hline_dashed_thick(map_cy + gy, UI_BORDER_CARD, map_grid_color());
+            draw_hline_dashed_thick(map_cy - gy, UI_BORDER_CARD, map_grid_color());
         }
-        for (int gx = grid_px_x; MAP_CX + gx < MAP_W; gx += grid_px_x) {
-            draw_vline_dashed_thick(MAP_CX + gx, UI_BORDER_CARD, map_grid_color());
-            draw_vline_dashed_thick(MAP_CX - gx, UI_BORDER_CARD, map_grid_color());
+        for (int gx = grid_px_x; map_cx + gx < map_w; gx += grid_px_x) {
+            draw_vline_dashed_thick(map_cx + gx, UI_BORDER_CARD, map_grid_color());
+            draw_vline_dashed_thick(map_cx - gx, UI_BORDER_CARD, map_grid_color());
         }
     }
 
-    draw_hline(MAP_CY, map_axis_color());
-    draw_vline(MAP_CX, map_axis_color());
-    draw_filled_circle(MAP_CX, MAP_CY, 6, map_marker_color());
+    draw_hline(map_cy, map_axis_color());
+    draw_vline(map_cx, map_axis_color());
+    draw_filled_circle(map_cx, map_cy, 6, map_marker_color());
 
     hide_contact_overlays();
 
@@ -277,10 +277,10 @@ static void rebuild_map() {
             continue;
         }
 
-        int px = MAP_CX + (int)(dx_km * scale_x);
-        int py = MAP_CY - (int)(dy_km * scale_y);
+        int px = map_cx + (int)(dx_km * scale_x);
+        int py = map_cy - (int)(dy_km * scale_y);
 
-        if (px < 10 || px > MAP_W - 10 || py < 10 || py > MAP_H - 30) {
+        if (px < 10 || px > map_w - 10 || py < 10 || py > map_h - 30) {
             contacts[i].px = -1;
             continue;
         }
@@ -315,14 +315,9 @@ static void poll_update(lv_timer_t* t) {
 
 static void create(lv_obj_t* parent) {
     scr = parent;
+    lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    if (!canvas_buf) {
-        canvas_buf = (uint8_t*)heap_caps_malloc(MAP_W * MAP_H, MALLOC_CAP_SPIRAM);
-    }
-
-    lv_obj_t* content = lv_obj_create(parent);
-    lv_obj_set_pos(content, UI_MAP_X, UI_MAP_Y);
-    lv_obj_set_size(content, MAP_W, MAP_H);
+    lv_obj_t* content = ui::nav::content_area(parent);
     lv_obj_set_style_bg_color(content, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(content, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(content, UI_BORDER_THIN, LV_PART_MAIN);
@@ -330,11 +325,24 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_radius(content, 8, LV_PART_MAIN);
     lv_obj_set_style_pad_all(content, 0, LV_PART_MAIN);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_update_layout(content);
+
+    map_w = lv_obj_get_content_width(content);
+    map_h = lv_obj_get_content_height(content);
+    map_cx = map_w / 2;
+    map_cy = map_h / 2;
+
+    size_t needed = (size_t)map_w * (size_t)map_h;
+    if (!canvas_buf || canvas_buf_size != needed) {
+        if (canvas_buf) heap_caps_free(canvas_buf);
+        canvas_buf = (uint8_t*)heap_caps_malloc(needed, MALLOC_CAP_SPIRAM);
+        canvas_buf_size = canvas_buf ? needed : 0;
+    }
 
     canvas_obj = lv_canvas_create(content);
     lv_obj_set_size(canvas_obj, lv_pct(100), lv_pct(100));
     lv_obj_set_pos(canvas_obj, 0, 0);
-    lv_canvas_set_buffer(canvas_obj, canvas_buf, MAP_W, MAP_H, LV_COLOR_FORMAT_L8);
+    lv_canvas_set_buffer(canvas_obj, canvas_buf, map_w, map_h, LV_COLOR_FORMAT_L8);
 
     tap_layer = lv_obj_create(content);
     lv_obj_set_size(tap_layer, lv_pct(100), lv_pct(100));
@@ -355,9 +363,9 @@ static void create(lv_obj_t* parent) {
     style_overlay_label(no_fix_label);
     lv_obj_set_style_text_align(no_fix_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_pad_all(no_fix_label, 6, LV_PART_MAIN);
-    lv_obj_set_width(no_fix_label, MAP_W);
+    lv_obj_set_width(no_fix_label, map_w);
     lv_label_set_text(no_fix_label, "Waiting for GPS fix...");
-    lv_obj_set_pos(no_fix_label, 0, MAP_CY + 30);
+    lv_obj_set_pos(no_fix_label, 0, map_cy + 30);
     lv_obj_add_flag(no_fix_label, LV_OBJ_FLAG_HIDDEN);
 
     for (int i = 0; i < 32; i++) {
@@ -414,6 +422,10 @@ static void destroy() {
     lbl_zoom = NULL;
     grid_label = NULL;
     no_fix_label = NULL;
+    map_w = 0;
+    map_h = 0;
+    map_cx = 0;
+    map_cy = 0;
     contact_count = 0;
     for (int i = 0; i < 32; i++) {
         contact_taps[i] = NULL;

@@ -20,7 +20,7 @@ OUT_DIR="$PROJECT_DIR/src/fonts"
 NOTO="$PROJECT_DIR/assets/fonts/NotoSans-Medium.ttf"
 MONTSERRAT="$PROJECT_DIR/assets/fonts/Montserrat-Bold.ttf"
 SYMBOLS="$PROJECT_DIR/assets/fonts/NotoSansSymbols2.ttf"
-FA5="$PROJECT_DIR/.pio/libdeps/lilygo-t5-epaper-pro/lvgl/scripts/built_in_font/FontAwesome5-Solid+Brands+Regular.woff"
+FA5="$PROJECT_DIR/.pio/libdeps/t5-epaper/lvgl/scripts/built_in_font/FontAwesome5-Solid+Brands+Regular.woff"
 
 # Verify font files exist
 for f in "$NOTO" "$MONTSERRAT" "$SYMBOLS" "$FA5"; do

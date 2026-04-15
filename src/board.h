@@ -108,6 +108,11 @@ uint32_t gps_satellites();
 void rtc_get_time(uint8_t* h, uint8_t* m, uint8_t* s);
 void rtc_get_date(uint8_t* year, uint8_t* month, uint8_t* day, uint8_t* week);
 
+// Keyboard
+int keyboard_read_char();
+void keyboard_set_backlight(uint8_t level);  // 0-255
+uint8_t keyboard_get_backlight();
+
 } // namespace board
 
 // ---------- Board-specific headers ----------
@@ -227,12 +232,6 @@ namespace board {
         bool sd_init();
         bool gps_init();
     }
-
-    // Keyboard
-    int keyboard_read_char();
-    void keyboard_set_backlight(uint8_t level);  // 0-255
-    uint8_t keyboard_get_backlight();
-
     // Trackball
     struct TrackballState {
         int8_t dx;  // accumulated horizontal movement

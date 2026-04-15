@@ -21,7 +21,7 @@ CHIP_FAMILY = "ESP32-S3"
 
 TARGETS = [
     {
-        "env": "lilygo-t5-epaper-pro",
+        "env": "t5-epaper",
         "slug": "lilygo-t5-epaper-pro",
         "device_name": "LilyGo T5 ePaper S3 Pro",
         "description": "Flash the latest PlatformIO build for the LilyGo T5 ePaper S3 Pro directly from Chrome or Edge with ESP Web Tools. It works as both a standalone mesh device and a companion-connected MeshCore node.",

@@ -17,11 +17,16 @@ static int brightness = 1;  // default Mid
 static const char* bright_names[] = {"Low", "Mid", "High"};
 static const int bright_pwm[] = {50, 100, 230};
 static const int32_t CHANGE_DETECT_MAX_PIXELS = 4096;
+static lv_display_t* epaper_disp = NULL;
 static uint8_t gray_to_lo[256];
 static uint8_t gray_to_hi[256];
 static bool gray_tables_ready = false;
 static uint8_t* packed_prev_frame = NULL;  // packed 4-bit rotated framebuffer shadow
 static int32_t* rotated_row_offsets = NULL;
+static bool cycle_force_full_refresh = false;
+static bool cycle_had_updates = false;
+static bool cycle_panel_powered = false;
+static int cycle_temperature = 0;
 struct FullRefreshStamp {
     uint8_t year;
     uint8_t month;
@@ -30,11 +35,21 @@ struct FullRefreshStamp {
     bool valid;
 };
 static FullRefreshStamp last_full_refresh = {};
+static lv_obj_t *keyboard_scroll_root = NULL;
+static lv_obj_t *keyboard_screen_root = NULL;
+static bool keyboard_focus_dirty = true;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
         Serial.printf("EPD draw error: %X\n", err);
     }
+}
+
+static void sync_packed_prev_frame(uint8_t *fb, int32_t phys_w, int32_t phys_h) {
+    if (!packed_prev_frame || !fb) {
+        return;
+    }
+    memcpy(packed_prev_frame, fb, (size_t)(phys_w / 2) * phys_h);
 }
 
 static void init_gray_tables() {
@@ -92,6 +107,57 @@ static bool should_do_hourly_full_refresh() {
 
 static void note_full_refresh_done() {
     last_full_refresh = current_refresh_stamp();
+}
+
+static void render_start_cb(lv_event_t *event) {
+    (void)event;
+    cycle_force_full_refresh = should_do_hourly_full_refresh();
+    cycle_had_updates = false;
+    if (!cycle_panel_powered) {
+        epd_poweron();
+        cycle_panel_powered = true;
+    }
+    cycle_temperature = epd_ambient_temperature();
+}
+
+static void render_ready_cb(lv_event_t *event) {
+    (void)event;
+    if (cycle_force_full_refresh && cycle_had_updates) {
+        checkError(epd_hl_update_screen(&board::hl, MODE_GC16, cycle_temperature));
+        note_full_refresh_done();
+        sync_packed_prev_frame(epd_hl_get_framebuffer(&board::hl), epd_width(), epd_height());
+    }
+    if (cycle_panel_powered) {
+        epd_poweroff();
+        cycle_panel_powered = false;
+    }
+    cycle_force_full_refresh = false;
+    cycle_had_updates = false;
+}
+
+static void round_invalidate_area_cb(lv_event_t *event) {
+    lv_area_t *area = (lv_area_t *)lv_event_get_param(event);
+    if (!area || !epaper_disp) {
+        return;
+    }
+
+    if (area->y1 < 0) {
+        area->y1 = 0;
+    }
+    if (area->y1 & 1) {
+        area->y1 -= 1;
+    }
+
+    lv_coord_t max_y = lv_display_get_vertical_resolution(epaper_disp) - 1;
+    if ((area->y2 & 1) == 0) {
+        area->y2 += 1;
+    }
+    if (area->y2 > max_y) {
+        area->y2 = max_y;
+    }
+    if (area->y1 > area->y2) {
+        area->y1 = area->y2;
+    }
 }
 
 static inline void pack_single_row(uint8_t *fb, const uint8_t *prev_fb, const uint8_t *src_row,
@@ -207,6 +273,8 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         return;
     }
 
+    cycle_had_updates = true;
+
     // Partial area rect in rotated coordinates — epdiy handles rotation internally
     EpdRect update_rect = {
         .x = (int)area->x1,
@@ -215,21 +283,16 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         .height = (int)lv_area_get_height(area),
     };
 
-    bool do_hourly_full_refresh = should_do_hourly_full_refresh();
+    if (!cycle_panel_powered) {
+        epd_poweron();
+        cycle_panel_powered = true;
+        cycle_temperature = epd_ambient_temperature();
+    }
 
-    if (do_hourly_full_refresh) {
-        epd_poweron();
-        checkError(epd_hl_update_screen(&board::hl, MODE_GC16, epd_ambient_temperature()));
-        epd_poweroff();
-        note_full_refresh_done();
-    } else if (refresh_mode == UI_REFRESH_MODE_FAST) {
-        epd_poweron();
-        checkError(epd_hl_update_area(&board::hl, MODE_DU, epd_ambient_temperature(), update_rect));
-        epd_poweroff();
-    } else if (refresh_mode == UI_REFRESH_MODE_NORMAL) {
-        epd_poweron();
-        checkError(epd_hl_update_area(&board::hl, MODE_GL16, epd_ambient_temperature(), update_rect));
-        epd_poweroff();
+    if (!cycle_force_full_refresh && refresh_mode == UI_REFRESH_MODE_FAST) {
+        checkError(epd_hl_update_area(&board::hl, MODE_DU, cycle_temperature, update_rect));
+    } else if (!cycle_force_full_refresh && refresh_mode == UI_REFRESH_MODE_NORMAL) {
+        checkError(epd_hl_update_area(&board::hl, MODE_GL16, cycle_temperature, update_rect));
     }
 
     lv_display_flush_ready(disp);
@@ -257,6 +320,168 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     data->point.y = y;
 }
 
+static bool obj_accepts_group_focus(lv_obj_t *obj) {
+    return obj && (lv_obj_has_flag(obj, LV_OBJ_FLAG_CLICKABLE) || lv_obj_check_type(obj, &lv_textarea_class));
+}
+
+static void add_group_targets(lv_group_t *group, lv_obj_t *parent) {
+    if (!group || !parent || !lv_obj_is_valid(parent) || !lv_obj_is_visible(parent)) return;
+
+    uint32_t cnt = lv_obj_get_child_count(parent);
+    for (uint32_t i = 0; i < cnt; i++) {
+        lv_obj_t *child = lv_obj_get_child(parent, i);
+        if (!child || !lv_obj_is_valid(child) || !lv_obj_is_visible(child)) continue;
+
+        if (obj_accepts_group_focus(child)) {
+            if (lv_obj_get_group(child) != group) {
+                lv_group_add_obj(group, child);
+            }
+            lv_obj_add_flag(child, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+        }
+
+        add_group_targets(group, child);
+    }
+}
+
+static lv_obj_t *find_scrollable() {
+    lv_obj_t *scr = lv_screen_active();
+    if (!scr) return NULL;
+
+    uint32_t cnt = lv_obj_get_child_count(scr);
+    for (uint32_t i = 0; i < cnt; i++) {
+        lv_obj_t *child = lv_obj_get_child(scr, i);
+        if (!child || !lv_obj_is_valid(child) || !lv_obj_is_visible(child)) continue;
+        if (!lv_obj_has_flag(child, LV_OBJ_FLAG_SCROLLABLE)) continue;
+
+        uint32_t gcnt = lv_obj_get_child_count(child);
+        for (uint32_t j = 0; j < gcnt; j++) {
+            lv_obj_t *gc = lv_obj_get_child(child, j);
+            if (!gc || !lv_obj_is_valid(gc) || !lv_obj_is_visible(gc)) continue;
+            if (lv_obj_has_flag(gc, LV_OBJ_FLAG_SCROLLABLE)) {
+                return gc;
+            }
+        }
+        return child;
+    }
+    return NULL;
+}
+
+static lv_obj_t *find_first_group_target(lv_obj_t *parent) {
+    if (!parent || !lv_obj_is_valid(parent) || !lv_obj_is_visible(parent)) return NULL;
+
+    uint32_t cnt = lv_obj_get_child_count(parent);
+    for (uint32_t i = 0; i < cnt; i++) {
+        lv_obj_t *child = lv_obj_get_child(parent, i);
+        if (!child || !lv_obj_is_valid(child) || !lv_obj_is_visible(child)) continue;
+        if (obj_accepts_group_focus(child)) {
+            return child;
+        }
+        lv_obj_t *nested = find_first_group_target(child);
+        if (nested) return nested;
+    }
+    return NULL;
+}
+
+static void ensure_keyboard_focus_target() {
+    lv_group_t *group = lv_group_get_default();
+    if (!group) return;
+
+    lv_obj_t *screen = lv_screen_active();
+    if (keyboard_screen_root != screen) {
+        keyboard_screen_root = screen;
+        keyboard_focus_dirty = true;
+    }
+
+    lv_obj_t *focused = lv_group_get_focused(group);
+    if (!keyboard_focus_dirty && (!focused || !lv_obj_is_valid(focused) || !lv_obj_is_visible(focused))) {
+        keyboard_focus_dirty = true;
+    }
+
+    if (!keyboard_focus_dirty) {
+        return;
+    }
+
+    lv_obj_t *scrollable = find_scrollable();
+    lv_obj_t *focus_root = scrollable ? scrollable : screen;
+    if (focus_root && (!lv_obj_is_valid(focus_root) || !lv_obj_is_visible(focus_root))) {
+        focus_root = NULL;
+    }
+
+    keyboard_scroll_root = focus_root;
+    lv_group_remove_all_objs(group);
+
+    if (focus_root) {
+        add_group_targets(group, focus_root);
+    }
+
+    focused = lv_group_get_focused(group);
+    if ((!focused || !lv_obj_is_valid(focused) || !lv_obj_is_visible(focused)) && focus_root) {
+        lv_obj_t *first = find_first_group_target(focus_root);
+        if (first) {
+            lv_group_focus_obj(first);
+            lv_obj_scroll_to_view_recursive(first, LV_ANIM_OFF);
+        }
+    }
+
+    keyboard_focus_dirty = false;
+}
+
+static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
+    static uint32_t last_key = 0;
+    static uint32_t last_backspace_ms = 0;
+    static uint8_t backspace_repeat_count = 0;
+    static bool backspace_cleared = false;
+
+    ensure_keyboard_focus_target();
+
+    int c = board::keyboard_read_char();
+    if (c > 0) {
+        uint32_t now = millis();
+        last_key = (uint32_t)c;
+        data->state = LV_INDEV_STATE_PRESSED;
+        model::touch_activity();
+
+        switch (c) {
+            case 0x08:
+                if (last_backspace_ms == 0 || (now - last_backspace_ms) > 250) {
+                    backspace_repeat_count = 1;
+                    backspace_cleared = false;
+                } else {
+                    backspace_repeat_count++;
+                }
+                last_backspace_ms = now;
+
+                if (!backspace_cleared && backspace_repeat_count >= 4) {
+                    lv_group_t *group = lv_group_get_default();
+                    lv_obj_t *focused = group ? lv_group_get_focused(group) : NULL;
+                    if (focused && lv_obj_check_type(focused, &lv_textarea_class)) {
+                        lv_textarea_set_text(focused, "");
+                        backspace_cleared = true;
+                    }
+                }
+
+                data->key = LV_KEY_BACKSPACE;
+                break;
+            case 0x0D: data->key = LV_KEY_ENTER; break;
+            case 0x1B: data->key = LV_KEY_ESC; break;
+            case 0x09: data->key = LV_KEY_NEXT; break;
+            case 0xF1: data->key = LV_KEY_DOWN; break;
+            case 0xF2: data->key = LV_KEY_UP; break;
+            case 0xF3: data->key = LV_KEY_LEFT; break;
+            case 0xF4: data->key = LV_KEY_RIGHT; break;
+            default:
+                last_backspace_ms = 0;
+                backspace_repeat_count = 0;
+                backspace_cleared = false;
+                data->key = (uint32_t)c;
+                break;
+        }
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+        data->key = last_key;
+    }
+}
+
 static uint32_t tick_cb(void) {
     return millis();
 }
@@ -282,8 +507,12 @@ void init() {
     size_t pixel_count = disp_w * disp_h;
 
     lv_display_t *disp = lv_display_create(disp_w, disp_h);
+    epaper_disp = disp;
     lv_display_set_flush_cb(disp, disp_flush_cb);
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_L8);
+    lv_display_add_event_cb(disp, round_invalidate_area_cb, LV_EVENT_INVALIDATE_AREA, NULL);
+    lv_display_add_event_cb(disp, render_start_cb, LV_EVENT_RENDER_START, NULL);
+    lv_display_add_event_cb(disp, render_ready_cb, LV_EVENT_REFR_READY, NULL);
 
     // DIRECT mode with L8 (8-bit luminance): LVGL renders grayscale directly.
     // Single buffered in PSRAM to reduce memory pressure on the S3.
@@ -299,6 +528,18 @@ void init() {
     // Disable scroll momentum/throw — instant stop on e-ink (100 = max deceleration)
     lv_indev_set_scroll_throw(indev, 100);
 
+    lv_group_t *g = lv_group_create();
+    lv_group_set_default(g);
+    keyboard_focus_invalidate();
+
+    if (board::peri_status[E_PERI_KEYBOARD]) {
+        lv_indev_t *kb_indev = lv_indev_create();
+        lv_indev_set_type(kb_indev, LV_INDEV_TYPE_KEYPAD);
+        lv_indev_set_read_cb(kb_indev, keyboard_read_cb);
+        lv_indev_set_display(kb_indev, disp);
+        lv_indev_set_group(kb_indev, g);
+    }
+
 }
 
 void set_refresh_mode(int mode) { refresh_mode = mode; }
@@ -309,6 +550,7 @@ void full_refresh() {
     epd_poweron();
     checkError(epd_hl_update_screen(&board::hl, MODE_GL16, epd_ambient_temperature()));
     epd_poweroff();
+    sync_packed_prev_frame(epd_hl_get_framebuffer(&board::hl), epd_width(), epd_height());
     note_full_refresh_done();
 }
 
@@ -323,6 +565,12 @@ void full_clean() {
 
 void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
+
+void keyboard_focus_invalidate() {
+    keyboard_focus_dirty = true;
+    keyboard_scroll_root = NULL;
+    keyboard_screen_root = NULL;
+}
 
 // Backlight mode: 0=Auto, 1=On, 2=Off
 

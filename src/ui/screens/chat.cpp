@@ -1,5 +1,6 @@
 #include "chat.h"
 #include "../ui_theme.h"
+#include "../ui_port.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/msg_list.h"
@@ -19,6 +20,8 @@ static void on_back(lv_event_t* e) {
 
 // Check for new messages from model
 static void poll_new(lv_timer_t* t) {
+    bool changed = false;
+
     // Also drain the bridge queue into model (in case BridgeUITask stored them)
     mesh::bridge::MessageIn mi;
     while (mesh::bridge::pop_message(mi)) {
@@ -33,6 +36,7 @@ static void poll_new(lv_timer_t* t) {
             ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
         }
         last_displayed = model::message_count;
+        ui::port::keyboard_focus_invalidate();
         return;
     }
 
@@ -41,14 +45,18 @@ static void poll_new(lv_timer_t* t) {
         auto& msg = model::messages[last_displayed];
         ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, last_displayed);
         last_displayed++;
+        changed = true;
+    }
+
+    if (changed) {
+        ui::port::keyboard_focus_invalidate();
     }
 }
 
 static void create(lv_obj_t* parent) {
     scr = parent;
 
-    lv_obj_t* content = ui::nav::content_area(parent);
-    msg_container = ui::msg_list::create(content);
+    msg_container = ui::msg_list::create(parent);
     lv_obj_set_size(msg_container, lv_pct(100), lv_pct(100));
     lv_obj_center(msg_container);
 

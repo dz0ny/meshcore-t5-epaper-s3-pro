@@ -1,6 +1,7 @@
 #include "discovery.h"
 #include "contact_detail.h"
 #include "../ui_theme.h"
+#include "../ui_port.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/text_utils.h"
@@ -129,6 +130,7 @@ static void rebuild_list() {
     lv_obj_update_layout(node_list);
     lv_display_enable_invalidation(disp, true);
     lv_obj_invalidate(node_list);
+    ui::port::keyboard_focus_invalidate();
 }
 
 static void poll_discovered(lv_timer_t* t) {

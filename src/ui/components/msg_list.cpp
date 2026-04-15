@@ -19,10 +19,10 @@ lv_obj_t* create(lv_obj_t* parent) {
     lv_obj_set_style_bg_color(list, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_style_pad_all(list, 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(list, UI_MSG_LIST_PAD, LV_PART_MAIN);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(list, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(list, UI_MSG_LIST_ROW_PAD, LV_PART_MAIN);
     // Disable elastic bounce and scroll momentum — bad on e-ink
     lv_obj_clear_flag(list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
     return list;
@@ -48,18 +48,18 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
         lv_obj_add_event_cb(wrapper, on_msg_click, LV_EVENT_CLICKED, (void*)(intptr_t)msg_idx);
     }
     lv_obj_set_flex_flow(wrapper, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(wrapper, 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(wrapper, UI_MSG_WRAP_ROW_PAD, LV_PART_MAIN);
 
     // Bubble
     lv_obj_t* bubble = lv_obj_create(wrapper);
-    lv_obj_set_width(bubble, lv_pct(100));
+    lv_obj_set_width(bubble, lv_pct(UI_MSG_BUBBLE_WIDTH));
     lv_obj_set_height(bubble, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(bubble, 8, LV_PART_MAIN);
-    lv_obj_set_style_radius(bubble, 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(bubble, UI_MSG_BUBBLE_PAD, LV_PART_MAIN);
+    lv_obj_set_style_radius(bubble, UI_MSG_BUBBLE_RADIUS, LV_PART_MAIN);
     lv_obj_clear_flag(bubble, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_add_flag(bubble, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_set_flex_flow(bubble, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(bubble, 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(bubble, UI_MSG_BUBBLE_ROW_PAD, LV_PART_MAIN);
 
     lv_obj_set_style_bg_color(bubble, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(bubble, UI_BORDER_THIN, LV_PART_MAIN);
@@ -67,7 +67,7 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
 
     // Sent messages: indent from left to distinguish from received
     if (is_self) {
-        lv_obj_set_style_pad_left(wrapper, 60, LV_PART_MAIN);
+        lv_obj_set_style_pad_left(wrapper, UI_MSG_SELF_INDENT, LV_PART_MAIN);
     }
 
     // Sender name

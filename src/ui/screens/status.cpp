@@ -26,20 +26,11 @@ static void on_battery(lv_event_t* e) {
 static void create(lv_obj_t* parent) {
     scr = parent;
 
+    lv_obj_t* menu = ui::nav::scroll_list(parent);
 
-    lv_obj_t* menu = lv_obj_create(parent);
-    lv_obj_set_size(menu, lv_pct(90), LV_SIZE_CONTENT);
-    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
-    lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(menu, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    ui::nav::menu_item(menu, NULL, "Mesh", on_mesh, NULL);
-    ui::nav::menu_item(menu, NULL, "GPS", on_gps, NULL);
     ui::nav::menu_item(menu, NULL, "Battery", on_battery, NULL);
+    ui::nav::menu_item(menu, NULL, "GPS Info", on_gps, NULL);
+    ui::nav::menu_item(menu, NULL, "Mesh Info", on_mesh, NULL);
 }
 
 static void entry() {}

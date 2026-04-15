@@ -14,6 +14,8 @@ static constexpr lv_coord_t HOME_NODE_NAME_Y = UI_HOME_NODE_Y;
 static constexpr lv_coord_t HOME_CLOCK_Y = UI_HOME_CLOCK_Y;
 static constexpr lv_coord_t HOME_DATE_Y = UI_HOME_DATE_Y;
 static constexpr lv_coord_t HOME_MENU_Y = UI_HOME_MENU_Y;
+static constexpr lv_coord_t HOME_MENU_TOP_INSET = 10;
+static constexpr lv_coord_t HOME_MENU_BOTTOM_INSET = 10;
 
 static lv_obj_t* scr = NULL;
 static lv_obj_t* lbl_node_name = NULL;
@@ -84,8 +86,8 @@ static void create(lv_obj_t* parent) {
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
 #if UI_HOME_MENU_SCROLL
-    lv_obj_set_size(menu, lv_pct(95), SCREEN_HEIGHT - HOME_MENU_Y);
-    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y);
+    lv_obj_set_size(menu, lv_pct(95), SCREEN_HEIGHT - HOME_MENU_Y - HOME_MENU_TOP_INSET - HOME_MENU_BOTTOM_INSET);
+    lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y + HOME_MENU_TOP_INSET);
     lv_obj_set_scrollbar_mode(menu, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(menu, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
 #else
@@ -96,6 +98,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_bg_opa(menu, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(menu, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(menu, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(menu, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_gap(menu, 0, LV_PART_MAIN);
     lv_obj_set_flex_flow(menu, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 

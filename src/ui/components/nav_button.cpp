@@ -49,6 +49,27 @@ static void on_back_press_feedback(lv_event_t* e) {
     }
 }
 
+static void set_back_focus_visual(lv_obj_t* obj, bool focused) {
+    if (!obj) return;
+    lv_color_t color = lv_color_hex(focused ? EPD_COLOR_FOCUS : EPD_COLOR_TEXT);
+    uint32_t child_count = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < child_count; i++) {
+        lv_obj_t* child = lv_obj_get_child(obj, i);
+        lv_obj_set_style_text_color(child, color, LV_PART_MAIN);
+    }
+}
+
+static void on_back_focus_feedback(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t* target = (lv_obj_t*)lv_event_get_user_data(e);
+    if (!target) return;
+    if (code == LV_EVENT_FOCUSED) {
+        set_back_focus_visual(target, true);
+    } else if (code == LV_EVENT_DEFOCUSED) {
+        set_back_focus_visual(target, false);
+    }
+}
+
 static void set_menu_pressed_visual(lv_obj_t* obj, bool pressed) {
     if (!obj) return;
     lv_color_t color = lv_color_hex(pressed ? EPD_COLOR_BORDER : EPD_COLOR_TEXT);
@@ -69,6 +90,54 @@ static void on_menu_press_feedback(lv_event_t* e) {
         set_menu_pressed_visual(target, false);
     }
 }
+
+static void set_row_focus_visual(lv_obj_t* obj, bool focused) {
+    if (!obj) return;
+    lv_color_t bg = lv_color_hex(focused ? EPD_COLOR_FOCUS : EPD_COLOR_BG);
+    lv_color_t text = lv_color_hex(focused ? EPD_COLOR_BG : EPD_COLOR_TEXT);
+    lv_obj_set_style_bg_color(obj, bg, LV_PART_MAIN);
+
+    uint32_t child_count = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < child_count; i++) {
+        lv_obj_t* child = lv_obj_get_child(obj, i);
+        lv_obj_set_style_text_color(child, text, LV_PART_MAIN);
+    }
+}
+
+static void on_row_focus_feedback(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t* target = (lv_obj_t*)lv_event_get_user_data(e);
+    if (!target) return;
+    if (code == LV_EVENT_FOCUSED) {
+        set_row_focus_visual(target, true);
+    } else if (code == LV_EVENT_DEFOCUSED) {
+        set_row_focus_visual(target, false);
+    }
+}
+
+static void set_action_focus_visual(lv_obj_t* obj, bool focused) {
+    if (!obj) return;
+    lv_color_t bg = lv_color_hex(focused ? EPD_COLOR_FOCUS : EPD_COLOR_BG);
+    lv_color_t text = lv_color_hex(focused ? EPD_COLOR_BG : EPD_COLOR_TEXT);
+    lv_obj_set_style_bg_color(obj, bg, LV_PART_MAIN);
+
+    uint32_t child_count = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < child_count; i++) {
+        lv_obj_t* child = lv_obj_get_child(obj, i);
+        lv_obj_set_style_text_color(child, text, LV_PART_MAIN);
+    }
+}
+
+static void on_action_focus_feedback(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t* target = (lv_obj_t*)lv_event_get_user_data(e);
+    if (!target) return;
+    if (code == LV_EVENT_FOCUSED) {
+        set_action_focus_visual(target, true);
+    } else if (code == LV_EVENT_DEFOCUSED) {
+        set_action_focus_visual(target, false);
+    }
+}
 #endif
 
 static lv_obj_t* create_hit_row(lv_obj_t* parent, lv_event_cb_t cb, void* user_data) {
@@ -84,13 +153,14 @@ static lv_obj_t* create_hit_row(lv_obj_t* parent, lv_event_cb_t cb, void* user_d
 
 static lv_obj_t* create_back_hit_row(lv_obj_t* parent, lv_event_cb_t cb, void* user_data) {
     lv_obj_t* hit = lv_obj_create(parent);
-    lv_obj_set_pos(hit, UI_OUTER_MARGIN_X, UI_BACK_BTN_Y);
     lv_obj_set_size(hit, LV_SIZE_CONTENT, UI_BACK_BTN_HEIGHT);
     style_hit_area(hit);
     lv_obj_clear_flag(hit, LV_OBJ_FLAG_SCROLLABLE);
     if (cb) {
         lv_obj_add_flag(hit, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(hit, cb, LV_EVENT_CLICKED, user_data);
+    } else {
+        lv_obj_clear_flag(hit, LV_OBJ_FLAG_CLICKABLE);
     }
     lv_obj_set_ext_click_area(hit, UI_EXT_CLICK_BACK);
     return hit;
@@ -125,6 +195,10 @@ static lv_obj_t* create_nav_action_button(lv_obj_t* parent, const char* action_t
     lv_obj_add_flag(action, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(action, action_cb, LV_EVENT_CLICKED, action_user_data);
     lv_obj_set_ext_click_area(action, UI_EXT_CLICK_ACTION);
+#ifdef BOARD_TDECK
+    lv_obj_add_event_cb(action, on_action_focus_feedback, LV_EVENT_FOCUSED, action);
+    lv_obj_add_event_cb(action, on_action_focus_feedback, LV_EVENT_DEFOCUSED, action);
+#endif
 
     lv_obj_t* label = lv_label_create(action);
     lv_obj_set_style_text_font(label, UI_FONT_TITLE, LV_PART_MAIN);
@@ -151,9 +225,10 @@ lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_left(row, UI_NAV_PAD_LEFT, LV_PART_MAIN);
     lv_obj_set_style_pad_right(row, UI_NAV_PAD_LEFT, LV_PART_MAIN);
-    lv_obj_set_style_pad_ver(row, UI_BACK_BTN_PAD_V, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(row, UI_BACK_BTN_PAD_TOP, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(row, UI_BACK_BTN_PAD_BOTTOM, LV_PART_MAIN);
     lv_obj_set_style_pad_column(row, UI_BACK_BTN_COL_PAD, LV_PART_MAIN);
-    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(row, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_add_flag(row, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -161,6 +236,8 @@ lv_obj_t* back_button(lv_obj_t* parent, const char* title, lv_event_cb_t cb) {
     lv_obj_add_event_cb(hit, on_back_press_feedback, LV_EVENT_PRESSED, row);
     lv_obj_add_event_cb(hit, on_back_press_feedback, LV_EVENT_RELEASED, row);
     lv_obj_add_event_cb(hit, on_back_press_feedback, LV_EVENT_PRESS_LOST, row);
+    lv_obj_add_event_cb(hit, on_back_focus_feedback, LV_EVENT_FOCUSED, row);
+    lv_obj_add_event_cb(hit, on_back_focus_feedback, LV_EVENT_DEFOCUSED, row);
 #endif
 
     create_back_content(row, ui::screen_mgr::previous_nav_title(title));
@@ -210,7 +287,8 @@ lv_obj_t* back_button_three_actions_ex(lv_obj_t* parent, const char* title, lv_e
     lv_obj_set_style_border_width(back, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_left(back, UI_NAV_PAD_LEFT, LV_PART_MAIN);
     lv_obj_set_style_pad_right(back, UI_NAV_PAD_LEFT, LV_PART_MAIN);
-    lv_obj_set_style_pad_ver(back, UI_BACK_BTN_PAD_V, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(back, UI_BACK_BTN_PAD_TOP, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(back, UI_BACK_BTN_PAD_BOTTOM, LV_PART_MAIN);
     lv_obj_set_style_pad_column(back, UI_BACK_BTN_COL_PAD, LV_PART_MAIN);
     lv_obj_clear_flag(back, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(back, LV_OBJ_FLAG_CLICKABLE);
@@ -222,6 +300,8 @@ lv_obj_t* back_button_three_actions_ex(lv_obj_t* parent, const char* title, lv_e
     lv_obj_add_event_cb(back, on_back_press_feedback, LV_EVENT_PRESSED, back);
     lv_obj_add_event_cb(back, on_back_press_feedback, LV_EVENT_RELEASED, back);
     lv_obj_add_event_cb(back, on_back_press_feedback, LV_EVENT_PRESS_LOST, back);
+    lv_obj_add_event_cb(back, on_back_focus_feedback, LV_EVENT_FOCUSED, back);
+    lv_obj_add_event_cb(back, on_back_focus_feedback, LV_EVENT_DEFOCUSED, back);
 #endif
 
     create_back_content(back, ui::screen_mgr::previous_nav_title(title));
@@ -232,8 +312,10 @@ lv_obj_t* back_button_three_actions_ex(lv_obj_t* parent, const char* title, lv_e
     lv_obj_set_style_bg_opa(actions, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(actions, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(actions, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(actions, UI_BACK_BTN_PAD_TOP, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(actions, UI_BACK_BTN_PAD_BOTTOM, LV_PART_MAIN);
     lv_obj_set_style_pad_column(actions, 4, LV_PART_MAIN);
-    lv_obj_clear_flag(actions, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(actions, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_set_flex_flow(actions, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(actions, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
@@ -270,18 +352,20 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
 
     lv_obj_t* cont = lv_obj_create(hit);
     lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
-    lv_obj_center(cont);
+    lv_obj_set_pos(cont, 0, 0);
     lv_obj_set_style_bg_color(cont, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(cont, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(cont, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
     lv_obj_set_style_pad_all(cont, UI_MENU_ITEM_PAD, LV_PART_MAIN);
-    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(cont, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_add_flag(cont, LV_OBJ_FLAG_EVENT_BUBBLE);
 #ifdef BOARD_TDECK
     lv_obj_add_event_cb(hit, on_menu_press_feedback, LV_EVENT_PRESSED, cont);
     lv_obj_add_event_cb(hit, on_menu_press_feedback, LV_EVENT_RELEASED, cont);
     lv_obj_add_event_cb(hit, on_menu_press_feedback, LV_EVENT_PRESS_LOST, cont);
+    lv_obj_add_event_cb(hit, on_row_focus_feedback, LV_EVENT_FOCUSED, cont);
+    lv_obj_add_event_cb(hit, on_row_focus_feedback, LV_EVENT_DEFOCUSED, cont);
 #endif
 
     (void)icon_src;  // unused — all callers pass NULL
@@ -306,18 +390,20 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label_text, const char* valu
 
     lv_obj_t* cont = lv_obj_create(hit);
     lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
-    lv_obj_center(cont);
+    lv_obj_set_pos(cont, 0, 0);
     lv_obj_set_style_bg_color(cont, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(cont, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(cont, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
     lv_obj_set_style_pad_all(cont, UI_MENU_ITEM_PAD, LV_PART_MAIN);
-    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(cont, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_add_flag(cont, LV_OBJ_FLAG_EVENT_BUBBLE);
 #ifdef BOARD_TDECK
     lv_obj_add_event_cb(hit, on_menu_press_feedback, LV_EVENT_PRESSED, cont);
     lv_obj_add_event_cb(hit, on_menu_press_feedback, LV_EVENT_RELEASED, cont);
     lv_obj_add_event_cb(hit, on_menu_press_feedback, LV_EVENT_PRESS_LOST, cont);
+    lv_obj_add_event_cb(hit, on_row_focus_feedback, LV_EVENT_FOCUSED, cont);
+    lv_obj_add_event_cb(hit, on_row_focus_feedback, LV_EVENT_DEFOCUSED, cont);
 #endif
 
     lv_obj_t* lbl = lv_label_create(cont);
@@ -347,6 +433,10 @@ lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, user_data);
     lv_obj_set_ext_click_area(btn, UI_EXT_CLICK_ACTION);
+#ifdef BOARD_TDECK
+    lv_obj_add_event_cb(btn, on_row_focus_feedback, LV_EVENT_FOCUSED, btn);
+    lv_obj_add_event_cb(btn, on_row_focus_feedback, LV_EVENT_DEFOCUSED, btn);
+#endif
 
     lv_obj_t* lbl = lv_label_create(btn);
     lv_obj_set_style_text_font(lbl, UI_FONT_TITLE, LV_PART_MAIN);
@@ -359,8 +449,7 @@ lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void
 
 lv_obj_t* content_area(lv_obj_t* parent) {
     lv_obj_t* area = lv_obj_create(parent);
-    lv_obj_set_size(area, lv_pct(UI_OUTER_WIDTH_PCT), lv_pct(UI_SCROLL_LIST_H));
-    lv_obj_align(area, LV_ALIGN_BOTTOM_MID, 0, UI_SCROLL_LIST_Y);
+    lv_obj_set_size(area, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_opa(area, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(area, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(area, 0, LV_PART_MAIN);
@@ -369,14 +458,14 @@ lv_obj_t* content_area(lv_obj_t* parent) {
 }
 
 lv_obj_t* scroll_list(lv_obj_t* parent) {
-    lv_obj_t* area = content_area(parent);
-    lv_obj_t* list = lv_obj_create(area);
+    lv_obj_t* list = lv_obj_create(parent);
     lv_obj_set_size(list, lv_pct(100), lv_pct(100));
-    lv_obj_center(list);
     lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_gap(list, 0, LV_PART_MAIN);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     // Disable elastic bounce and scroll momentum — bad on e-ink
     lv_obj_clear_flag(list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));

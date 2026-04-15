@@ -22,6 +22,9 @@
 #include "screens/battery.h"
 #include "screens/mesh_settings.h"
 #include "screens/status.h"
+#include "screens/settings_preferences.h"
+#include "screens/settings_debug.h"
+#include "screens/settings_device.h"
 #include "screens/set_display.h"
 #include "screens/set_gps.h"
 #include "screens/set_mesh.h"
@@ -153,10 +156,12 @@ static void dispatch_dirty(uint32_t flags) {
 }
 
 static void ui_task_fn(void* param) {
+#ifndef BOARD_TDECK
     // BOOT button (GPIO 0): short press toggles lock, long press powers off
     boot_btn.setPressTicks(2000);
     boot_btn.attachClick(on_boot_click);
     boot_btn.attachLongPressStart(on_boot_long_press);
+#endif
 
 #ifdef BOARD_EPAPER
     // PCA9535 IO expander button (PC12): acts as home button
@@ -178,7 +183,9 @@ static void ui_task_fn(void* param) {
 #endif
 
         // Tick button state machines
+#ifndef BOARD_TDECK
         boot_btn.tick();
+#endif
 #ifdef BOARD_EPAPER
         pca_btn.tick(!button_read());  // button_read() returns true when pressed, OneButton expects pin level
 #endif
@@ -194,13 +201,6 @@ static void ui_task_fn(void* param) {
         if (board::peri_status[E_PERI_TOUCH]) {
             touch_pressed = board::touch.isPressed();
         }
-#ifdef BOARD_TDECK
-        // On T-Deck, also treat trackball click as activity
-        board::TrackballState tb = board::trackball_read();
-        if (tb.clicked) {
-            touch_pressed = true;
-        }
-#endif
 
         bool was_locked = (ui::screen_mgr::top_id() == SCREEN_LOCK);
         bool lock_touched = was_locked && touch_pressed;
@@ -389,6 +389,9 @@ void start(int core) {
     ui::screen_mgr::register_screen(18, &ui::screen::map::lifecycle);
     ui::screen_mgr::register_screen(19, &ui::screen::sensors::lifecycle);
     ui::screen_mgr::register_screen(20, &ui::screen::ping::lifecycle);
+    ui::screen_mgr::register_screen(21, &ui::screen::settings_preferences::lifecycle);
+    ui::screen_mgr::register_screen(22, &ui::screen::settings_debug::lifecycle);
+    ui::screen_mgr::register_screen(23, &ui::screen::settings_device::lifecycle);
     Serial.println("UI: switch to home...");
     ui::screen_mgr::switch_to(0, false);
 

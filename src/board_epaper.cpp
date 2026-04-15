@@ -16,6 +16,23 @@ XPowersPPM ppm;
 BQ27220 bq27220;
 TouchDrvGT911 touch;
 SensorPCF8563 rtc;
+static constexpr uint8_t CARDKB_I2C_ADDR = 0x5F;
+static constexpr uint8_t CARDKB_KEY_UP = 0xB5;
+static constexpr uint8_t CARDKB_KEY_DOWN = 0xB6;
+static constexpr uint8_t CARDKB_KEY_LEFT = 0xB4;
+static constexpr uint8_t CARDKB_KEY_RIGHT = 0xB7;
+static constexpr uint8_t CARDKB_KEY_TAB = 0x09;
+static constexpr uint8_t CARDKB_KEY_ESC = 0x1B;
+static constexpr uint8_t CARDKB_KEY_BS = 0x08;
+static constexpr uint8_t CARDKB_KEY_ENTER = 0x0D;
+static constexpr uint8_t CARDKB_KEY_DEL = 0x7F;
+static constexpr uint8_t CARDKB_KEY_PREV = 0xF2;
+static constexpr uint8_t CARDKB_KEY_NEXT = 0xF1;
+static constexpr uint8_t CARDKB_KEY_LEFT_NAV = 0xF3;
+static constexpr uint8_t CARDKB_KEY_RIGHT_NAV = 0xF4;
+static uint32_t cardkb_last_poll = 0;
+static uint32_t cardkb_poll_interval = 50;
+static uint8_t cardkb_error_count = 0;
 
 // E-paper
 #define WAVEFORM EPD_BUILTIN_WAVEFORM
@@ -114,6 +131,17 @@ bool gps_init() {
     return true;
 }
 
+bool keyboard_init() {
+    Wire.beginTransmission(CARDKB_I2C_ADDR);
+    bool ok = (Wire.endTransmission() == 0);
+    if (ok) {
+        Serial.println("CardKB keyboard found");
+    } else {
+        Serial.println("CardKB keyboard not found");
+    }
+    return ok;
+}
+
 } // namespace detail
 
 void seed_clock_from_rtc() {
@@ -176,6 +204,7 @@ void init() {
     seed_clock_from_rtc();
 
     peri_status[E_PERI_TOUCH] = detail::touch_init();
+    peri_status[E_PERI_KEYBOARD] = detail::keyboard_init();
     peri_status[E_PERI_SD_CARD] = detail::sd_init();
     peri_status[E_PERI_GPS] = detail::gps_init();
 
@@ -277,6 +306,70 @@ void rtc_get_date(uint8_t* year, uint8_t* month, uint8_t* day, uint8_t* week) {
     if (month) *month = dt.month;
     if (day) *day = dt.day;
     if (week) *week = 0;
+}
+
+// ---------- Keyboard ----------
+
+int keyboard_read_char() {
+    if (!peri_status[E_PERI_KEYBOARD]) return -1;
+
+    uint32_t now = millis();
+    if (now - cardkb_last_poll < cardkb_poll_interval) return -1;
+    cardkb_last_poll = now;
+
+    if (i2c_mutex && xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5)) != pdTRUE) {
+        return -1;
+    }
+
+    Wire.requestFrom((uint8_t)CARDKB_I2C_ADDR, (uint8_t)1);
+    bool available = Wire.available();
+    uint8_t raw = available ? Wire.read() : 0;
+
+    if (i2c_mutex) {
+        xSemaphoreGive(i2c_mutex);
+    }
+
+    if (!available) {
+        cardkb_error_count++;
+        if (cardkb_error_count >= 3) {
+            Wire.begin(BOARD_SDA, BOARD_SCL);
+            Wire.setTimeOut(50);
+            cardkb_poll_interval = 500;
+            cardkb_error_count = 0;
+            Serial.println("CardKB I2C recovery");
+        }
+        return -1;
+    }
+
+    cardkb_error_count = 0;
+    cardkb_poll_interval = 50;
+
+    if (raw == 0) return -1;
+
+    switch (raw) {
+        case CARDKB_KEY_UP: return CARDKB_KEY_PREV;
+        case CARDKB_KEY_DOWN: return CARDKB_KEY_NEXT;
+        case CARDKB_KEY_LEFT: return CARDKB_KEY_LEFT_NAV;
+        case CARDKB_KEY_RIGHT: return CARDKB_KEY_RIGHT_NAV;
+        case CARDKB_KEY_ENTER: return '\r';
+        case CARDKB_KEY_BS: return '\b';
+        case CARDKB_KEY_DEL: return '\b';
+        case CARDKB_KEY_ESC: return 0x1B;
+        case CARDKB_KEY_TAB: return 0x09;
+        default:
+            if (raw >= 0x20 && raw <= 0x7E) {
+                return (int)raw;
+            }
+            return -1;
+    }
+}
+
+void keyboard_set_backlight(uint8_t level) {
+    (void)level;
+}
+
+uint8_t keyboard_get_backlight() {
+    return 0;
 }
 
 } // namespace board

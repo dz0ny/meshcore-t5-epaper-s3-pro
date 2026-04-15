@@ -42,12 +42,44 @@ static int card_count = 0;
 static lv_obj_t* card_rows[MAX_CONTACTS] = {};
 static lv_obj_t* card_name_labels[MAX_CONTACTS] = {};
 static lv_obj_t* card_body_labels[MAX_CONTACTS] = {};
+static lv_obj_t* card_metrics_wraps[MAX_CONTACTS] = {};
+static lv_obj_t* card_meta_labels[MAX_CONTACTS] = {};
+static lv_obj_t* card_metric_pills[MAX_CONTACTS][8] = {};
+static lv_obj_t* card_metric_name_labels[MAX_CONTACTS][8] = {};
+static lv_obj_t* card_metric_value_labels[MAX_CONTACTS][8] = {};
 static lv_obj_t* card_state_pills[MAX_CONTACTS] = {};
 static lv_obj_t* card_state_labels[MAX_CONTACTS] = {};
 static bool row_visible[MAX_CONTACTS] = {};
 
+#ifdef BOARD_TDECK
+static const lv_coord_t SENSOR_CARD_RADIUS = 10;
+static const lv_coord_t SENSOR_CARD_PAD = 6;
+static const lv_coord_t SENSOR_CARD_ROW_PAD = 4;
+static const lv_coord_t SENSOR_HEADER_GAP = 6;
+static const lv_coord_t SENSOR_STATE_PAD_H = 8;
+static const lv_coord_t SENSOR_STATE_PAD_V = 2;
+static const lv_coord_t SENSOR_METRICS_GAP = 4;
+static const lv_coord_t SENSOR_METRIC_PAD_H = 6;
+static const lv_coord_t SENSOR_METRIC_PAD_V = 4;
+static const lv_coord_t SENSOR_METRIC_ROW_PAD = 1;
+static const int SENSOR_NAME_WIDTH = 70;
+#else
+static const lv_coord_t SENSOR_CARD_RADIUS = 20;
+static const lv_coord_t SENSOR_CARD_PAD = 12;
+static const lv_coord_t SENSOR_CARD_ROW_PAD = 8;
+static const lv_coord_t SENSOR_HEADER_GAP = 10;
+static const lv_coord_t SENSOR_STATE_PAD_H = 12;
+static const lv_coord_t SENSOR_STATE_PAD_V = 6;
+static const lv_coord_t SENSOR_METRICS_GAP = 8;
+static const lv_coord_t SENSOR_METRIC_PAD_H = 10;
+static const lv_coord_t SENSOR_METRIC_PAD_V = 8;
+static const lv_coord_t SENSOR_METRIC_ROW_PAD = 2;
+static const int SENSOR_NAME_WIDTH = 76;
+#endif
+
 static void decode_telemetry(SensorCard& card, const uint8_t* data, uint8_t len, uint32_t timestamp = 0);
 static void ensure_row(int idx);
+static void render_card_body(int idx);
 
 static const uint8_t LPP_BINARY_BOOL = 143;
 static const uint8_t LPP_BINARY_POWER_SWITCH = 144;
@@ -217,9 +249,7 @@ static void update_card_row(int idx) {
     if (strcmp(lv_label_get_text(card_name_labels[idx]), cards[idx].name) != 0) {
         lv_label_set_text(card_name_labels[idx], cards[idx].name);
     }
-    if (strcmp(lv_label_get_text(card_body_labels[idx]), cards[idx].telemetry) != 0) {
-        lv_label_set_text(card_body_labels[idx], cards[idx].telemetry);
-    }
+    render_card_body(idx);
     if (strcmp(lv_label_get_text(card_state_labels[idx]), state_text) != 0) {
         lv_label_set_text(card_state_labels[idx], state_text);
     }
@@ -230,6 +260,110 @@ static void update_card_row(int idx) {
     if (!row_visible[idx]) {
         lv_obj_clear_flag(card_rows[idx], LV_OBJ_FLAG_HIDDEN);
         row_visible[idx] = true;
+    }
+}
+
+static void render_card_body(int idx) {
+    if (idx < 0 || idx >= card_count) return;
+    if (!card_body_labels[idx] || !card_metrics_wraps[idx] || !card_meta_labels[idx]) return;
+
+    char telemetry_copy[sizeof(cards[idx].telemetry)];
+    strncpy(telemetry_copy, cards[idx].telemetry, sizeof(telemetry_copy) - 1);
+    telemetry_copy[sizeof(telemetry_copy) - 1] = 0;
+
+    const char* plain_text = NULL;
+    const char* meta_text = NULL;
+    const int max_metrics = (int)(sizeof(card_metric_name_labels[idx]) / sizeof(card_metric_name_labels[idx][0]));
+    int metric_count = 0;
+
+    char* saveptr = NULL;
+    for (char* line = strtok_r(telemetry_copy, "\n", &saveptr);
+         line != NULL;
+         line = strtok_r(NULL, "\n", &saveptr)) {
+        if (line[0] == 0) continue;
+
+        if (strncmp(line, "Updated ", 8) == 0 ||
+            strcmp(line, "Refreshing...") == 0 ||
+            strcmp(line, "Request timed out") == 0) {
+            meta_text = line;
+            continue;
+        }
+
+        if (metric_count >= max_metrics) {
+            meta_text = line;
+            continue;
+        }
+
+        if (strcmp(line, "Hold to request telemetry") == 0 ||
+            strcmp(line, "No telemetry data") == 0 ||
+            strcmp(line, "Telemetry updated") == 0 ||
+            strcmp(line, "Requesting telemetry...") == 0 ||
+            strcmp(line, "Telemetry request timed out") == 0) {
+            plain_text = cards[idx].telemetry;
+            metric_count = 0;
+            meta_text = NULL;
+            break;
+        }
+
+        lv_obj_t* pill = card_metric_pills[idx][metric_count];
+        lv_obj_t* name = card_metric_name_labels[idx][metric_count];
+        lv_obj_t* value = card_metric_value_labels[idx][metric_count];
+        lv_obj_set_width(pill, lv_pct(48));
+
+        const char* split = NULL;
+        for (const char* p = line; *p; p++) {
+            if ((p == line || *(p - 1) == ' ') &&
+                (*p == '-' || *p == '+' || *p == '.' || isdigit((unsigned char)*p))) {
+                split = p;
+                break;
+            }
+        }
+        if (split && split > line) {
+            char metric_name[32];
+            size_t name_len = (size_t)(split - line);
+            while (name_len > 0 && line[name_len - 1] == ' ') name_len--;
+            if (name_len >= sizeof(metric_name)) name_len = sizeof(metric_name) - 1;
+            memcpy(metric_name, line, name_len);
+            metric_name[name_len] = 0;
+            lv_label_set_text(name, metric_name);
+            lv_label_set_text(value, split + 1);
+        } else {
+            lv_label_set_text(name, line);
+            lv_label_set_text(value, "");
+        }
+        lv_obj_clear_flag(pill, LV_OBJ_FLAG_HIDDEN);
+        metric_count++;
+    }
+
+    for (int i = metric_count; i < max_metrics; i++) {
+        if (card_metric_pills[idx][i]) {
+            lv_obj_add_flag(card_metric_pills[idx][i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    if (plain_text) {
+        lv_label_set_text(card_body_labels[idx], plain_text);
+        lv_obj_clear_flag(card_body_labels[idx], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(card_metrics_wraps[idx], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(card_meta_labels[idx], LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_label_set_text(card_body_labels[idx], "");
+    lv_obj_add_flag(card_body_labels[idx], LV_OBJ_FLAG_HIDDEN);
+
+    if (metric_count > 0) {
+        lv_obj_clear_flag(card_metrics_wraps[idx], LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(card_metrics_wraps[idx], LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (meta_text && meta_text[0] != 0) {
+        lv_label_set_text(card_meta_labels[idx], meta_text);
+        lv_obj_clear_flag(card_meta_labels[idx], LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_label_set_text(card_meta_labels[idx], "");
+        lv_obj_add_flag(card_meta_labels[idx], LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -264,6 +398,7 @@ static void rebuild_list() {
     lv_obj_update_layout(sensor_list);
     lv_display_enable_invalidation(disp, true);
     lv_obj_invalidate(sensor_list);
+    ui::port::keyboard_focus_invalidate();
 }
 
 static void append_timestamp(char* out, size_t out_size, int& used, uint32_t timestamp) {
@@ -827,9 +962,9 @@ static void ensure_row(int idx) {
     lv_obj_set_style_bg_color(row, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_style_border_width(row, UI_BORDER_CARD, LV_PART_MAIN);
     lv_obj_set_style_border_color(row, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-    lv_obj_set_style_radius(row, 20, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(row, 18, LV_PART_MAIN);
-    lv_obj_set_style_pad_row(row, 14, LV_PART_MAIN);
+    lv_obj_set_style_radius(row, SENSOR_CARD_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(row, SENSOR_CARD_PAD, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(row, SENSOR_CARD_ROW_PAD, LV_PART_MAIN);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row, on_card_click, LV_EVENT_LONG_PRESSED, (void*)(intptr_t)idx);
@@ -841,16 +976,18 @@ static void ensure_row(int idx) {
     lv_obj_set_style_bg_opa(header, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(header, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(header, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_column(header, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(header, SENSOR_HEADER_GAP, LV_PART_MAIN);
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(header, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_set_flex_flow(header, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(header, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* name = lv_label_create(header);
     lv_obj_set_style_text_font(name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
-    lv_obj_set_width(name, lv_pct(72));
+    lv_obj_set_width(name, lv_pct(SENSOR_NAME_WIDTH));
     lv_label_set_long_mode(name, LV_LABEL_LONG_WRAP);
+    lv_obj_add_flag(name, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     lv_obj_t* pill = lv_obj_create(header);
     lv_obj_set_size(pill, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -859,24 +996,89 @@ static void ensure_row(int idx) {
     lv_obj_set_style_border_width(pill, UI_BORDER_THIN, LV_PART_MAIN);
     lv_obj_set_style_border_color(pill, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
     lv_obj_set_style_radius(pill, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_pad_hor(pill, 12, LV_PART_MAIN);
-    lv_obj_set_style_pad_ver(pill, 6, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(pill, SENSOR_STATE_PAD_H, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(pill, SENSOR_STATE_PAD_V, LV_PART_MAIN);
     lv_obj_clear_flag(pill, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(pill, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     lv_obj_t* state = lv_label_create(pill);
     lv_obj_set_style_text_font(state, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(state, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_label_set_text(state, "READY");
+    lv_obj_add_flag(state, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     lv_obj_t* body = lv_label_create(row);
     lv_obj_set_style_text_font(body, UI_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_text_color(body, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_width(body, lv_pct(100));
     lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
+    lv_obj_add_flag(body, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t* metrics_wrap = lv_obj_create(row);
+    lv_obj_set_width(metrics_wrap, lv_pct(100));
+    lv_obj_set_height(metrics_wrap, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(metrics_wrap, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(metrics_wrap, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(metrics_wrap, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_gap(metrics_wrap, SENSOR_METRICS_GAP, LV_PART_MAIN);
+    lv_obj_clear_flag(metrics_wrap, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(metrics_wrap, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_set_flex_flow(metrics_wrap, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_add_flag(metrics_wrap, LV_OBJ_FLAG_HIDDEN);
+
+    for (int i = 0; i < (int)(sizeof(card_metric_pills[idx]) / sizeof(card_metric_pills[idx][0])); i++) {
+        lv_obj_t* pill = lv_obj_create(metrics_wrap);
+        lv_obj_set_width(pill, lv_pct(48));
+        lv_obj_set_height(pill, LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_color(pill, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
+        lv_obj_set_style_border_width(pill, UI_BORDER_THIN, LV_PART_MAIN);
+        lv_obj_set_style_border_color(pill, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
+        lv_obj_set_style_radius(pill, SENSOR_CARD_RADIUS, LV_PART_MAIN);
+        lv_obj_set_style_pad_hor(pill, SENSOR_METRIC_PAD_H, LV_PART_MAIN);
+        lv_obj_set_style_pad_ver(pill, SENSOR_METRIC_PAD_V, LV_PART_MAIN);
+        lv_obj_set_style_pad_row(pill, SENSOR_METRIC_ROW_PAD, LV_PART_MAIN);
+        lv_obj_clear_flag(pill, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(pill, LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_obj_add_flag(pill, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_flex_flow(pill, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(pill, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+
+        lv_obj_t* name = lv_label_create(pill);
+        lv_obj_set_width(name, lv_pct(100));
+        lv_obj_set_style_text_font(name, UI_FONT_SMALL, LV_PART_MAIN);
+        lv_obj_set_style_text_color(name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(name, LV_OPA_70, LV_PART_MAIN);
+        lv_label_set_long_mode(name, LV_LABEL_LONG_WRAP);
+        lv_label_set_text(name, "");
+        lv_obj_add_flag(name, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        lv_obj_t* value = lv_label_create(pill);
+        lv_obj_set_width(value, lv_pct(100));
+        lv_obj_set_style_text_font(value, UI_FONT_BODY, LV_PART_MAIN);
+        lv_obj_set_style_text_color(value, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+        lv_label_set_long_mode(value, LV_LABEL_LONG_WRAP);
+        lv_label_set_text(value, "");
+        lv_obj_add_flag(value, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        card_metric_pills[idx][i] = pill;
+        card_metric_name_labels[idx][i] = name;
+        card_metric_value_labels[idx][i] = value;
+    }
+
+    lv_obj_t* meta = lv_label_create(row);
+    lv_obj_set_style_text_font(meta, UI_FONT_SMALL, LV_PART_MAIN);
+    lv_obj_set_style_text_color(meta, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(meta, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_set_width(meta, lv_pct(100));
+    lv_label_set_long_mode(meta, LV_LABEL_LONG_WRAP);
+    lv_obj_add_flag(meta, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_add_flag(meta, LV_OBJ_FLAG_HIDDEN);
 
     card_rows[idx] = row;
     card_name_labels[idx] = name;
     card_body_labels[idx] = body;
+    card_metrics_wraps[idx] = metrics_wrap;
+    card_meta_labels[idx] = meta;
     card_state_pills[idx] = pill;
     card_state_labels[idx] = state;
     row_visible[idx] = false;
@@ -953,7 +1155,6 @@ static void create(lv_obj_t* parent) {
     scr = parent;
 
     sensor_list = ui::nav::scroll_list(parent);
-    lv_obj_set_height(sensor_list, lv_pct(82));
 
     empty_label = lv_label_create(sensor_list);
     lv_obj_set_width(empty_label, lv_pct(100));
@@ -961,7 +1162,7 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(empty_label, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(empty_label, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(empty_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_label_set_text(empty_label, "\n\nNo favorite nodes yet");
+    lv_label_set_text(empty_label, "\n\nNo sensors yet");
     lv_obj_add_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -995,6 +1196,13 @@ static void destroy() {
         card_rows[i] = NULL;
         card_name_labels[i] = NULL;
         card_body_labels[i] = NULL;
+        card_metrics_wraps[i] = NULL;
+        card_meta_labels[i] = NULL;
+        for (int j = 0; j < (int)(sizeof(card_metric_pills[i]) / sizeof(card_metric_pills[i][0])); j++) {
+            card_metric_pills[i][j] = NULL;
+            card_metric_name_labels[i][j] = NULL;
+            card_metric_value_labels[i][j] = NULL;
+        }
         card_state_pills[i] = NULL;
         card_state_labels[i] = NULL;
         row_visible[i] = false;

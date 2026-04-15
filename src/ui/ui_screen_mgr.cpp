@@ -1,4 +1,5 @@
 #include "ui_screen_mgr.h"
+#include "ui_port.h"
 #include "ui_theme.h"
 #include "components/nav_button.h"
 #include <cstring>
@@ -19,6 +20,7 @@ enum card_state {
 struct card_t {
     int id;
     lv_obj_t* obj;
+    lv_obj_t* content_obj;
     lv_obj_t* nav_obj;
     lv_obj_t* nav_action_label;
     lv_obj_t* nav_action_label_2;
@@ -74,6 +76,9 @@ static const char* default_nav_title(int id) {
         case SCREEN_MAP: return "Map";
         case SCREEN_SENSORS: return "Sensors";
         case SCREEN_PING: return "Ping";
+        case SCREEN_SETTINGS_PREFERENCES: return "Preferences";
+        case SCREEN_SETTINGS_DEBUG: return "Debug";
+        case SCREEN_SETTINGS_DEVICE: return "Device";
         default: return "";
     }
 }
@@ -116,7 +121,7 @@ static void rebuild_nav(card_t* card) {
         card->nav_action_label_2 = NULL;
     }
     if (card->nav_obj) {
-        lv_obj_move_foreground(card->nav_obj);
+        lv_obj_move_to_index(card->nav_obj, 0);
     }
 }
 
@@ -125,8 +130,19 @@ static lv_obj_t* create_default_screen(card_t* card) {
     lv_obj_set_size(obj, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_color(obj, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_style_pad_all(obj, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(obj, UI_OUTER_MARGIN_X, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(obj, UI_OUTER_MARGIN_X, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(obj, UI_OUTER_MARGIN_X, LV_PART_MAIN);
+    if (screen_has_nav(card->id)) {
+        lv_obj_set_style_pad_top(obj, UI_STATUSBAR_BOTTOM, LV_PART_MAIN);
+        lv_obj_set_style_pad_row(obj, UI_NAV_CONTENT_GAP, LV_PART_MAIN);
+    } else {
+        lv_obj_set_style_pad_top(obj, UI_OUTER_MARGIN_X, LV_PART_MAIN);
+    }
+    lv_obj_clear_flag(obj, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
+    lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
     card->obj = obj;
+    card->content_obj = NULL;
     card->nav_obj = NULL;
     card->nav_action_label = NULL;
     card->nav_action_label_2 = NULL;
@@ -140,12 +156,20 @@ static lv_obj_t* create_default_screen(card_t* card) {
     card->nav_action_enabled = false;
     card->nav_action_enabled_2 = false;
     rebuild_nav(card);
+
+    // Content container — fills remaining space below nav via flex_grow
+    lv_obj_t* content = lv_obj_create(obj);
+    lv_obj_set_width(content, lv_pct(100));
+    lv_obj_set_flex_grow(content, 1);
+    lv_obj_set_style_bg_opa(content, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(content, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(content, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(content, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
+    card->content_obj = content;
+
     creating_card = card;
-    card->life->create(obj);
+    card->life->create(content);
     creating_card = NULL;
-    if (card->nav_obj) {
-        lv_obj_move_foreground(card->nav_obj);
-    }
     return obj;
 }
 
@@ -193,6 +217,7 @@ void init() {
     head = (card_t*)lv_malloc(sizeof(card_t));
     head->id = -1;
     head->obj = NULL;
+    head->content_obj = NULL;
     head->nav_obj = NULL;
     head->nav_action_label = NULL;
     head->nav_action_label_2 = NULL;
@@ -220,6 +245,7 @@ bool register_screen(int id, screen_lifecycle_t* life) {
     card_t* c = (card_t*)lv_malloc(sizeof(card_t));
     c->id = id;
     c->obj = NULL;
+    c->content_obj = NULL;
     c->nav_obj = NULL;
     c->nav_action_label = NULL;
     c->nav_action_label_2 = NULL;
@@ -267,6 +293,7 @@ bool switch_to(int id, bool anim) {
     s = (card_t*)lv_malloc(sizeof(card_t));
     s->id = tgt->id;
     s->obj = NULL;
+    s->content_obj = NULL;
     s->nav_obj = NULL;
     s->nav_action_label = NULL;
     s->nav_action_label_2 = NULL;
@@ -296,6 +323,7 @@ bool switch_to(int id, bool anim) {
         lv_screen_load(s->obj);
         if (curr_obj) lv_obj_delete(curr_obj);
     }
+    ui::port::keyboard_focus_invalidate();
     return true;
 }
 
@@ -307,6 +335,7 @@ bool push(int id, bool anim) {
     card_t* s = (card_t*)lv_malloc(sizeof(card_t));
     s->id = tgt->id;
     s->obj = NULL;
+    s->content_obj = NULL;
     s->nav_obj = NULL;
     s->nav_action_label = NULL;
     s->nav_action_label_2 = NULL;
@@ -344,6 +373,7 @@ bool push(int id, bool anim) {
     } else {
         lv_screen_load(s->obj);
     }
+    ui::port::keyboard_focus_invalidate();
     return true;
 }
 
@@ -364,6 +394,7 @@ bool pop(bool anim) {
         lv_screen_load(dst->obj);
         if (cur_obj) lv_obj_delete(cur_obj);
     }
+    ui::port::keyboard_focus_invalidate();
     return true;
 }
 
@@ -395,6 +426,7 @@ void reload_stack() {
 
     activate(stack_top);
     lv_screen_load(stack_top->obj);
+    ui::port::keyboard_focus_invalidate();
 }
 
 lv_obj_t* set_nav_action(const char* action_text, lv_event_cb_t action_cb, void* action_user_data) {

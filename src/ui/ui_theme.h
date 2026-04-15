@@ -11,6 +11,11 @@ enum theme_id : uint8_t {
     THEME_SAR_RED = 2,
     THEME_SAR_GREEN = 3,
     THEME_SAR_NAVY_BLUE = 4,
+    THEME_NEO_VICE = 5,
+    THEME_SIGNAL_ORANGE = 6,
+    THEME_LAGOON = 7,
+    THEME_ORCHID = 8,
+    THEME_CITRINE = 9,
 };
 
 struct palette_t {
@@ -65,6 +70,9 @@ enum screen_id {
     SCREEN_MAP            = 18,
     SCREEN_SENSORS        = 19,
     SCREEN_PING           = 20,
+    SCREEN_SETTINGS_PREFERENCES = 21,
+    SCREEN_SETTINGS_DEBUG       = 22,
+    SCREEN_SETTINGS_DEVICE      = 23,
 };
 
 // ---------- Font declarations ----------

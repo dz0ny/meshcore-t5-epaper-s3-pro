@@ -23,6 +23,9 @@ void full_clean();
 void touch_enable();
 void touch_disable();
 
+// Mark the keyboard focus tree dirty so it is rebuilt on the next key read.
+void keyboard_focus_invalidate();
+
 // Backlight mode: 0=Auto, 1=Off
 void set_backlight(int mode);
 int  get_backlight();

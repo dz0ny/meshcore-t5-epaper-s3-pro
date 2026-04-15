@@ -23,10 +23,16 @@
 #define UI_STATUSBAR_PAD     5
 #define UI_STATUSBAR_COL_PAD 8
 
+// Screen top padding — push content below the statusbar overlay
+#define UI_STATUSBAR_BOTTOM  (UI_STATUSBAR_Y + UI_STATUSBAR_HEIGHT)
+
 // Back button
-#define UI_BACK_BTN_Y        50
 #define UI_BACK_BTN_HEIGHT   70
-#define UI_BACK_BTN_PAD_V    10
+
+// Gap between nav bar and content container (flex row gap)
+#define UI_NAV_CONTENT_GAP   10
+#define UI_BACK_BTN_PAD_TOP  10
+#define UI_BACK_BTN_PAD_BOTTOM 10
 #define UI_BACK_BTN_COL_PAD  8
 
 // Menu / list items
@@ -40,9 +46,18 @@
 #define UI_TEXT_BTN_RADIUS   12
 #define UI_TEXT_BTN_BORDER   3
 
-// Scroll list
-#define UI_SCROLL_LIST_H     85
-#define UI_SCROLL_LIST_Y    -10
+// Nav band detection (screen-coordinate bottom of nav area)
+#define UI_NAV_BAND_BOTTOM   (UI_STATUSBAR_BOTTOM + UI_BACK_BTN_HEIGHT)
+
+// Message list
+#define UI_MSG_LIST_PAD      2
+#define UI_MSG_LIST_ROW_PAD  4
+#define UI_MSG_WRAP_ROW_PAD  2
+#define UI_MSG_BUBBLE_WIDTH  100
+#define UI_MSG_BUBBLE_PAD    8
+#define UI_MSG_BUBBLE_RADIUS 8
+#define UI_MSG_BUBBLE_ROW_PAD 2
+#define UI_MSG_SELF_INDENT   60
 
 // Extended click areas
 #define UI_EXT_CLICK_BACK    35
@@ -80,16 +95,23 @@
 #define UI_LOCK_DATE_Y       210
 
 // ---------- Compose screen ----------
-#define UI_COMPOSE_RECIPIENT_Y   130
-#define UI_COMPOSE_RECIPIENT_H   110
-#define UI_COMPOSE_LIST_Y        255
-#define UI_COMPOSE_LIST_H        630
-#define UI_COMPOSE_EDITOR_Y      255
-#define UI_COMPOSE_EDITOR_H      260
-#define UI_COMPOSE_TA_Y          305
-#define UI_COMPOSE_TA_H          180
-#define UI_COMPOSE_SEND_BOTTOM   -335
-#define UI_COMPOSE_SHOW_KB       1
+#define UI_COMPOSE_PICKER_CARD_Y     0
+#define UI_COMPOSE_PICKER_CARD_H     110
+#define UI_COMPOSE_FILTERS_Y         125
+#define UI_COMPOSE_FILTERS_H         64
+#define UI_COMPOSE_FILTERS_GAP       12
+#define UI_COMPOSE_PICKER_LIST_Y     205
+#define UI_COMPOSE_PICKER_BOTTOM_PAD 20
+#define UI_COMPOSE_EDITOR_CARD_Y     0
+#define UI_COMPOSE_EDITOR_CARD_H     86
+#define UI_COMPOSE_MESSAGE_Y         105
+#define UI_COMPOSE_MESSAGE_H         50
+#define UI_COMPOSE_TA_Y              175
+#define UI_COMPOSE_TEXT_GAP          20
+#define UI_COMPOSE_EDITOR_BOTTOM_PAD 20
+#define UI_COMPOSE_SEND_GAP          20
+#define UI_COMPOSE_KB_H              320
+#define UI_COMPOSE_SHOW_KB           1
 
 // ---------- Contact detail screen ----------
 #define UI_CONTACT_HERO_Y    130
@@ -102,12 +124,12 @@
 #define UI_CONTACT_DETAIL_H  230
 
 // ---------- Ping screen ----------
-#define UI_PING_BTN_ROW_Y    360
+#define UI_PING_BTN_ROW_Y    230
 #define UI_PING_BTN_ROW_H    90
 
 // ---------- Map screen ----------
 #define UI_MAP_X             5
-#define UI_MAP_Y             130
+#define UI_MAP_Y             10
 #define UI_MAP_W             530
 #define UI_MAP_H             825
 #define UI_MAP_BTN_W         80

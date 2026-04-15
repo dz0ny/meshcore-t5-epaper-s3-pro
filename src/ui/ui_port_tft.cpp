@@ -1,6 +1,8 @@
 #ifdef BOARD_TDECK
 
 #include "ui_port.h"
+#include "ui_screen_mgr.h"
+#include "ui_theme.h"
 #include "../board.h"
 #include "../model.h"
 #include "../nvs_param.h"
@@ -274,6 +276,10 @@ static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
             case 0x0D: data->key = LV_KEY_ENTER; break;
             case 0x1B: data->key = LV_KEY_ESC; break;
             case 0x09: data->key = LV_KEY_NEXT; break;
+            case 0xF1: data->key = LV_KEY_DOWN; break;
+            case 0xF2: data->key = LV_KEY_UP; break;
+            case 0xF3: data->key = LV_KEY_LEFT; break;
+            case 0xF4: data->key = LV_KEY_RIGHT; break;
             default:
                 last_backspace_ms = 0;
                 backspace_repeat_count = 0;
@@ -287,49 +293,189 @@ static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     }
 }
 
-// ---------- Trackball → virtual scroll ----------
-// Trackball directly scrolls the focused scrollable object (menus, lists).
-// Click acts as a tap on the center of the screen (activates focused item).
-// This is more natural than cursor-based pointer — no need to aim.
+// ---------- Trackball → dual-zone navigation ----------
+// Two independent zones: nav-band (Left/Right) and content (Up/Down).
+// Left/Right always controls nav-band items, Up/Down always controls content items.
+// When one axis is used, the other zone's focus is cleared so Click hits the right target.
 
-static const int TB_SCROLL_PX = 30;  // pixels per trackball tick
+static constexpr int TB_MAX_NAV_ITEMS = 16;
+static constexpr int TB_MAX_CONTENT_ITEMS = 128;
 
-// Find the innermost scrollable object on the active screen.
-// Returns NULL if nothing is scrollable or UI not ready yet.
-static lv_obj_t* find_scrollable() {
-    lv_obj_t *scr = lv_screen_active();
-    if (!scr) return NULL;
+// Current focused item per zone (NULL = nothing focused in that zone)
+static lv_obj_t *tb_nav_focused = NULL;
+static lv_obj_t *tb_content_focused = NULL;
+static lv_obj_t *tb_last_screen = NULL;
 
-    uint32_t cnt = lv_obj_get_child_count(scr);
-    for (uint32_t i = 0; i < cnt; i++) {
-        lv_obj_t *child = lv_obj_get_child(scr, i);
-        if (!child) continue;
-        if (!lv_obj_has_flag(child, LV_OBJ_FLAG_SCROLLABLE)) continue;
-
-        // Check grandchildren first (scroll_list is usually nested inside a screen container)
-        uint32_t gcnt = lv_obj_get_child_count(child);
-        for (uint32_t j = 0; j < gcnt; j++) {
-            lv_obj_t *gc = lv_obj_get_child(child, j);
-            if (!gc) continue;
-            if (lv_obj_has_flag(gc, LV_OBJ_FLAG_SCROLLABLE)) {
-                return gc;
-            }
-        }
-        return child;
-    }
-    return NULL;
+// Focus/defocus sends LVGL events to trigger existing visual callbacks
+// (on_row_focus_feedback, on_back_focus_feedback) that invert bg/text colors.
+static void tb_apply_focus(lv_obj_t *obj) {
+    if (!obj || !lv_obj_is_valid(obj)) return;
+    lv_obj_send_event(obj, LV_EVENT_FOCUSED, NULL);
 }
 
-static void trackball_scroll_cb(lv_timer_t *t) {
-    board::TrackballState tb = board::trackball_read();
-    if (tb.dy == 0 && tb.dx == 0 && !tb.clicked) return;
+static void tb_remove_focus(lv_obj_t *obj) {
+    if (!obj || !lv_obj_is_valid(obj)) return;
+    lv_obj_send_event(obj, LV_EVENT_DEFOCUSED, NULL);
+}
 
-    if (tb.dy != 0 || tb.dx != 0) {
-        lv_obj_t *target = find_scrollable();
-        if (target) {
-            lv_obj_scroll_by(target, -tb.dx * TB_SCROLL_PX, -tb.dy * TB_SCROLL_PX, LV_ANIM_OFF);
+static bool tb_obj_is_in_nav_band(lv_obj_t *obj) {
+    if (!obj || !lv_obj_is_valid(obj)) return false;
+    // Nav-band items are not inside scrollable containers and are in the top bar area
+    lv_obj_t *node = lv_obj_get_parent(obj);
+    while (node) {
+        if (lv_obj_has_flag(node, LV_OBJ_FLAG_SCROLLABLE)) return false;
+        node = lv_obj_get_parent(node);
+    }
+    lv_area_t coords;
+    lv_obj_get_coords(obj, &coords);
+    return coords.y1 <= (UI_NAV_BAND_BOTTOM + 4);
+}
+
+static void tb_collect_clickables(lv_obj_t *parent, bool want_nav, lv_obj_t **items, int max_items, int *count) {
+    if (!parent || !items || !count || *count >= max_items) return;
+    if (lv_obj_has_flag(parent, LV_OBJ_FLAG_HIDDEN)) return;
+
+    uint32_t cnt = lv_obj_get_child_count(parent);
+    for (uint32_t i = 0; i < cnt && *count < max_items; i++) {
+        lv_obj_t *child = lv_obj_get_child(parent, i);
+        if (!child) continue;
+        if (lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) continue;
+
+        if (lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE) && (tb_obj_is_in_nav_band(child) == want_nav)) {
+            items[*count] = child;
+            (*count)++;
+        }
+
+        tb_collect_clickables(child, want_nav, items, max_items, count);
+    }
+}
+
+static int tb_find_index(lv_obj_t **items, int count, lv_obj_t *obj) {
+    for (int i = 0; i < count; i++) {
+        if (items[i] == obj) return i;
+    }
+    return -1;
+}
+
+static void tb_reset_on_screen_change() {
+    lv_obj_t *screen = lv_screen_active();
+    if (screen == tb_last_screen) return;
+
+    // Screen changed — clear old focus
+    tb_remove_focus(tb_nav_focused);
+    tb_remove_focus(tb_content_focused);
+    tb_nav_focused = NULL;
+    tb_content_focused = NULL;
+    tb_last_screen = screen;
+}
+
+static void trackball_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
+    static uint32_t last_key = 0;
+    static int pending_enter = 0;
+    static bool release_next = false;
+
+    if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
+        (void)board::trackball_read();
+        pending_enter = 0;
+        release_next = false;
+        data->state = LV_INDEV_STATE_RELEASED;
+        data->key = last_key;
+        return;
+    }
+
+    tb_reset_on_screen_change();
+
+    if (release_next) {
+        data->state = LV_INDEV_STATE_RELEASED;
+        data->key = last_key;
+        release_next = false;
+        return;
+    }
+
+    if (pending_enter == 0) {
+        board::TrackballState tb = board::trackball_read();
+        lv_obj_t *screen = lv_screen_active();
+
+        // Up/Down: content navigation (clears nav focus)
+        if (screen && tb.dy != 0) {
+            // Clear nav-band focus
+            tb_remove_focus(tb_nav_focused);
+            tb_nav_focused = NULL;
+
+            lv_obj_t *items[TB_MAX_CONTENT_ITEMS] = {};
+            int count = 0;
+            tb_collect_clickables(screen, false, items, TB_MAX_CONTENT_ITEMS, &count);
+
+            if (count > 0) {
+                int cur = tb_find_index(items, count, tb_content_focused);
+                int next;
+                if (cur < 0) {
+                    next = (tb.dy > 0) ? 0 : count - 1;
+                } else {
+                    next = cur + (tb.dy > 0 ? 1 : -1);
+                    if (next < 0) next = 0;
+                    if (next >= count) next = count - 1;
+                }
+
+                if (items[next] != tb_content_focused) {
+                    tb_remove_focus(tb_content_focused);
+                    tb_content_focused = items[next];
+                    tb_apply_focus(tb_content_focused);
+                    lv_obj_scroll_to_view_recursive(tb_content_focused, LV_ANIM_OFF);
+                } else if (!tb_content_focused) {
+                    tb_content_focused = items[next];
+                    tb_apply_focus(tb_content_focused);
+                    lv_obj_scroll_to_view_recursive(tb_content_focused, LV_ANIM_OFF);
+                }
+                model::touch_activity();
+            }
+        }
+
+        // Left/Right: nav-band navigation (clears content focus)
+        if (screen && tb.dx != 0) {
+            // Clear content focus
+            tb_remove_focus(tb_content_focused);
+            tb_content_focused = NULL;
+
+            lv_obj_t *items[TB_MAX_NAV_ITEMS] = {};
+            int count = 0;
+            tb_collect_clickables(screen, true, items, TB_MAX_NAV_ITEMS, &count);
+
+            if (count > 0) {
+                int cur = tb_find_index(items, count, tb_nav_focused);
+                int next;
+                if (cur < 0) {
+                    next = (tb.dx > 0) ? 0 : count - 1;
+                } else {
+                    next = cur + (tb.dx > 0 ? 1 : -1);
+                    if (next < 0) next = 0;
+                    if (next >= count) next = count - 1;
+                }
+
+                if (items[next] != tb_nav_focused) {
+                    tb_remove_focus(tb_nav_focused);
+                    tb_nav_focused = items[next];
+                    tb_apply_focus(tb_nav_focused);
+                } else if (!tb_nav_focused) {
+                    tb_nav_focused = items[next];
+                    tb_apply_focus(tb_nav_focused);
+                }
+                model::touch_activity();
+            }
+        }
+
+        if (tb.clicked) {
+            // Click the last-focused item from either zone
+            lv_obj_t *target = tb_content_focused ? tb_content_focused : tb_nav_focused;
+            if (target && lv_obj_is_valid(target)) {
+                lv_obj_send_event(target, LV_EVENT_CLICKED, NULL);
+                model::touch_activity();
+            }
         }
     }
+
+    data->state = LV_INDEV_STATE_RELEASED;
+    data->key = last_key;
 }
 
 // ---------- Tick ----------
@@ -379,9 +525,13 @@ void init() {
         lv_indev_set_group(kb_indev, g);
     }
 
-    // Trackball as virtual scroll — polls trackball and scrolls focused list directly
+    // Trackball — polls trackball_read_cb which directly manages focus
     if (board::peri_status[E_PERI_TRACKBALL]) {
-        lv_timer_create(trackball_scroll_cb, 30, NULL);  // ~33Hz poll
+        lv_indev_t *tb_indev = lv_indev_create();
+        lv_indev_set_type(tb_indev, LV_INDEV_TYPE_KEYPAD);
+        lv_indev_set_read_cb(tb_indev, trackball_read_cb);
+        lv_indev_set_display(tb_indev, disp);
+        lv_indev_set_group(tb_indev, g);
     }
 
     int stored_brightness = nvs_param_get_u8(NVS_ID_BRIGHTNESS);
@@ -403,6 +553,7 @@ void full_clean()   {}
 
 void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
+void keyboard_focus_invalidate() {}
 
 // ---------- Backlight ----------
 

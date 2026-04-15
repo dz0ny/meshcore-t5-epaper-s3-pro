@@ -40,21 +40,38 @@ static void create(lv_obj_t* parent) {
 
     auto& msg = model::messages[msg_idx];
 
+    lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_row(parent, UI_MENU_ITEM_PAD, LV_PART_MAIN);
+    lv_obj_t* content = parent;
+
     // Reuse the bubble component for the message
-    lv_obj_t* bubble_list = ui::msg_list::create(parent);
-    lv_obj_set_size(bubble_list, lv_pct(95), lv_pct(45));
-    lv_obj_align(bubble_list, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
+    lv_obj_t* bubble_list = ui::msg_list::create(content);
+    lv_obj_set_width(bubble_list, lv_pct(100));
+    lv_obj_set_flex_grow(bubble_list, 1);
     ui::msg_list::append(bubble_list, msg.sender, msg.text, 0, msg.is_self);
 
-    // Reply button (only for received messages)
+    lv_obj_t* actions = lv_obj_create(content);
+    lv_obj_set_width(actions, lv_pct(100));
+    lv_obj_set_height(actions, UI_TEXT_BTN_HEIGHT);
+    lv_obj_set_style_bg_opa(actions, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(actions, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(actions, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(actions, UI_MENU_ITEM_PAD, LV_PART_MAIN);
+    lv_obj_clear_flag(actions, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(actions, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(actions, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* reply_btn = NULL;
     if (!msg.is_self) {
-        lv_obj_t* reply_btn = ui::nav::text_button(parent, "Reply", on_reply, NULL);
-        lv_obj_align(reply_btn, LV_ALIGN_BOTTOM_MID, 0, -110);
+        reply_btn = ui::nav::text_button(actions, "Reply", on_reply, NULL);
+        lv_obj_set_width(reply_btn, lv_pct(50));
+        lv_obj_set_flex_grow(reply_btn, 1);
     }
 
-    // Delete button
-    lv_obj_t* del_btn = ui::nav::text_button(parent, "Delete", on_delete, NULL);
-    lv_obj_align(del_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_t* del_btn = ui::nav::text_button(actions, "Delete", on_delete, NULL);
+    lv_obj_set_width(del_btn, lv_pct(msg.is_self ? 100 : 50));
+    lv_obj_set_flex_grow(del_btn, 1);
 }
 
 static void entry() {}

@@ -7,6 +7,7 @@
 #endif
 #include "ping.h"
 #include "../ui_theme.h"
+#include "../ui_port.h"
 #include "../ui_screen_mgr.h"
 #include "../components/nav_button.h"
 #include "../components/geo_utils.h"
@@ -285,6 +286,8 @@ static void rebuild_history() {
         lv_label_set_text(history_labels[i], body);
         lv_obj_clear_flag(history_rows[i], LV_OBJ_FLAG_HIDDEN);
     }
+
+    ui::port::keyboard_focus_invalidate();
 }
 
 static void schedule_next_auto_ping(bool timed_out, uint32_t duration_ms) {
@@ -483,7 +486,7 @@ static void create(lv_obj_t* parent) {
     lbl_auto_action = ui::screen_mgr::set_nav_action(auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL);
     lv_obj_t* summary_card = create_card(parent);
     lv_obj_set_size(summary_card, lv_pct(95), LV_SIZE_CONTENT);
-    lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, UI_BACK_BTN_Y + UI_BACK_BTN_HEIGHT);
+    lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, 0);
 
     lv_obj_t* name_label = lv_label_create(summary_card);
     lv_obj_set_style_text_font(name_label, UI_FONT_TITLE, LV_PART_MAIN);
