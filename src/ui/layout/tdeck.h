@@ -62,9 +62,9 @@
 #define UI_MSG_SELF_INDENT   32
 
 // Extended click areas
-#define UI_EXT_CLICK_BACK    30
-#define UI_EXT_CLICK_ACTION  15
-#define UI_EXT_CLICK_LIST    22
+#define UI_EXT_CLICK_BACK    10
+#define UI_EXT_CLICK_ACTION  8
+#define UI_EXT_CLICK_LIST    0
 
 // Action button (inline with back button)
 #define UI_ACTION_BTN_H      18

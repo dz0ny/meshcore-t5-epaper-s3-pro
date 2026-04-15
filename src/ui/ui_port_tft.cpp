@@ -364,8 +364,6 @@ void full_clean()   {}
 
 void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
-void keyboard_focus_invalidate() {}
-void keyboard_focus_register(lv_obj_t* obj) { (void)obj; }
 
 // ---------- Backlight ----------
 

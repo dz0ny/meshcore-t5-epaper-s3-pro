@@ -222,12 +222,8 @@ static uint32_t next_loop_wait_ms(bool is_locked, uint32_t lvgl_period_ms) {
 }
 
 static void ui_task_fn(void* param) {
-#ifndef BOARD_TDECK
-    // BOOT button (GPIO 0): short press toggles lock, long press powers off
-    boot_btn.setPressTicks(2000);
+    // BOOT button (GPIO 0): short press toggles lock/fullscreen
     boot_btn.attachClick(on_boot_click);
-    boot_btn.attachLongPressStart(on_boot_long_press);
-#endif
 
 #ifdef BOARD_EPAPER
     // PCA9535 IO expander button (PC12): acts as home button
@@ -251,9 +247,7 @@ static void ui_task_fn(void* param) {
 #endif
 
         // Tick button state machines
-#ifndef BOARD_TDECK
         boot_btn.tick();
-#endif
 #ifdef BOARD_EPAPER
         pca_btn.tick(!button_read());  // button_read() returns true when pressed, OneButton expects pin level
 #endif

@@ -42,11 +42,6 @@ struct FullRefreshStamp {
     bool valid;
 };
 static FullRefreshStamp last_full_refresh = {};
-static lv_obj_t *keyboard_screen_root = NULL;
-static bool keyboard_focus_dirty = true;
-static const size_t MAX_KEYBOARD_FOCUSABLES = 1024;
-static lv_obj_t *keyboard_focusables[MAX_KEYBOARD_FOCUSABLES] = {};
-static size_t keyboard_focusable_count = 0;
 
 static inline void checkError(enum EpdDrawError err) {
     if (err != EPD_DRAW_SUCCESS) {
@@ -368,111 +363,11 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     data->point.y = y;
 }
 
-static bool obj_accepts_group_focus(lv_obj_t *obj) {
-    return obj && (lv_obj_has_flag(obj, LV_OBJ_FLAG_CLICKABLE) || lv_obj_check_type(obj, &lv_textarea_class));
-}
-
-static bool obj_is_focus_candidate_on_screen(lv_obj_t *obj, lv_obj_t *screen) {
-    if (!obj || !screen || !lv_obj_is_valid(obj) || !lv_obj_is_visible(obj)) return false;
-    if (lv_obj_get_screen(obj) != screen) return false;
-    return obj_accepts_group_focus(obj);
-}
-
-static void compact_keyboard_focus_registry() {
-    size_t write = 0;
-    for (size_t i = 0; i < keyboard_focusable_count; i++) {
-        lv_obj_t *obj = keyboard_focusables[i];
-        if (!obj || !lv_obj_is_valid(obj)) continue;
-
-        bool duplicate = false;
-        for (size_t j = 0; j < write; j++) {
-            if (keyboard_focusables[j] == obj) {
-                duplicate = true;
-                break;
-            }
-        }
-        if (duplicate) continue;
-
-        keyboard_focusables[write++] = obj;
-    }
-    for (size_t i = write; i < keyboard_focusable_count; i++) {
-        keyboard_focusables[i] = NULL;
-    }
-    keyboard_focusable_count = write;
-}
-
-static void add_registered_group_targets(lv_group_t *group, lv_obj_t *screen) {
-    if (!group || !screen) return;
-
-    for (size_t i = 0; i < keyboard_focusable_count; i++) {
-        lv_obj_t *obj = keyboard_focusables[i];
-        if (!obj_is_focus_candidate_on_screen(obj, screen)) continue;
-
-        if (lv_obj_get_group(obj) != group) {
-            lv_group_add_obj(group, obj);
-        }
-        lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-    }
-}
-
-static lv_obj_t *find_first_registered_focus_target(lv_obj_t *screen) {
-    if (!screen) return NULL;
-
-    for (size_t i = 0; i < keyboard_focusable_count; i++) {
-        lv_obj_t *obj = keyboard_focusables[i];
-        if (obj_is_focus_candidate_on_screen(obj, screen)) {
-            return obj;
-        }
-    }
-    return NULL;
-}
-
-static void ensure_keyboard_focus_target() {
-    lv_group_t *group = lv_group_get_default();
-    if (!group) return;
-
-    lv_obj_t *screen = lv_screen_active();
-    if (keyboard_screen_root != screen) {
-        keyboard_screen_root = screen;
-        keyboard_focus_dirty = true;
-    }
-
-    lv_obj_t *focused = lv_group_get_focused(group);
-    if (!keyboard_focus_dirty &&
-        (!focused || !lv_obj_is_valid(focused) || !lv_obj_is_visible(focused) ||
-         lv_obj_get_screen(focused) != screen || !obj_accepts_group_focus(focused))) {
-        keyboard_focus_dirty = true;
-    }
-
-    if (!keyboard_focus_dirty) {
-        return;
-    }
-
-    compact_keyboard_focus_registry();
-    lv_group_remove_all_objs(group);
-
-    if (screen) {
-        add_registered_group_targets(group, screen);
-    }
-
-    lv_obj_t *target = obj_is_focus_candidate_on_screen(focused, screen) ?
-                       focused :
-                       find_first_registered_focus_target(screen);
-    if (target) {
-        lv_group_focus_obj(target);
-        lv_obj_scroll_to_view_recursive(target, LV_ANIM_OFF);
-    }
-
-    keyboard_focus_dirty = false;
-}
-
 static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     static uint32_t last_key = 0;
     static uint32_t last_backspace_ms = 0;
     static uint8_t backspace_repeat_count = 0;
     static bool backspace_cleared = false;
-
-    ensure_keyboard_focus_target();
 
     int c = board::keyboard_read_char();
     if (c > 0) {
@@ -568,11 +463,9 @@ void init() {
     // Disable scroll momentum/throw — instant stop on e-ink (100 = max deceleration)
     lv_indev_set_scroll_throw(indev, 100);
 
-    lv_group_t *g = lv_group_create();
-    lv_group_set_default(g);
-    keyboard_focus_invalidate();
-
     if (board::peri_status[E_PERI_KEYBOARD]) {
+        lv_group_t *g = lv_group_create();
+        lv_group_set_default(g);
         lv_indev_t *kb_indev = lv_indev_create();
         lv_indev_set_type(kb_indev, LV_INDEV_TYPE_KEYPAD);
         lv_indev_set_read_cb(kb_indev, keyboard_read_cb);
@@ -609,32 +502,6 @@ void full_clean() {
 
 void touch_enable()  { touch_enabled = true; }
 void touch_disable() { touch_enabled = false; }
-
-void keyboard_focus_invalidate() {
-    keyboard_focus_dirty = true;
-    keyboard_screen_root = NULL;
-}
-
-void keyboard_focus_register(lv_obj_t* obj) {
-    if (!obj || !lv_obj_is_valid(obj)) return;
-
-    for (size_t i = 0; i < keyboard_focusable_count; i++) {
-        if (keyboard_focusables[i] == obj) {
-            keyboard_focus_dirty = true;
-            return;
-        }
-    }
-
-    if (keyboard_focusable_count >= MAX_KEYBOARD_FOCUSABLES) {
-        compact_keyboard_focus_registry();
-        if (keyboard_focusable_count >= MAX_KEYBOARD_FOCUSABLES) {
-            return;
-        }
-    }
-
-    keyboard_focusables[keyboard_focusable_count++] = obj;
-    keyboard_focus_dirty = true;
-}
 
 // Backlight mode: 0=Auto, 1=On, 2=Off
 
