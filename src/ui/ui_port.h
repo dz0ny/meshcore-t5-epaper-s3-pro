@@ -23,9 +23,14 @@ void full_clean();
 void touch_enable();
 void touch_disable();
 
-// Keyboard focus (disabled — kept as no-ops for call-site compat)
+// Keyboard/encoder focus: add widget to default group for encoder/keypad navigation
 static inline void keyboard_focus_invalidate() {}
-static inline void keyboard_focus_register(lv_obj_t*) {}
+static inline void keyboard_focus_register(lv_obj_t* obj) {
+    lv_group_t* g = lv_group_get_default();
+    if (g && obj) {
+        lv_group_add_obj(g, obj);
+    }
+}
 
 // Backlight mode: 0=Auto, 1=Off
 void set_backlight(int mode);

@@ -282,7 +282,18 @@ TrackballState trackball_read() {
     bool lt_e = tb_edge(lt, tb_left_state, tb_left_ms, now);
     bool rt_e = tb_edge(rt, tb_right_state, tb_right_ms, now);
 
-    (void)up_e; (void)dn_e; (void)lt_e; (void)rt_e;
+    // Map trackball edges to vertical scroll: up/left → dy=-1, down/right → dy=+1
+    uint8_t up_score = (up_e ? 1 : 0) + (lt_e ? 1 : 0);
+    uint8_t dn_score = (dn_e ? 1 : 0) + (rt_e ? 1 : 0);
+    if ((up_score > 0 || dn_score > 0) && (now - tb_last_dir_ms) >= TB_REPEAT_MS) {
+        if (up_score > dn_score) {
+            s.dy = -1;
+            tb_last_dir_ms = now;
+        } else if (dn_score > up_score) {
+            s.dy = 1;
+            tb_last_dir_ms = now;
+        }
+    }
 
     bool click = (digitalRead(TDECK_TB_CLICK) == LOW);
     if (click != tb_click_state) {

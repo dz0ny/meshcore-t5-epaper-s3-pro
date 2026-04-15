@@ -242,6 +242,22 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     data->point.y = y;
 }
 
+// ---------- Trackball encoder input ----------
+
+static void encoder_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
+    board::TrackballState tb = board::trackball_read();
+    data->enc_diff = tb.dy;
+    if (tb.clicked) {
+        data->state = LV_INDEV_STATE_PRESSED;
+        model::touch_activity();
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+    }
+    if (tb.dy != 0) {
+        model::touch_activity();
+    }
+}
+
 // ---------- Keyboard input ----------
 
 static void keyboard_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
@@ -344,6 +360,14 @@ void init() {
         lv_indev_set_group(kb_indev, g);
     }
 
+    // Trackball encoder: up/down scrolls lists, click acts as enter
+    if (board::peri_status[E_PERI_TRACKBALL]) {
+        lv_indev_t *enc_indev = lv_indev_create();
+        lv_indev_set_type(enc_indev, LV_INDEV_TYPE_ENCODER);
+        lv_indev_set_read_cb(enc_indev, encoder_read_cb);
+        lv_indev_set_display(enc_indev, disp);
+        lv_indev_set_group(enc_indev, g);
+    }
 
     int stored_brightness = nvs_param_get_u8(NVS_ID_BRIGHTNESS);
     if (stored_brightness < 0 || stored_brightness > 2) {
