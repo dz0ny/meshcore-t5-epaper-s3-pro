@@ -11,9 +11,11 @@
 #include "../components/geo_utils.h"
 #include "../components/text_utils.h"
 #include "../../model.h"
+#include "../components/statusbar.h"
 
 namespace ui::screen::map {
 
+static bool fullscreen = false;
 static lv_obj_t* scr = NULL;
 static lv_obj_t* canvas_obj = NULL;
 static lv_obj_t* tap_layer = NULL;
@@ -309,6 +311,48 @@ static void rebuild_map() {
     lv_obj_invalidate(canvas_obj);
 }
 
+void toggle_fullscreen() {
+    if (!scr) return;
+    fullscreen = !fullscreen;
+
+    // Nav bar is the first child of screen_obj (parent of content container)
+    lv_obj_t* screen_obj = lv_obj_get_parent(scr);
+    lv_obj_t* nav_obj = screen_obj ? lv_obj_get_child(screen_obj, 0) : NULL;
+
+    if (fullscreen) {
+        ui::statusbar::hide();
+        if (nav_obj) lv_obj_add_flag(nav_obj, LV_OBJ_FLAG_HIDDEN);
+        // Expand content to full screen
+        lv_obj_set_style_pad_top(screen_obj, 0, LV_PART_MAIN);
+    } else {
+        ui::statusbar::show();
+        if (nav_obj) lv_obj_clear_flag(nav_obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_pad_top(screen_obj, UI_STATUSBAR_BOTTOM, LV_PART_MAIN);
+    }
+
+    // Resize canvas to new content dimensions
+    lv_obj_t* map_content = canvas_obj ? lv_obj_get_parent(canvas_obj) : scr;
+    lv_obj_update_layout(screen_obj);
+    int new_w = lv_obj_get_content_width(map_content);
+    int new_h = lv_obj_get_content_height(map_content);
+    if (new_w != map_w || new_h != map_h) {
+        map_w = new_w;
+        map_h = new_h;
+        map_cx = map_w / 2;
+        map_cy = map_h / 2;
+        size_t needed = (size_t)map_w * (size_t)map_h;
+        if (!canvas_buf || canvas_buf_size != needed) {
+            if (canvas_buf) heap_caps_free(canvas_buf);
+            canvas_buf = (uint8_t*)heap_caps_malloc(needed, MALLOC_CAP_SPIRAM);
+            canvas_buf_size = canvas_buf ? needed : 0;
+        }
+        if (canvas_obj) {
+            lv_canvas_set_buffer(canvas_obj, canvas_buf, map_w, map_h, LV_COLOR_FORMAT_L8);
+        }
+        rebuild_map();
+    }
+}
+
 void process_events() {
     if (!canvas_obj) return;
 
@@ -431,6 +475,10 @@ static void entry() {
 }
 
 static void exit_fn() {
+    if (fullscreen) {
+        ui::statusbar::show();
+        fullscreen = false;
+    }
 }
 
 static void destroy() {

@@ -24,11 +24,6 @@ static bool tb_left_state = false, tb_right_state = false;
 static bool tb_click_state = false, tb_click_consumed = false;
 static uint32_t tb_up_ms = 0, tb_down_ms = 0, tb_left_ms = 0, tb_right_ms = 0;
 static uint32_t tb_click_ms = 0, tb_last_dir_ms = 0;
-volatile uint32_t tb_isr_up_total = 0;
-volatile uint32_t tb_isr_down_total = 0;
-volatile uint32_t tb_isr_left_total = 0;
-volatile uint32_t tb_isr_right_total = 0;
-
 static bool tb_edge(bool pressed, bool& state, uint32_t& ms, uint32_t now) {
     if (pressed != state) {
         state = pressed;
@@ -287,17 +282,7 @@ TrackballState trackball_read() {
     bool lt_e = tb_edge(lt, tb_left_state, tb_left_ms, now);
     bool rt_e = tb_edge(rt, tb_right_state, tb_right_ms, now);
 
-    if (up_e) tb_isr_up_total++;
-    if (dn_e) tb_isr_down_total++;
-    if (lt_e) tb_isr_left_total++;
-    if (rt_e) tb_isr_right_total++;
-
-    if ((up_e || dn_e || lt_e || rt_e) && (now - tb_last_dir_ms) >= TB_REPEAT_MS) {
-        if (up_e) { s.dy = -1; tb_last_dir_ms = now; }
-        if (dn_e) { s.dy =  1; tb_last_dir_ms = now; }
-        if (lt_e) { s.dx = -1; tb_last_dir_ms = now; }
-        if (rt_e) { s.dx =  1; tb_last_dir_ms = now; }
-    }
+    (void)up_e; (void)dn_e; (void)lt_e; (void)rt_e;
 
     bool click = (digitalRead(TDECK_TB_CLICK) == LOW);
     if (click != tb_click_state) {

@@ -62,6 +62,7 @@ static void create(lv_obj_t* parent) {
     // Node name (mesh identity) — hidden on small screens
 #if UI_HOME_SHOW_NODE
     lbl_node_name = lv_label_create(parent);
+    lv_obj_add_flag(lbl_node_name, LV_OBJ_FLAG_FLOATING);
     lv_obj_align(lbl_node_name, LV_ALIGN_TOP_MID, 0, HOME_NODE_NAME_Y);
     lv_obj_set_style_text_font(lbl_node_name, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_node_name, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -70,6 +71,7 @@ static void create(lv_obj_t* parent) {
 
     // Big clock
     lbl_clock = lv_label_create(parent);
+    lv_obj_add_flag(lbl_clock, LV_OBJ_FLAG_FLOATING);
     lv_obj_align(lbl_clock, LV_ALIGN_TOP_MID, 0, HOME_CLOCK_Y);
     lv_obj_set_style_text_font(lbl_clock, UI_FONT_CLOCK_LG, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_clock, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -77,6 +79,7 @@ static void create(lv_obj_t* parent) {
 
     // Date below clock
     lbl_date = lv_label_create(parent);
+    lv_obj_add_flag(lbl_date, LV_OBJ_FLAG_FLOATING);
     lv_obj_align(lbl_date, LV_ALIGN_TOP_MID, 0, HOME_DATE_Y);
     lv_obj_set_style_text_font(lbl_date, UI_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_date, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -85,6 +88,7 @@ static void create(lv_obj_t* parent) {
 
     // Menu items container
     lv_obj_t* menu = lv_obj_create(parent);
+    lv_obj_add_flag(menu, LV_OBJ_FLAG_FLOATING);
 #if UI_HOME_MENU_SCROLL
     lv_obj_set_size(menu, lv_pct(95), SCREEN_HEIGHT - HOME_MENU_Y - HOME_MENU_TOP_INSET - HOME_MENU_BOTTOM_INSET);
     lv_obj_align(menu, LV_ALIGN_TOP_MID, 0, HOME_MENU_Y + HOME_MENU_TOP_INSET);

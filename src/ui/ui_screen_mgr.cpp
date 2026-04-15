@@ -83,7 +83,7 @@ static const char* default_nav_title(int id) {
 }
 
 static bool screen_has_nav(int id) {
-    return id != SCREEN_HOME && id != SCREEN_LOCK;
+    return id != SCREEN_HOME && id != SCREEN_LOCK && id != SCREEN_TOUCH_DEBUG;
 }
 
 static void on_default_back(lv_event_t* e) {

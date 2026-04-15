@@ -115,6 +115,8 @@ static void on_boot_click() {
     if (ui::screen_mgr::top_id() == SCREEN_LOCK) {
         ui::statusbar::show();
         ui::screen_mgr::pop(false);
+    } else if (ui::screen_mgr::top_id() == SCREEN_MAP) {
+        ui::screen::map::toggle_fullscreen();
     } else {
         ui::screen::lock::show();
     }
