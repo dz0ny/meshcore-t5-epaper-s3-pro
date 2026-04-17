@@ -139,18 +139,6 @@ static lv_obj_t* create_card(lv_obj_t* parent) {
     return card;
 }
 
-static lv_obj_t* create_scroll_area(lv_obj_t* parent) {
-    lv_obj_t* list = lv_obj_create(parent);
-    lv_obj_set_size(list, lv_pct(95), 420);
-    lv_obj_align(list, LV_ALIGN_BOTTOM_MID, 0, -10);
-    lv_obj_set_style_bg_opa(list, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
-    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_clear_flag(list, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
-    return list;
-}
-
 static void format_distance(char* out, size_t out_size) {
     if (!out || out_size == 0) return;
     out[0] = 0;
@@ -493,10 +481,16 @@ void set_contact(const char* name, int32_t gps_lat, int32_t gps_lon, uint8_t typ
 
 static void create(lv_obj_t* parent) {
     scr = parent;
-    lbl_auto_action = ui::screen_mgr::set_nav_action(auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL);
-    lv_obj_t* summary_card = create_card(parent);
-    lv_obj_set_size(summary_card, lv_pct(95), LV_SIZE_CONTENT);
-    lv_obj_align(summary_card, LV_ALIGN_TOP_MID, 0, 0);
+    lbl_auto_action = ui::screen_mgr::set_nav_actions(
+        auto_ping_enabled ? "Auto On" : "Auto Off", on_toggle_auto, NULL,
+        "Clear", on_clear, NULL);
+
+    history_list = ui::nav::scroll_list(parent);
+    lv_obj_set_style_pad_row(history_list, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(history_list, 10, LV_PART_MAIN);
+
+    lv_obj_t* summary_card = create_card(history_list);
+    lv_obj_set_width(summary_card, lv_pct(100));
 
     lv_obj_t* name_label = lv_label_create(summary_card);
     lv_obj_set_style_text_font(name_label, UI_FONT_TITLE, LV_PART_MAIN);
@@ -517,24 +511,8 @@ static void create(lv_obj_t* parent) {
     lv_obj_set_style_text_font(lbl_route, UI_FONT_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_route, lv_color_hex(EPD_COLOR_TEXT), LV_PART_MAIN);
 
-    lv_obj_t* button_row = lv_obj_create(parent);
-    lv_obj_set_size(button_row, lv_pct(95), UI_PING_BTN_ROW_H);
-    lv_obj_align(button_row, LV_ALIGN_TOP_MID, 0, UI_PING_BTN_ROW_Y);
-    lv_obj_set_style_bg_opa(button_row, LV_OPA_0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(button_row, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(button_row, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_column(button_row, 16, LV_PART_MAIN);
-    lv_obj_clear_flag(button_row, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_flex_flow(button_row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(button_row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    lv_obj_t* ping_btn = ui::nav::text_button(button_row, "Ping", on_ping_now, NULL);
-    lv_obj_set_size(ping_btn, 245, 80);
-
-    lv_obj_t* clear_btn = ui::nav::text_button(button_row, "Clear", on_clear, NULL);
-    lv_obj_set_size(clear_btn, 245, 80);
-
-    history_list = create_scroll_area(parent);
+    lv_obj_t* ping_btn = ui::nav::text_button(history_list, "Ping", on_ping_now, NULL);
+    lv_obj_set_width(ping_btn, lv_pct(100));
 
     update_auto_action();
     update_status_text("Tap Ping Again");

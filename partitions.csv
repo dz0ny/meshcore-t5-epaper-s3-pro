@@ -1,0 +1,8 @@
+# Name,   Type, SubType, Offset,   Size,     Flags
+# 16 MB flash, no OTA.
+# SPIFFS kept small (1 MB) so mount scans are quick — only identity/prefs/channels live here.
+# Message/contact blobs go on the SD card. coredump parked at top of flash.
+nvs,      data, nvs,     0x9000,   0x5000,
+app0,     app,  factory, 0x10000,  0x500000,
+spiffs,   data, spiffs,  0x510000, 0x100000,
+coredump, data, coredump,0xFF0000, 0x10000,

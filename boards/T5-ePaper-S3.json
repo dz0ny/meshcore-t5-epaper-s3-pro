@@ -2,8 +2,7 @@
   "build": {
     "arduino": {
       "ldscript": "esp32s3_out.ld",
-      "memory_type": "qio_opi",
-      "partitions": "boards/t5-epaper-s3-small-spiffs.csv"
+      "memory_type": "qio_opi"
     },
     "core": "esp32",
     "extra_flags": [
