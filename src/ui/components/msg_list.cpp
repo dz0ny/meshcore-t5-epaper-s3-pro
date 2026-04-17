@@ -100,13 +100,15 @@ void append(lv_obj_t* list, const char* sender, const char* text, uint32_t times
     } else {
         lv_label_set_text_fmt(lbl_time, "%02d:%02d", model::clock.hour, model::clock.minute);
     }
-
-    // Auto-scroll to bottom (newest messages at bottom)
-    lv_obj_scroll_to_y(list, LV_COORD_MAX, LV_ANIM_OFF);
 }
 
 void clear(lv_obj_t* list) {
     lv_obj_clean(list);
+}
+
+void scroll_to_bottom(lv_obj_t* list) {
+    if (!list) return;
+    lv_obj_scroll_to_y(list, LV_COORD_MAX, LV_ANIM_OFF);
 }
 
 } // namespace ui::msg_list

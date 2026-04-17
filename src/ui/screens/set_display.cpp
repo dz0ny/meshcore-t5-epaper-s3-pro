@@ -23,6 +23,7 @@ static const uint32_t sleep_ms[] = {0, 60000, 120000, 300000, 900000, 1800000};
 static void on_back(lv_event_t* e) { ui::screen_mgr::pop(true); }
 static void apply_theme_async(void* data) {
     (void)data;
+    ui::toast::destroy();
     ui::statusbar::recreate();
     ui::screen_mgr::reload_stack();
     ui::toast::show(ui::theme::current_name());

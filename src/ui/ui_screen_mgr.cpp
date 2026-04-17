@@ -154,7 +154,6 @@ static lv_obj_t* create_default_screen(card_t* card) {
     card->nav_action_user_data_2 = NULL;
     card->nav_action_enabled = false;
     card->nav_action_enabled_2 = false;
-    rebuild_nav(card);
 
     // Content container — fills remaining space below nav via flex_grow
     lv_obj_t* content = lv_obj_create(obj);
@@ -166,9 +165,16 @@ static lv_obj_t* create_default_screen(card_t* card) {
     lv_obj_clear_flag(content, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM));
     card->content_obj = content;
 
+    // Defer nav build until after screen create() — if create() calls set_nav_actions,
+    // rebuild_nav runs from there; otherwise we build the default back-only nav below.
+    // This avoids the double-rebuild when screens add action buttons.
     creating_card = card;
     card->life->create(content);
     creating_card = NULL;
+
+    if (!card->nav_obj) {
+        rebuild_nav(card);
+    }
     return obj;
 }
 

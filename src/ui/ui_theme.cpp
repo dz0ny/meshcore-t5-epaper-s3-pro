@@ -3,6 +3,59 @@
 
 namespace ui::theme {
 
+lv_style_t style_menu_row;
+lv_style_t style_text_button;
+lv_style_t style_nav_action;
+lv_style_t style_transparent;
+
+namespace {
+
+bool styles_initialized = false;
+
+void reset_style(lv_style_t* s) {
+    if (styles_initialized) {
+        lv_style_reset(s);
+    } else {
+        lv_style_init(s);
+    }
+}
+
+void build_styles() {
+    reset_style(&style_menu_row);
+    lv_style_set_bg_color(&style_menu_row, lv_color_hex(EPD_COLOR_BG));
+    lv_style_set_bg_opa(&style_menu_row, LV_OPA_COVER);
+    lv_style_set_border_width(&style_menu_row, 1);
+    lv_style_set_border_color(&style_menu_row, lv_color_hex(EPD_COLOR_BORDER));
+    lv_style_set_border_side(&style_menu_row, LV_BORDER_SIDE_BOTTOM);
+    lv_style_set_pad_all(&style_menu_row, UI_MENU_ITEM_PAD);
+
+    reset_style(&style_text_button);
+    lv_style_set_bg_color(&style_text_button, lv_color_hex(EPD_COLOR_PROMPT_BG));
+    lv_style_set_bg_opa(&style_text_button, LV_OPA_COVER);
+    lv_style_set_border_width(&style_text_button, UI_TEXT_BTN_BORDER);
+    lv_style_set_border_color(&style_text_button, lv_color_hex(EPD_COLOR_BORDER));
+    lv_style_set_radius(&style_text_button, UI_TEXT_BTN_RADIUS);
+    lv_style_set_pad_all(&style_text_button, UI_TEXT_BTN_PAD);
+
+    reset_style(&style_nav_action);
+    lv_style_set_bg_color(&style_nav_action, lv_color_hex(EPD_COLOR_BG));
+    lv_style_set_bg_opa(&style_nav_action, LV_OPA_COVER);
+    lv_style_set_border_width(&style_nav_action, UI_ACTION_BTN_BORDER);
+    lv_style_set_border_color(&style_nav_action, lv_color_hex(EPD_COLOR_BORDER));
+    lv_style_set_radius(&style_nav_action, UI_ACTION_BTN_RADIUS);
+    lv_style_set_pad_hor(&style_nav_action, UI_ACTION_BTN_PAD_H);
+    lv_style_set_pad_ver(&style_nav_action, UI_ACTION_BTN_PAD_V);
+
+    reset_style(&style_transparent);
+    lv_style_set_bg_opa(&style_transparent, LV_OPA_0);
+    lv_style_set_border_width(&style_transparent, 0);
+    lv_style_set_pad_all(&style_transparent, 0);
+
+    styles_initialized = true;
+}
+
+} // anonymous
+
 namespace {
 
 #ifdef BOARD_TDECK
@@ -51,6 +104,7 @@ void init() {
         stored = 0;
     }
     current_theme = static_cast<theme_id>(stored);
+    build_styles();
 }
 
 uint8_t count() {
@@ -66,6 +120,7 @@ bool set(theme_id id) {
         return false;
     }
     current_theme = id;
+    build_styles();
     return true;
 }
 

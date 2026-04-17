@@ -98,13 +98,8 @@ static void rebuild_list() {
         ui::text::strip_emoji(clean_name);
 
         bool already_added = model::find_contact_by_prefix(model::discovery[i].pubkey_prefix) != NULL;
-        if (strcmp(lv_label_get_text(node_row_labels[shown]), clean_name) != 0) {
-            lv_label_set_text(node_row_labels[shown], clean_name);
-        }
-        const char* value = already_added ? LV_SYMBOL_OK : "+Add";
-        if (strcmp(lv_label_get_text(node_row_values[shown]), value) != 0) {
-            lv_label_set_text(node_row_values[shown], value);
-        }
+        lv_label_set_text(node_row_labels[shown], clean_name);
+        lv_label_set_text(node_row_values[shown], already_added ? LV_SYMBOL_OK : "+Add");
         if (!row_visible[shown]) {
             lv_obj_clear_flag(node_rows[shown], LV_OBJ_FLAG_HIDDEN);
             row_visible[shown] = true;
@@ -129,8 +124,6 @@ static void rebuild_list() {
         }
     }
 
-    lv_obj_mark_layout_as_dirty(node_list);
-    lv_obj_update_layout(node_list);
     lv_display_enable_invalidation(disp, true);
     lv_obj_invalidate(node_list);
     ui::port::keyboard_focus_invalidate();

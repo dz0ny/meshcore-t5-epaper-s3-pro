@@ -4,31 +4,12 @@
 namespace ui::toast {
 
 static lv_obj_t* toast_obj = NULL;
+static lv_obj_t* toast_label = NULL;
 static lv_timer_t* dismiss_timer = NULL;
 
-static void on_dismiss(lv_timer_t* t) {
-    if (toast_obj) {
-        lv_obj_delete(toast_obj);
-        toast_obj = NULL;
-    }
-    if (dismiss_timer) {
-        lv_timer_delete(dismiss_timer);
-        dismiss_timer = NULL;
-    }
-}
+static void ensure_toast() {
+    if (toast_obj) return;
 
-void show(const char* text, uint32_t timeout_ms) {
-    // Remove any existing toast
-    if (toast_obj) {
-        lv_obj_delete(toast_obj);
-        toast_obj = NULL;
-    }
-    if (dismiss_timer) {
-        lv_timer_delete(dismiss_timer);
-        dismiss_timer = NULL;
-    }
-
-    // Create on top layer so it overlays everything
     lv_obj_t* layer = lv_layer_top();
 
     toast_obj = lv_obj_create(layer);
@@ -41,16 +22,48 @@ void show(const char* text, uint32_t timeout_ms) {
     lv_obj_set_style_pad_all(toast_obj, 20, LV_PART_MAIN);
     lv_obj_clear_flag(toast_obj, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t* lbl = lv_label_create(toast_obj);
-    lv_obj_set_style_text_font(lbl, UI_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl, lv_color_hex(EPD_COLOR_PROMPT_TXT), LV_PART_MAIN);
-    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_set_width(lbl, lv_pct(100));
-    lv_label_set_text(lbl, text);
-    lv_obj_center(lbl);
+    toast_label = lv_label_create(toast_obj);
+    lv_obj_set_style_text_font(toast_label, UI_FONT_TITLE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(toast_label, lv_color_hex(EPD_COLOR_PROMPT_TXT), LV_PART_MAIN);
+    lv_obj_set_style_text_align(toast_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_width(toast_label, lv_pct(100));
+    lv_obj_center(toast_label);
+}
 
-    dismiss_timer = lv_timer_create(on_dismiss, timeout_ms, NULL);
-    lv_timer_set_repeat_count(dismiss_timer, 1);
+static void on_dismiss(lv_timer_t* t) {
+    if (toast_obj) {
+        lv_obj_add_flag(toast_obj, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (dismiss_timer) {
+        lv_timer_delete(dismiss_timer);
+        dismiss_timer = NULL;
+    }
+}
+
+void show(const char* text, uint32_t timeout_ms) {
+    ensure_toast();
+    lv_label_set_text(toast_label, text);
+    lv_obj_clear_flag(toast_obj, LV_OBJ_FLAG_HIDDEN);
+
+    if (dismiss_timer) {
+        lv_timer_reset(dismiss_timer);
+        lv_timer_set_period(dismiss_timer, timeout_ms);
+    } else {
+        dismiss_timer = lv_timer_create(on_dismiss, timeout_ms, NULL);
+        lv_timer_set_repeat_count(dismiss_timer, 1);
+    }
+}
+
+void destroy() {
+    if (dismiss_timer) {
+        lv_timer_delete(dismiss_timer);
+        dismiss_timer = NULL;
+    }
+    if (toast_obj) {
+        lv_obj_delete(toast_obj);
+        toast_obj = NULL;
+        toast_label = NULL;
+    }
 }
 
 } // namespace ui::toast

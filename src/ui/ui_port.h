@@ -32,6 +32,16 @@ static inline void keyboard_focus_register(lv_obj_t* obj) {
     }
 }
 
+// Group-level focus callback: scroll the newly focused object into view so
+// encoder/keypad navigation never leaves the selection off-screen. Install with
+// lv_group_set_focus_cb() once per group.
+static inline void keyboard_focus_group_cb(lv_group_t* g) {
+    if (!g) return;
+    lv_obj_t* obj = lv_group_get_focused(g);
+    if (!obj || !lv_obj_is_valid(obj) || !lv_obj_is_visible(obj)) return;
+    lv_obj_scroll_to_view_recursive(obj, LV_ANIM_OFF);
+}
+
 // Backlight mode: 0=Auto, 1=Off
 void set_backlight(int mode);
 int  get_backlight();

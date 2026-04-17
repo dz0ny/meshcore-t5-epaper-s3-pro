@@ -271,13 +271,9 @@ static void update_card_row(int idx) {
         state_text = "CACHED";
     }
 
-    if (strcmp(lv_label_get_text(card_name_labels[idx]), cards[idx].name) != 0) {
-        lv_label_set_text(card_name_labels[idx], cards[idx].name);
-    }
+    lv_label_set_text(card_name_labels[idx], cards[idx].name);
     render_card_body(idx);
-    if (strcmp(lv_label_get_text(card_state_labels[idx]), state_text) != 0) {
-        lv_label_set_text(card_state_labels[idx], state_text);
-    }
+    lv_label_set_text(card_state_labels[idx], state_text);
     lv_obj_set_style_bg_opa(card_state_pills[idx], filled_pill ? LV_OPA_COVER : LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_text_color(card_state_labels[idx],
                                 lv_color_hex(filled_pill ? EPD_COLOR_BG : EPD_COLOR_TEXT), LV_PART_MAIN);
@@ -419,8 +415,6 @@ static void rebuild_list() {
         }
     }
 
-    lv_obj_mark_layout_as_dirty(sensor_list);
-    lv_obj_update_layout(sensor_list);
     lv_display_enable_invalidation(disp, true);
     lv_obj_invalidate(sensor_list);
     ui::port::keyboard_focus_invalidate();

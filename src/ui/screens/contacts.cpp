@@ -123,7 +123,7 @@ static void rebuild_list() {
         const char* icon = (displayed[i].flags & 0x01) ? "\xE2\x98\x85 " : "";
         char label[40];
         snprintf(label, sizeof(label), "%s%s", icon, displayed[i].name);
-        if (contact_row_labels[shown] && strcmp(lv_label_get_text(contact_row_labels[shown]), label) != 0) {
+        if (contact_row_labels[shown]) {
             lv_label_set_text(contact_row_labels[shown], label);
         }
         row_contact_idx[shown] = i;
@@ -133,11 +133,7 @@ static void rebuild_list() {
     prune_rows(shown);
 
     if (lbl_count) {
-        char count_text[32];
-        snprintf(count_text, sizeof(count_text), "%d contact%s", shown, shown == 1 ? "" : "s");
-        if (strcmp(lv_label_get_text(lbl_count), count_text) != 0) {
-            lv_label_set_text(lbl_count, count_text);
-        }
+        lv_label_set_text_fmt(lbl_count, "%d contact%s", shown, shown == 1 ? "" : "s");
     }
 
     if (empty_label) {
@@ -148,8 +144,6 @@ static void rebuild_list() {
         }
     }
 
-    lv_obj_mark_layout_as_dirty(contact_list);
-    lv_obj_update_layout(contact_list);
     lv_display_enable_invalidation(disp, true);
     lv_obj_invalidate(contact_list);
     ui::port::keyboard_focus_invalidate();

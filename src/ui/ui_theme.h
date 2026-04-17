@@ -36,6 +36,14 @@ theme_id next();
 const char* current_name();
 const palette_t& colors();
 
+// Shared styles — applied via lv_obj_add_style() to reduce per-widget local style allocations.
+// Re-initialized on theme change; must be applied before widget creation so new widgets pick up
+// the current palette.
+extern lv_style_t style_menu_row;       // inner container of menu_item / toggle_item rows
+extern lv_style_t style_text_button;    // large action button (text_button)
+extern lv_style_t style_nav_action;     // small action button in nav bar
+extern lv_style_t style_transparent;    // bg_opa=0, border=0, pad=0 containers
+
 } // namespace ui::theme
 
 #define EPD_COLOR_BG          (ui::theme::colors().bg)

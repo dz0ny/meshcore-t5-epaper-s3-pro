@@ -188,12 +188,7 @@ static lv_obj_t* create_nav_action_button(lv_obj_t* parent, const char* action_t
                                           lv_obj_t** action_label_out) {
     lv_obj_t* action = lv_obj_create(parent);
     lv_obj_set_size(action, LV_SIZE_CONTENT, UI_ACTION_BTN_H);
-    lv_obj_set_style_bg_color(action, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(action, UI_ACTION_BTN_BORDER, LV_PART_MAIN);
-    lv_obj_set_style_border_color(action, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-    lv_obj_set_style_radius(action, UI_ACTION_BTN_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_pad_hor(action, UI_ACTION_BTN_PAD_H, LV_PART_MAIN);
-    lv_obj_set_style_pad_ver(action, UI_ACTION_BTN_PAD_V, LV_PART_MAIN);
+    lv_obj_add_style(action, &ui::theme::style_nav_action, LV_PART_MAIN);
     lv_obj_clear_flag(action, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(action, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(action, action_cb, LV_EVENT_CLICKED, action_user_data);
@@ -358,11 +353,7 @@ lv_obj_t* menu_item(lv_obj_t* parent, const void* icon_src, const char* label_te
     lv_obj_t* cont = lv_obj_create(hit);
     lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
     lv_obj_set_pos(cont, 0, 0);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(cont, 1, LV_PART_MAIN);
-    lv_obj_set_style_border_color(cont, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-    lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(cont, UI_MENU_ITEM_PAD, LV_PART_MAIN);
+    lv_obj_add_style(cont, &ui::theme::style_menu_row, LV_PART_MAIN);
     lv_obj_clear_flag(cont, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_add_flag(cont, LV_OBJ_FLAG_EVENT_BUBBLE);
 #ifdef BOARD_TDECK
@@ -396,11 +387,7 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label_text, const char* valu
     lv_obj_t* cont = lv_obj_create(hit);
     lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
     lv_obj_set_pos(cont, 0, 0);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(EPD_COLOR_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(cont, 1, LV_PART_MAIN);
-    lv_obj_set_style_border_color(cont, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-    lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(cont, UI_MENU_ITEM_PAD, LV_PART_MAIN);
+    lv_obj_add_style(cont, &ui::theme::style_menu_row, LV_PART_MAIN);
     lv_obj_clear_flag(cont, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
     lv_obj_add_flag(cont, LV_OBJ_FLAG_EVENT_BUBBLE);
 #ifdef BOARD_TDECK
@@ -429,11 +416,7 @@ lv_obj_t* toggle_item(lv_obj_t* parent, const char* label_text, const char* valu
 lv_obj_t* text_button(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void* user_data) {
     lv_obj_t* btn = lv_obj_create(parent);
     lv_obj_set_size(btn, lv_pct(85), UI_TEXT_BTN_HEIGHT);
-    lv_obj_set_style_bg_color(btn, lv_color_hex(EPD_COLOR_PROMPT_BG), LV_PART_MAIN);
-    lv_obj_set_style_border_width(btn, UI_TEXT_BTN_BORDER, LV_PART_MAIN);
-    lv_obj_set_style_border_color(btn, lv_color_hex(EPD_COLOR_BORDER), LV_PART_MAIN);
-    lv_obj_set_style_radius(btn, UI_TEXT_BTN_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(btn, UI_TEXT_BTN_PAD, LV_PART_MAIN);
+    lv_obj_add_style(btn, &ui::theme::style_text_button, LV_PART_MAIN);
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, user_data);

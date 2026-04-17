@@ -9,6 +9,10 @@
 
 namespace ui::port {
 
+#ifndef T_PAPER_EPD_DEBUG
+#define T_PAPER_EPD_DEBUG 0
+#endif
+
 static int refresh_mode = UI_REFRESH_MODE_NORMAL;
 static volatile bool touch_enabled = true;
 static int backlight_mode = 0;
@@ -16,7 +20,6 @@ static const char* mode_names_bl[] = {"Auto", "On", "Off"};
 static int brightness = 1;  // default Mid
 static const char* bright_names[] = {"Low", "Mid", "High"};
 static const int bright_pwm[] = {50, 100, 230};
-static const int32_t CHANGE_DETECT_MAX_PIXELS = 4096;
 static lv_display_t* epaper_disp = NULL;
 static uint8_t gray_to_lo[256];
 static uint8_t gray_to_hi[256];
@@ -30,6 +33,10 @@ static int cycle_temperature = 0;
 static uint32_t cycle_dirty_pixels = 0;
 static uint16_t cycle_dirty_areas = 0;
 static uint32_t cycle_started_ms = 0;
+// Union of all changed rects in the current refresh cycle — coalesced into a single
+// epd_hl_update_area call to avoid stacking panel waveforms for each dirty region.
+static lv_area_t cycle_union_rect = {};
+static bool cycle_union_valid = false;
 static uint32_t partial_refresh_count_since_full = 0;
 static uint32_t accumulated_partial_pixels_since_full = 0;
 static const uint32_t MAX_PARTIAL_REFRESHES_BEFORE_FULL = 96;
@@ -135,6 +142,7 @@ static void render_start_cb(lv_event_t *event) {
     cycle_dirty_pixels = 0;
     cycle_dirty_areas = 0;
     cycle_started_ms = millis();
+    cycle_union_valid = false;
     if (!cycle_panel_powered) {
         epd_poweron();
         cycle_panel_powered = true;
@@ -151,10 +159,20 @@ static void render_ready_cb(lv_event_t *event) {
         sync_packed_prev_frame(epd_hl_get_framebuffer(&board::hl), epd_width(), epd_height());
         partial_refresh_count_since_full = 0;
         accumulated_partial_pixels_since_full = 0;
-    } else if (cycle_had_updates) {
+    } else if (cycle_had_updates && cycle_union_valid) {
+        // Single panel waveform for the union of all dirty rects in this cycle.
+        EpdRect update_rect = {
+            .x = (int)cycle_union_rect.x1,
+            .y = (int)cycle_union_rect.y1,
+            .width = (int)(cycle_union_rect.x2 - cycle_union_rect.x1 + 1),
+            .height = (int)(cycle_union_rect.y2 - cycle_union_rect.y1 + 1),
+        };
+        EpdDrawMode mode = (refresh_mode == UI_REFRESH_MODE_FAST) ? MODE_DU : MODE_GL16;
+        checkError(epd_hl_update_area(&board::hl, mode, cycle_temperature, update_rect));
         partial_refresh_count_since_full++;
         accumulated_partial_pixels_since_full += cycle_dirty_pixels;
     }
+#if T_PAPER_EPD_DEBUG
     if (cycle_had_updates) {
         uint32_t total_pixels = display_pixel_count();
         uint32_t coverage_pct = total_pixels == 0 ? 0 : (accumulated_partial_pixels_since_full * 100) / total_pixels;
@@ -166,6 +184,9 @@ static void render_ready_cb(lv_event_t *event) {
                       (unsigned long)partial_refresh_count_since_full,
                       (unsigned long)coverage_pct);
     }
+#else
+    (void)elapsed_ms;
+#endif
     if (cycle_panel_powered) {
         epd_poweroff();
         cycle_panel_powered = false;
@@ -174,6 +195,7 @@ static void render_ready_cb(lv_event_t *event) {
     cycle_had_updates = false;
     cycle_dirty_pixels = 0;
     cycle_dirty_areas = 0;
+    cycle_union_valid = false;
 }
 
 static void round_invalidate_area_cb(lv_event_t *event) {
@@ -277,7 +299,7 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     }
 
     bool changed = false;
-    bool track_dirty_area = packed_prev_frame && rotated_row_offsets && area_px <= CHANGE_DETECT_MAX_PIXELS;
+    bool track_dirty_area = packed_prev_frame && rotated_row_offsets;
     int32_t ry = area->y1;
     if (ry & 1) {
         const uint8_t *src_row = &px_map[ry * disp_w];
@@ -297,6 +319,14 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
                         area->x1, area->x2, track_dirty_area, &changed);
     }
 
+    if (track_dirty_area && !changed) {
+        // Packed bytes are identical to shadow — fb and packed_prev_frame already match,
+        // so no shadow sync needed and no panel waveform needed for this area.
+        lv_display_flush_ready(disp);
+        return;
+    }
+
+    // Sync the shadow for the dirty region (fb now holds the new packed bytes).
     if (packed_prev_frame) {
         int32_t packed_y1 = phys_h - 1 - area->x2;
         int32_t packed_y2 = phys_h - 1 - area->x1;
@@ -309,33 +339,31 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         }
     }
 
-    if (track_dirty_area && !changed) {
-        lv_display_flush_ready(disp);
-        return;
-    }
-
     cycle_had_updates = true;
     cycle_dirty_pixels += area_px;
     cycle_dirty_areas++;
 
-    // Partial area rect in rotated coordinates — epdiy handles rotation internally
-    EpdRect update_rect = {
-        .x = (int)area->x1,
-        .y = (int)area->y1,
-        .width = (int)lv_area_get_width(area),
-        .height = (int)lv_area_get_height(area),
-    };
+    // Accumulate into the per-cycle union rect; actual epd_hl_update_area runs once
+    // in render_ready_cb so we get a single panel waveform per refresh cycle.
+    if (!cycle_force_full_refresh) {
+        if (!cycle_union_valid) {
+            cycle_union_rect.x1 = area->x1;
+            cycle_union_rect.y1 = area->y1;
+            cycle_union_rect.x2 = area->x2;
+            cycle_union_rect.y2 = area->y2;
+            cycle_union_valid = true;
+        } else {
+            if (area->x1 < cycle_union_rect.x1) cycle_union_rect.x1 = area->x1;
+            if (area->y1 < cycle_union_rect.y1) cycle_union_rect.y1 = area->y1;
+            if (area->x2 > cycle_union_rect.x2) cycle_union_rect.x2 = area->x2;
+            if (area->y2 > cycle_union_rect.y2) cycle_union_rect.y2 = area->y2;
+        }
+    }
 
     if (!cycle_panel_powered) {
         epd_poweron();
         cycle_panel_powered = true;
         cycle_temperature = epd_ambient_temperature();
-    }
-
-    if (!cycle_force_full_refresh && refresh_mode == UI_REFRESH_MODE_FAST) {
-        checkError(epd_hl_update_area(&board::hl, MODE_DU, cycle_temperature, update_rect));
-    } else if (!cycle_force_full_refresh && refresh_mode == UI_REFRESH_MODE_NORMAL) {
-        checkError(epd_hl_update_area(&board::hl, MODE_GL16, cycle_temperature, update_rect));
     }
 
     lv_display_flush_ready(disp);
@@ -466,6 +494,7 @@ void init() {
     if (board::peri_status[E_PERI_KEYBOARD]) {
         lv_group_t *g = lv_group_create();
         lv_group_set_default(g);
+        lv_group_set_focus_cb(g, keyboard_focus_group_cb);
         lv_indev_t *kb_indev = lv_indev_create();
         lv_indev_set_type(kb_indev, LV_INDEV_TYPE_KEYPAD);
         lv_indev_set_read_cb(kb_indev, keyboard_read_cb);

@@ -351,6 +351,7 @@ void init() {
     // Keyboard
     lv_group_t *g = lv_group_create();
     lv_group_set_default(g);
+    lv_group_set_focus_cb(g, keyboard_focus_group_cb);
 
     if (board::peri_status[E_PERI_KEYBOARD]) {
         lv_indev_t *kb_indev = lv_indev_create();

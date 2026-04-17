@@ -29,6 +29,7 @@ void process_events() {
             ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
         }
         last_displayed = model::message_count;
+        ui::msg_list::scroll_to_bottom(msg_container);
         ui::port::keyboard_focus_invalidate();
         return;
     }
@@ -42,6 +43,7 @@ void process_events() {
     }
 
     if (changed) {
+        ui::msg_list::scroll_to_bottom(msg_container);
         ui::port::keyboard_focus_invalidate();
     }
 }
@@ -67,6 +69,7 @@ static void create(lv_obj_t* parent) {
             auto& msg = model::messages[i];
             ui::msg_list::append(msg_container, msg.sender, msg.text, 0, msg.is_self, i);
         }
+        ui::msg_list::scroll_to_bottom(msg_container);
     }
     last_displayed = model::message_count;
 
